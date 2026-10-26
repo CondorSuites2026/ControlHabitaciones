@@ -11,6 +11,7 @@ export default function App() {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [roomToBill, setRoomToBill] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [subiendoArchivo, setSubiendoArchivo] = useState(false);
 
   // Tasa BCV automática
   const [tasaBCV, setTasaBCV] = useState(65.00);
@@ -38,10 +39,9 @@ export default function App() {
   const [supervisoraSeleccionada, setSupervisoraSeleccionada] = useState('');
   const [consumosSeleccionados, setConsumosSeleccionados] = useState({});
   
-  // Estado para la evidencia multimedia (fotos / videos)
+  // Archivo de evidencia multimedia
   const [archivoEvidencia, setArchivoEvidencia] = useState(null);
 
-  // Estados para formularios en Administración
   const [nuevoItem, setNuevoItem] = useState({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
   const [nuevoPersonal, setNuevoPersonal] = useState({ nombre: '', rol: 'Asistente', turno: '' });
 
@@ -140,6 +140,41 @@ export default function App() {
     return { bg: '#bbf7d0', text: '#065f46' };
   };
 
+  // Función para subir la evidencia multimedia a Supabase Storage
+  const subirEvidenciaASupabase = async (file) => {
+    if (!file) return null;
+    try {
+      setSubiendoArchivo(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${selectedRoom.number}_${Date.now()}.${fileExt}`;
+      const filePath = `checkout_evidencias/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('evidencias')
+        .upload(filePath, file);
+
+      if (error) {
+        console.error('Error subiendo archivo a Supabase Storage:', error.message);
+        return null;
+      }
+
+      const { data: publicData } = supabase.storage
+        .from('evidencias')
+        .getPublicUrl(filePath);
+
+      return {
+        url: publicData?.publicUrl || null,
+        tipo: file.type.startsWith('video') ? 'video' : 'imagen',
+        nombre: file.name
+      };
+    } catch (err) {
+      console.error(err);
+      return null;
+    } finally {
+      setSubiendoArchivo(false);
+    }
+  };
+
   const handleEjecutarCheckout = async () => {
     if (!selectedRoom) return;
     if (!asistenteSeleccionada) {
@@ -155,6 +190,12 @@ export default function App() {
 
     const totalBs = totalUSD * tasaBCV;
 
+    // Subida real del archivo multimedia
+    let datosEvidencia = null;
+    if (archivoEvidencia) {
+      datosEvidencia = await subirEvidenciaASupabase(archivoEvidencia);
+    }
+
     const reporteCompleto = {
       asistente: asistenteSeleccionada,
       supervisora: supervisoraSeleccionada || 'N/A',
@@ -163,7 +204,7 @@ export default function App() {
       totalUSD,
       totalBs,
       tasaBCV,
-      tieneEvidencia: archivoEvidencia ? archivoEvidencia.name : 'Sin archivo adjunto'
+      evidencia: datosEvidencia
     };
 
     const newStatus = 'Sucia / Por Facturar';
@@ -190,7 +231,7 @@ export default function App() {
       });
     } catch (e) { console.error(e); }
 
-    alert(`⚠️ Check-out enviado para la Habitación ${selectedRoom.number}. Recepción notificada.`);
+    alert(`⚠️ Check-out enviado con éxito para la Habitación ${selectedRoom.number}. Recepción notificada.`);
     setConsumosSeleccionados({});
     setArchivoEvidencia(null);
     setSelectedRoom(null);
@@ -212,13 +253,13 @@ export default function App() {
   const handleAgregarInventario = async (e) => {
     e.preventDefault();
     if (!nuevoItem.name || !nuevoItem.id) return alert('Complete los datos del producto');
-    
+
     setInventario([...inventario, nuevoItem]);
     try {
       await supabase.from('inventario').upsert(nuevoItem);
     } catch (e) { console.error(e); }
     setNuevoItem({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
-    alert('✅ Producto guardado con éxito.');
+    alert('✅ Producto guardado en Supabase.');
   };
 
   const handleAgregarPersonal = async (e) => {
@@ -231,7 +272,7 @@ export default function App() {
       await supabase.from('personal').insert({ nombre: nuevoPersonal.nombre, rol: nuevoPersonal.rol, turno: nuevoPersonal.turno });
     } catch (e) { console.error(e); }
     setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
-    alert('✅ Personal registrado con éxito.');
+    alert('✅ Personal guardado en Supabase.');
   };
 
   const handleBorrarPersonal = async (id) => {
@@ -247,7 +288,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f1f5f9', color: '#1e293b', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif' }}>
-      
+
       <style>{`
         @keyframes pulseAlert {
           0% { opacity: 1; transform: scale(1); }
@@ -265,7 +306,7 @@ export default function App() {
           <div style={{ backgroundColor: '#f59e0b', color: '#0f172a', padding: '6px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '16px' }}>CS</div>
           <div>
             <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>HOTEL CÓNDOR SUITES</h1>
-            <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0 }}>Control en Vivo con Sincronización Automática BCV</p>
+            <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0 }}>Control en Vivo con Sincronización Automática BCV y Supabase Storage</p>
           </div>
         </div>
 
@@ -282,8 +323,8 @@ export default function App() {
             { id: 'amadelhaves', label: 'Ama de Llaves' },
             { id: 'admin', label: 'Administración' }
           ].map(m => (
-            <button 
-              key={m.id} 
+            <button
+              key={m.id}
               onClick={() => setRole(m.id)}
               style={{
                 padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer', border: 'none',
@@ -372,17 +413,33 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL DE FACTURACIÓN */}
+        {/* MODAL DE FACTURACIÓN EN RECEPCIÓN (CON PREVISUALIZACIÓN DE EVIDENCIA) */}
         {roomToBill && roomToBill.reporte && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-            <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', maxWidth: '500px', width: '100%' }}>
+            <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', maxWidth: '520px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
               <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 'bold' }}>🧾 Facturación Check-Out — Habitación {roomToBill.number}</h3>
               <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 8px 0' }}>
                 Asistente: <strong>{roomToBill.reporte.asistente}</strong>
               </p>
-              <p style={{ fontSize: '12px', color: '#475569', margin: '0 0 16px 0' }}>
-                Evidencia adjunta: <strong>{roomToBill.reporte.tieneEvidencia}</strong>
-              </p>
+
+              {/* VISUALIZADOR DE EVIDENCIA */}
+              {roomToBill.reporte.evidencia ? (
+                <div style={{ background: '#f1f5f9', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '6px' }}>
+                    📸 EVIDENCIA MULTIMEDIA GUARDADA EN SUPABASE:
+                  </span>
+                  {roomToBill.reporte.evidencia.tipo === 'video' ? (
+                    <video src={roomToBill.reporte.evidencia.url} controls style={{ width: '100%', maxHeight: '200px', borderRadius: '6px' }} />
+                  ) : (
+                    <img src={roomToBill.reporte.evidencia.url} alt="Evidencia" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '6px' }} />
+                  )}
+                  <a href={roomToBill.reporte.evidencia.url} target="_blank" rel="noreferrer" style={{ fontSize: '11px', color: '#2563eb', fontWeight: 'bold', display: 'inline-block', marginTop: '6px' }}>
+                    🔗 Abrir original en alta resolución
+                  </a>
+                </div>
+              ) : (
+                <p style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic', margin: '0 0 12px 0' }}>Sin fotos/videos adjuntos.</p>
+              )}
 
               <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
                 <h4 style={{ margin: '0 0 6px 0', fontSize: '12px', textTransform: 'uppercase' }}>Consumos Registrados:</h4>
@@ -419,7 +476,7 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 2: ASISTENTE MÓVIL (CON SECCIÓN DE FOTOS Y VIDEOS) */}
+        {/* VISTA 2: ASISTENTE MÓVIL */}
         {role === 'asistente' && (
           <div style={{ maxWidth: '650px', margin: '0 auto', background: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Check-Out e Inspección Móvil</h2>
@@ -470,10 +527,10 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* SECCIÓN ADJUNTAR FOTOS O VIDEOS DE EVIDENCIA */}
+                {/* ADJUNTAR ARCHIVO QUE SE GUARDA EN SUPABASE STORAGE */}
                 <div style={{ background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', textTransform: 'uppercase' }}>
-                    📸 Adjuntar Fotos o Videos de Evidencia (Daños / Estado)
+                    📸 Adjuntar Foto o Video de Evidencia (Daños / Estado)
                   </label>
                   <input 
                     type="file" 
@@ -483,13 +540,16 @@ export default function App() {
                   />
                   {archivoEvidencia && (
                     <p style={{ fontSize: '11px', color: '#059669', fontWeight: 'bold', margin: '4px 0 0 0' }}>
-                      Archivo seleccionado: {archivoEvidencia.name}
+                      Archivo listo para subir a Supabase: {archivoEvidencia.name}
                     </p>
                   )}
                 </div>
 
-                <button onClick={handleEjecutarCheckout} style={{ width: '100%', background: '#0f172a', color: '#fff', padding: '14px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
-                  🚨 Ejecutar Check-Out y Activar Alerta en Recepción
+                <button 
+                  onClick={handleEjecutarCheckout} 
+                  disabled={subiendoArchivo}
+                  style={{ width: '100%', background: subiendoArchivo ? '#64748b' : '#0f172a', color: '#fff', padding: '14px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
+                  {subiendoArchivo ? 'Subiendo Evidencia a Supabase...' : '🚨 Ejecutar Check-Out y Activar Alerta en Recepción'}
                 </button>
               </div>
             )}
@@ -596,7 +656,7 @@ export default function App() {
               </table>
             </div>
 
-            {/* SECCIÓN PERSONAL (ASISTENTES Y SUPERVISORAS) */}
+            {/* SECCIÓN PERSONAL */}
             <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '16px' }}>👥 Registro de Personal (Asistentes y Supervisoras)</h3>
               
