@@ -254,7 +254,7 @@ export default function App() {
           <div style={{ backgroundColor: '#f59e0b', color: '#0f172a', padding: '6px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '16px' }}>CS</div>
           <div>
             <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>HOTEL CÓNDOR SUITES</h1>
-            <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0 }}>Sistema Integral en Vivo — Lechería</p>
+            <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0 }}>Sistema en Linea de Control Check-Out e Inspecciones.</p>
           </div>
         </div>
 
