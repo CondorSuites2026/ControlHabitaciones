@@ -4,11 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
-  },
+  "dev": "vite",
+  "build": "vite build",
+  "lint": "vite:lint",
+  "preview": "vite preview"
+},
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
     "react": "^19.3.1",
