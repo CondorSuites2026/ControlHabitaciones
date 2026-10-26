@@ -13,7 +13,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [subiendoArchivo, setSubiendoArchivo] = useState(false);
 
-  // Tasa BCV automática
+  // Tasa BCV (editable manualmente por si la API falla y con respaldo online)
   const [tasaBCV, setTasaBCV] = useState(65.00);
 
   const [inventario, setInventario] = useState([
@@ -48,40 +48,44 @@ export default function App() {
     fetchInventario();
     fetchPersonal();
     fetchReportes();
-    sincronizarTasaBCVAutomatico();
+    sincronizarTasaBCVOnline();
 
-    // Sincronización en tiempo real + intervalo de respaldo cada 4 segundos
+    // Intervalo de sincronización automática cada 4 segundos
     const interval = setInterval(() => {
       fetchHabitacionesSilencioso();
     }, 4000);
 
-    const channel = supabase
-      .channel('realtime_hotel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'habitaciones' }, () => fetchHabitaciones())
-      .subscribe();
-
-    return () => {
-      clearInterval(interval);
-      supabase.removeChannel(channel);
-    };
+    return () => clearInterval(interval);
   }, []);
 
-  const sincronizarTasaBCVAutomatico = async () => {
+  // Sincronización robusta de la tasa BCV
+  const sincronizarTasaBCVOnline = async () => {
     try {
-      const response = await fetch('https://ve.dolarapi.com/v1/dolares/bcv');
+      const response = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar/unit/bcv');
       const data = await response.json();
-      if (data && data.promedio) setTasaBCV(data.promedio);
+      if (data && data.price) {
+        setTasaBCV(parseFloat(data.price));
+      } else {
+        const resAlt = await fetch('https://ve.dolarapi.com/v1/dolares/bcv');
+        const dataAlt = await resAlt.json();
+        if (dataAlt && dataAlt.promedio) {
+          setTasaBCV(parseFloat(dataAlt.promedio));
+        }
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Usando tasa manual o por defecto.", error);
     }
   };
 
   const fetchHabitaciones = async () => {
     setLoading(true);
     try {
-      const { data } = await supabase.from('habitaciones').select('*');
-      if (!data || data.length === 0) generateDefaultRooms();
-      else setHabitaciones(data);
+      const { data, error } = await supabase.from('habitaciones').select('*');
+      if (error || !data || data.length === 0) {
+        generateDefaultRooms();
+      } else {
+        setHabitaciones(data);
+      }
     } catch {
       generateDefaultRooms();
     } finally {
@@ -231,6 +235,7 @@ export default function App() {
     setConsumosSeleccionados({});
     setArchivoEvidencia(null);
     setSelectedRoom(null);
+    fetchHabitaciones();
     fetchReportes();
   };
 
@@ -243,6 +248,7 @@ export default function App() {
     } catch (e) { console.error(e); }
 
     setRoomToBill(null);
+    fetchHabitaciones();
     alert('✅ Facturación completada. La habitación pasa a color amarillo (Sucia) para Ama de Llaves.');
   };
 
@@ -294,26 +300,36 @@ export default function App() {
         }
       `}</style>
 
-      {/* HEADER */}
+      {/* HEADER CON TASA EDITABLE Y BOTÓN DE ACTUALIZACIÓN FUNCIONAL */}
       <header style={{ backgroundColor: '#0f172a', borderBottom: '1px solid #334155', padding: '12px 24px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', color: '#fff' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ backgroundColor: '#f59e0b', color: '#0f172a', padding: '6px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '16px' }}>CS</div>
           <div>
             <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>HOTEL CÓNDOR SUITES</h1>
-            <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0 }}>Control en Vivo con Sincronización Automática Supabase</p>
+            <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0 }}>Control en Vivo Supabase</p>
           </div>
         </div>
 
+        {/* TASA BCV EDITABLE DIRECTAMENTE + BOTÓN RECARGAR */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', background: '#1e293b', padding: '6px 14px', borderRadius: '8px', border: '1px solid #334155', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', background: '#1e293b', padding: '4px 12px', borderRadius: '8px', border: '1px solid #334155', gap: '6px' }}>
             <span style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 'bold' }}>💵 TASA BCV:</span>
-            <span style={{ fontSize: '14px', color: '#fff', fontWeight: 'bold' }}>Bs. {tasaBCV.toFixed(2)}</span>
+            <input 
+              type="number" 
+              step="0.01" 
+              value={tasaBCV} 
+              onChange={(e) => setTasaBCV(parseFloat(e.target.value) || 0)}
+              style={{ width: '75px', background: '#0f172a', border: '1px solid #cbd5e1', color: '#fff', borderRadius: '4px', padding: '2px 6px', fontSize: '13px', fontWeight: 'bold', textAlign: 'center' }}
+            />
           </div>
-          <button onClick={fetchHabitaciones} style={{ background: '#334155', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+          <button 
+            onClick={() => { fetchHabitaciones(); alert('🔄 Datos actualizados desde Supabase con éxito.'); }} 
+            style={{ background: '#f59e0b', color: '#0f172a', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
             🔄 Actualizar PC
           </button>
         </div>
 
+        {/* MÓDULOS */}
         <div style={{ display: 'flex', backgroundColor: '#1e293b', padding: '4px', borderRadius: '8px', gap: '4px' }}>
           {[
             { id: 'recepcion', label: 'Recepción' },
