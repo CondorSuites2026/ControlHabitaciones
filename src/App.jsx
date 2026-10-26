@@ -13,7 +13,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [subiendoArchivo, setSubiendoArchivo] = useState(false);
 
-  // Tasa BCV informativa (sincronizada automáticamente desde API o respaldo)
+  // Tasa BCV informativa
   const [tasaBCV, setTasaBCV] = useState(65.00);
 
   const [inventario, setInventario] = useState([
@@ -50,15 +50,13 @@ export default function App() {
     fetchReportes();
     sincronizarTasaBCVOnline();
 
-    // Intervalo de sincronización automática cada 4 segundos para mantener todo en tiempo real
     const interval = setInterval(() => {
       fetchHabitacionesSilencioso();
-    }, 4000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, []);
 
-  // Sincronización automática de la tasa BCV oficial
   const sincronizarTasaBCVOnline = async () => {
     try {
       const response = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar/unit/bcv');
@@ -160,7 +158,7 @@ export default function App() {
     try {
       setSubiendoArchivo(true);
       const fileExt = file.name.split('.').pop();
-      const fileName = `${selectedRoom.number}_${Date.now()}.${fileExt}`;
+      const fileName = `evidencia_${Date.now()}.${fileExt}`;
       const filePath = `checkout_evidencias/${fileName}`;
 
       const { error } = await supabase.storage.from('evidencias').upload(filePath, file);
@@ -194,7 +192,9 @@ export default function App() {
 
     const totalBs = totalUSD * tasaBCV;
     let datosEvidencia = null;
-    if (archivoEvidencia) datosEvidencia = await subirEvidenciaASupabase(archivoEvidencia);
+    if (archivoEvidencia) {
+      datosEvidencia = await subirEvidenciaASupabase(archivoEvidencia);
+    }
 
     const reporteCompleto = {
       asistente: asistenteSeleccionada,
@@ -208,13 +208,13 @@ export default function App() {
     };
 
     const newStatus = 'Sucia / Por Facturar';
-    const updated = habitaciones.map(h => h.id === selectedRoom.id ? { ...h, status: newStatus, amount: totalUSD, reporte: reporteCompleto } : h);
-    setHabitaciones(updated);
 
     try {
       await supabase.from('habitaciones').upsert({
         id: selectedRoom.id,
         number: selectedRoom.number,
+        floor: selectedRoom.floor,
+        type: selectedRoom.type,
         status: newStatus,
         amount: totalUSD,
         reporte: reporteCompleto
@@ -229,27 +229,34 @@ export default function App() {
         tasa_bcv: tasaBCV,
         desglose: consumosSeleccionados
       });
-    } catch (e) { console.error(e); }
 
-    alert(`⚠️ Check-out enviado para la Habitación ${selectedRoom.number}. Recepción notificada.`);
-    setConsumosSeleccionados({});
-    setArchivoEvidencia(null);
-    setSelectedRoom(null);
-    fetchHabitaciones();
-    fetchReportes();
+      const updated = habitaciones.map(h => h.id === selectedRoom.id ? { ...h, status: newStatus, amount: totalUSD, reporte: reporteCompleto } : h);
+      setHabitaciones(updated);
+
+      alert(`⚠️ Check-out enviado con éxito para la Habitación ${selectedRoom.number}.`);
+      setConsumosSeleccionados({});
+      setArchivoEvidencia(null);
+      setSelectedRoom(null);
+      fetchHabitaciones();
+      fetchReportes();
+    } catch (e) {
+      console.error(e);
+      alert('Hubo un error al procesar el check-out.');
+    }
   };
 
   const handleConfirmarFacturacion = async (roomId) => {
-    const updated = habitaciones.map(h => h.id === roomId ? { ...h, status: 'Sucia', amount: 0, reporte: null } : h);
-    setHabitaciones(updated);
-
     try {
-      await supabase.from('habitaciones').upsert({ id: roomId, status: 'Sucia', amount: 0, reporte: null });
-    } catch (e) { console.error(e); }
-
-    setRoomToBill(null);
-    fetchHabitaciones();
-    alert('✅ Facturación completada. La habitación pasa a color amarillo (Sucia) para Ama de Llaves.');
+      await supabase.from('habitaciones').update({ status: 'Sucia', amount: 0, reporte: null }).eq('id', roomId);
+      
+      const updated = habitaciones.map(h => h.id === roomId ? { ...h, status: 'Sucia', amount: 0, reporte: null } : h);
+      setHabitaciones(updated);
+      setRoomToBill(null);
+      fetchHabitaciones();
+      alert('✅ Facturación completada. La habitación pasa a color amarillo (Sucia).');
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleAgregarInventario = async (e) => {
@@ -300,7 +307,7 @@ export default function App() {
         }
       `}</style>
 
-      {/* HEADER CON TASA BCV PURAMENTE INFORMATIVA (VISUAL) Y BOTÓN DE ACTUALIZACIÓN */}
+      {/* HEADER */}
       <header style={{ backgroundColor: '#0f172a', borderBottom: '1px solid #334155', padding: '12px 24px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', color: '#fff' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ backgroundColor: '#f59e0b', color: '#0f172a', padding: '6px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '16px' }}>CS</div>
@@ -310,20 +317,18 @@ export default function App() {
           </div>
         </div>
 
-        {/* TASA BCV INFORMATIVA Y BOTÓN RECARGAR */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', background: '#1e293b', padding: '6px 14px', borderRadius: '8px', border: '1px solid #334155', gap: '8px' }}>
             <span style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 'bold' }}>💵 TASA BCV OFICIAL:</span>
             <span style={{ fontSize: '14px', color: '#fff', fontWeight: 'bold' }}>Bs. {tasaBCV.toFixed(2)}</span>
           </div>
           <button 
-            onClick={() => { fetchHabitaciones(); alert('🔄 Datos actualizados desde Supabase con éxito.'); }} 
+            onClick={() => { fetchHabitaciones(); alert('🔄 Datos actualizados con éxito.'); }} 
             style={{ background: '#f59e0b', color: '#0f172a', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
             🔄 Actualizar PC
           </button>
         </div>
 
-        {/* MÓDULOS */}
         <div style={{ display: 'flex', backgroundColor: '#1e293b', padding: '4px', borderRadius: '8px', gap: '4px' }}>
           {[
             { id: 'recepcion', label: 'Recepción' },
@@ -422,16 +427,16 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL DE FACTURACIÓN */}
+        {/* MODAL DE FACTURACIÓN (BLINDADO CON ?.) */}
         {roomToBill && roomToBill.reporte && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
             <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', maxWidth: '520px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
               <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 'bold' }}>🧾 Facturación Check-Out — Habitación {roomToBill.number}</h3>
               <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 8px 0' }}>
-                Asistente: <strong>{roomToBill.reporte.asistente}</strong>
+                Asistente: <strong>{roomToBill.reporte?.asistente || 'N/A'}</strong>
               </p>
 
-              {roomToBill.reporte.evidencia && (
+              {roomToBill.reporte?.evidencia && (
                 <div style={{ background: '#f1f5f9', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '12px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '6px' }}>📸 EVIDENCIA MULTIMEDIA:</span>
                   {roomToBill.reporte.evidencia.tipo === 'video' ? (
@@ -444,12 +449,12 @@ export default function App() {
 
               <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
                 <h4 style={{ margin: '0 0 6px 0', fontSize: '12px', textTransform: 'uppercase' }}>Consumos Registrados:</h4>
-                {Object.entries(roomToBill.reporte.consumos).map(([id, qty]) => {
+                {Object.entries(roomToBill.reporte?.consumos || {}).map(([id, qty]) => {
                   if (qty <= 0) return null;
                   const item = inventario.find(i => i.id === id);
                   return (
                     <div key={id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', margin: '4px 0' }}>
-                      <span>{qty}x {item?.name}</span>
+                      <span>{qty}x {item?.name || id}</span>
                       <strong>${(qty * (item?.price_usd || 0)).toFixed(2)} USD</strong>
                     </div>
                   );
@@ -457,11 +462,11 @@ export default function App() {
                 <hr style={{ margin: '10px 0' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold' }}>
                   <span>TOTAL EN DÓLARES:</span>
-                  <span>${roomToBill.reporte.totalUSD.toFixed(2)} USD</span>
+                  <span>${(roomToBill.reporte?.totalUSD || 0).toFixed(2)} USD</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 'bold', color: '#059669', marginTop: '4px' }}>
                   <span>TOTAL EN BOLÍVARES (BCV {tasaBCV.toFixed(2)}):</span>
-                  <span>Bs. {roomToBill.reporte.totalBs.toFixed(2)}</span>
+                  <span>Bs. {(roomToBill.reporte?.totalBs || 0).toFixed(2)}</span>
                 </div>
               </div>
 
@@ -537,7 +542,7 @@ export default function App() {
                 </div>
 
                 <button onClick={handleEjecutarCheckout} disabled={subiendoArchivo} style={{ width: '100%', background: subiendoArchivo ? '#64748b' : '#0f172a', color: '#fff', padding: '14px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
-                  {subiendoArchivo ? 'Subiendo Evidencia...' : '🚨 Ejecutar Check-Out y Activar Alerta en Recepción'}
+                  {subiendoArchivo ? 'Subiendo Evidencia a Supabase...' : '🚨 Ejecutar Check-Out y Activar Alerta en Recepción'}
                 </button>
               </div>
             )}
