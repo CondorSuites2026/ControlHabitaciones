@@ -42,7 +42,6 @@ export default function App() {
     try {
       const { data, error } = await supabase.from('habitaciones').select('*');
       if (error || !data || data.length === 0) {
-        // Generar estructura por defecto si la tabla está vacía
         generateDefaultRooms();
       } else {
         setHabitaciones(data);
@@ -68,7 +67,7 @@ export default function App() {
           number: `${f}0${n}`,
           floor: f,
           type: type,
-          status: 'Disponible', // Disponible, Ocupada, Sucia, Reservada, Bloqueada
+          status: 'Disponible',
           guest: '',
           amount: '0.00',
           phone: '',
@@ -78,10 +77,10 @@ export default function App() {
     }
     // Piso 10 (4 habitaciones especiales)
     const p10 = [
-      { num: '1001', type: 'PRESIDENCIAL' },
-      { num: '1002', type: 'PRESIDENCIAL' },
-      { num: '1003', type: 'EJECUTIVA' },
-      { num: '1004', type: 'EJECUTIVA' },
+      { num: '1003', type: 'PRESIDENCIAL' },
+      { num: '1004', type: 'PRESIDENCIAL' },
+      { num: '1001', type: 'EJECUTIVA' },
+      { num: '1002', type: 'EJECUTIVA' },
     ];
     p10.forEach(r => {
       rooms.push({
@@ -101,12 +100,12 @@ export default function App() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Disponible': return 'bg-emerald-100 text-emerald-800 border-emerald-300';
-      case 'Ocupada': return 'bg-cyan-100 text-cyan-800 border-cyan-300';
-      case 'Sucia': return 'bg-amber-100 text-amber-800 border-amber-300';
-      case 'Reservada': return 'bg-pink-100 text-pink-800 border-pink-300';
+      case 'Disponible': return 'bg-emerald-100 text-emerald-900 border-emerald-300';
+      case 'Ocupada': return 'bg-cyan-100 text-cyan-900 border-cyan-300';
+      case 'Sucia': return 'bg-amber-100 text-amber-900 border-amber-300';
+      case 'Reservada': return 'bg-pink-100 text-pink-900 border-pink-300';
       case 'Bloqueada': return 'bg-red-500 text-white border-red-700';
-      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+      default: return 'bg-gray-100 text-gray-900 border-gray-300';
     }
   };
 
@@ -119,7 +118,6 @@ export default function App() {
     });
     setHabitaciones(updated);
 
-    // Sincronizar con Supabase
     try {
       await supabase.from('habitaciones').upsert({
         id: roomId,
@@ -133,78 +131,105 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
+    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#f8fafc', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif' }}>
       {/* Barra superior de navegación por roles */}
-      <header className="bg-slate-800 border-b border-slate-700 px-6 py-4 flex flex-wrap justify-between items-center gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="bg-amber-500 text-slate-900 p-2 rounded-lg font-black text-xl">CS</div>
+      <header style={{ backgroundColor: '#1e293b', borderBottom: '1px solid #334155', padding: '16px 24px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ backgroundColor: '#f59e0b', color: '#0f172a', padding: '8px 12px', borderRadius: '8px', fontWeight: '900', fontSize: '18px' }}>CS</div>
           <div>
-            <h1 className="text-lg font-bold tracking-wide">HOTEL CÓNDOR SUITES</h1>
-            <p className="text-xs text-slate-400">Lechería, Estado Anzoátegui — Control en Línea</p>
+            <h1 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>HOTEL CÓNDOR SUITES</h1>
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Lechería, Estado Anzoátegui — Control de check-out en línea</p>
           </div>
         </div>
 
         {/* Selector de Roles */}
-        <div className="flex bg-slate-900 p-1.5 rounded-xl border border-slate-700 text-sm overflow-x-auto">
-          <button 
-            onClick={() => setRole('recepcion')} 
-            className={`px-4 py-2 rounded-lg font-medium transition ${role === 'recepcion' ? 'bg-amber-500 text-slate-900 shadow' : 'text-slate-300 hover:text-white'}`}>
-            Recepción (PC)
-          </button>
-          <button 
-            onClick={() => setRole('asistente')} 
-            className={`px-4 py-2 rounded-lg font-medium transition ${role === 'asistente' ? 'bg-amber-500 text-slate-900 shadow' : 'text-slate-300 hover:text-white'}`}>
-            Piso / Móvil
-          </button>
-          <button 
-            onClick={() => setRole('amadelhaves')} 
-            className={`px-4 py-2 rounded-lg font-medium transition ${role === 'amadelhaves' ? 'bg-amber-500 text-slate-900 shadow' : 'text-slate-300 hover:text-white'}`}>
-            Ama de Llaves
-          </button>
-          <button 
-            onClick={() => setRole('admin')} 
-            className={`px-4 py-2 rounded-lg font-medium transition ${role === 'admin' ? 'bg-amber-500 text-slate-900 shadow' : 'text-slate-300 hover:text-white'}`}>
-            Administración
-          </button>
+        <div style={{ display: 'flex', backgroundColor: '#0f172a', padding: '6px', borderRadius: '12px', border: '1px solid #334155', gap: '4px' }}>
+          {['recepcion', 'asistente', 'amadelhaves', 'admin'].map((r) => (
+            <button 
+              key={r}
+              onClick={() => setRole(r)} 
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontWeight: '500',
+                fontSize: '14px',
+                cursor: 'pointer',
+                border: 'none',
+                backgroundColor: role === r ? '#f59e0b' : 'transparent',
+                color: role === r ? '#0f172a' : '#cbd5e1',
+                transition: 'all 0.2s'
+              }}>
+              {r === 'recepcion' && 'Recepción (PC)'}
+              {r === 'asistente' && 'Piso / Móvil'}
+              {r === 'amadelhaves' && 'Ama de Llaves'}
+              {r === 'admin' && 'Administración'}
+            </button>
+          ))}
         </div>
       </header>
 
       {/* Contenido principal según rol */}
-      <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
+      <main style={{ flex: 1, padding: '24px', maxWidth: '1280px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         
         {/* VISTA 1: RECEPCIÓN */}
         {role === 'recepcion' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <h2 className="text-2xl font-bold">Matriz de Control en Tiempo Real</h2>
-                <p className="text-sm text-slate-400">Monitoreo de ocupación, check-out, consumos de minibar y lencería.</p>
+                <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Matriz de Control en Tiempo Real</h2>
+                <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>Monitoreo de ocupación, check-out, consumos de minibar y lencería.</p>
               </div>
-              <div className="flex gap-2 text-xs font-semibold">
-                <span className="px-3 py-1 rounded bg-emerald-100 text-emerald-800">Disponible</span>
-                <span className="px-3 py-1 rounded bg-cyan-100 text-cyan-800">Ocupada</span>
-                <span className="px-3 py-1 rounded bg-amber-100 text-amber-800">Sucia</span>
-                <span className="px-3 py-1 rounded bg-pink-100 text-pink-800">Reservada</span>
-                <span className="px-3 py-1 rounded bg-red-500 text-white">Bloqueada</span>
+              <div style={{ display: 'flex', gap: '8px', fontSize: '12px', fontWeight: '600', flexWrap: 'wrap' }}>
+                <span style={{ padding: '4px 10px', borderRadius: '6px', background: '#d1fae5', color: '#065f46' }}>Disponible</span>
+                <span style={{ padding: '4px 10px', borderRadius: '6px', background: '#cffafe', color: '#155e75' }}>Ocupada</span>
+                <span style={{ padding: '4px 10px', borderRadius: '6px', background: '#fef3c7', color: '#92400e' }}>Sucia</span>
+                <span style={{ padding: '4px 10px', borderRadius: '6px', background: '#fce7f3', color: '#831843' }}>Reservada</span>
+                <span style={{ padding: '4px 10px', borderRadius: '6px', background: '#ef4444', color: '#ffffff' }}>Bloqueada</span>
               </div>
             </div>
 
-            {/* Cuadrícula de Habitaciones */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-9 gap-3">
+            {/* Cuadrícula de Habitaciones Garantizada por CSS Grid */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', 
+              gap: '12px', 
+              marginTop: '8px' 
+            }}>
               {habitaciones.map((room) => (
                 <div 
                   key={room.id}
                   onClick={() => setSelectedRoom(room)}
-                  className={`p-3 rounded-xl border cursor-pointer transition transform hover:scale-105 shadow-sm flex flex-col justify-between h-32 ${getStatusColor(room.status)}`}>
-                  <div className="flex justify-between items-start">
-                    <span className="font-bold text-base">{room.number}</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/10">{room.type.substring(0,3)}</span>
+                  className={getStatusColor(room.status)}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '12px',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    height: '110px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    transition: 'transform 0.2s'
+                  }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <span style={{ fontWeight: 'bold', fontSize: '15px' }}>{room.number}</span>
+                    <span style={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', padding: '2px 6px', borderRadius: '4px', background: 'rgba(0,0,0,0.1)' }}>
+                      {room.type ? room.type.substring(0,3) : ''}
+                    </span>
                   </div>
-                  <div className="my-1">
-                    <p className="text-xs font-semibold truncate">{room.guest || 'Sin huésped'}</p>
-                    <p className="text-[11px] opacity-75 font-mono">Bs. {room.amount || '0.00'}</p>
+                  <div style={{ margin: '4px 0' }}>
+                    <p style={{ fontSize: '12px', fontWeight: '600', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {room.guest || 'Sin huésped'}
+                    </p>
+                    <p style={{ fontSize: '11px', opacity: 0.8, fontFamily: 'monospace', margin: '2px 0 0 0' }}>
+                      Bs. {room.amount || '0.00'}
+                    </p>
                   </div>
-                  <span className="text-[10px] font-bold text-right uppercase tracking-wider">{room.status}</span>
+                  <span style={{ fontSize: '10px', fontWeight: 'bold', textAlign: 'right', textTransform: 'uppercase' }}>
+                    {room.status}
+                  </span>
                 </div>
               ))}
             </div>
@@ -213,21 +238,21 @@ export default function App() {
 
         {/* VISTA 2: ASISTENTE / SUPERVISORA MÓVIL */}
         {role === 'asistente' && (
-          <div className="max-w-2xl mx-auto space-y-6 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
+          <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px', backgroundColor: '#1e293b', padding: '24px', borderRadius: '16px', border: '1px solid #334155' }}>
             <div>
-              <h2 className="text-xl font-bold">Reporte Móvil de Piso / Check-Out</h2>
-              <p className="text-xs text-slate-400">Asistente integral: registre consumo de minibar, amenidades y faltantes de lencería.</p>
+              <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Reporte Móvil de Piso / Check-Out</h2>
+              <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Asistente integral: registre consumo de minibar, amenidades y faltantes de lencería.</p>
             </div>
 
-            <div className="space-y-4">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label className="block text-sm font-medium mb-1">Seleccionar Habitación a Revisar</label>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '6px' }}>Seleccionar Habitación a Revisar</label>
                 <select 
                   onChange={(e) => {
                     const r = habitaciones.find(item => item.id === e.target.value);
                     setSelectedRoom(r);
                   }}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm">
+                  style={{ width: '100%', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '10px', padding: '10px 14px', fontSize: '14px', color: '#fff' }}>
                   <option value="">Seleccione habitación...</option>
                   {habitaciones.map(h => (
                     <option key={h.id} value={h.id}>Habitación {h.number} ({h.type}) - {h.status}</option>
@@ -236,22 +261,22 @@ export default function App() {
               </div>
 
               {selectedRoom && (
-                <div className="space-y-4 bg-slate-900/50 p-4 rounded-xl border border-slate-700">
-                  <h3 className="font-semibold text-amber-400">Inspección Habitación {selectedRoom.number}</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', backgroundColor: '#0f172a', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
+                  <h3 style={{ fontWeight: '600', color: '#f59e0b', margin: 0 }}>Inspección Habitación {selectedRoom.number}</h3>
                   
                   {/* Minibar */}
                   <div>
-                    <h4 className="text-xs font-bold uppercase text-slate-400 mb-2">Consumo de Minibar</h4>
-                    <div className="space-y-2">
+                    <h4 style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', margin: '0 0 8px 0' }}>Consumo de Minibar</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {minibarStock.map(item => (
-                        <div key={item.id} className="flex justify-between items-center bg-slate-800 p-2.5 rounded-lg text-sm">
+                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1e293b', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>
                           <span>{item.name} (Bs. {item.price})</span>
                           <input 
                             type="number" 
                             min="0" 
                             defaultValue="0"
                             onChange={(e) => setConsumoMinibar({...consumoMinibar, [item.id]: e.target.value})}
-                            className="w-16 bg-slate-900 border border-slate-700 text-center rounded py-1"
+                            style={{ width: '60px', backgroundColor: '#0f172a', border: '1px solid #334155', textAlign: 'center', borderRadius: '6px', padding: '4px', color: '#fff' }}
                           />
                         </div>
                       ))}
@@ -260,17 +285,17 @@ export default function App() {
 
                   {/* Lencería */}
                   <div>
-                    <h4 className="text-xs font-bold uppercase text-slate-400 mb-2">Faltantes o Daños de Lencería</h4>
-                    <div className="space-y-2">
+                    <h4 style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', margin: '0 0 8px 0' }}>Faltantes o Daños de Lencería</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {lenceriaList.map(item => (
-                        <div key={item.id} className="flex justify-between items-center bg-slate-800 p-2.5 rounded-lg text-sm">
+                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1e293b', padding: '10px', borderRadius: '8px', fontSize: '14px' }}>
                           <span>{item.name}</span>
                           <input 
                             type="number" 
                             min="0" 
                             defaultValue="0"
                             onChange={(e) => setFaltantesLenceria({...faltantesLenceria, [item.id]: e.target.value})}
-                            className="w-16 bg-slate-900 border border-slate-700 text-center rounded py-1"
+                            style={{ width: '60px', backgroundColor: '#0f172a', border: '1px solid #334155', textAlign: 'center', borderRadius: '6px', padding: '4px', color: '#fff' }}
                           />
                         </div>
                       ))}
@@ -279,11 +304,11 @@ export default function App() {
 
                   {/* Evidencia Fotográfica */}
                   <div>
-                    <label className="block text-xs font-bold uppercase text-slate-400 mb-2">Evidencia Fotográfica (Daños / Estado)</label>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: '#94a3b8', marginBottom: '6px' }}>Evidencia Fotográfica (Daños / Estado)</label>
                     <input 
                       type="file" 
                       onChange={(e) => setEvidenceFile(e.target.files[0])}
-                      className="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-amber-500 file:text-slate-900 hover:file:bg-amber-400 cursor-pointer"
+                      style={{ width: '100%', fontSize: '13px', color: '#94a3b8', cursor: 'pointer' }}
                     />
                   </div>
 
@@ -293,7 +318,7 @@ export default function App() {
                       alert(`Reporte enviado con éxito para la Habitación ${selectedRoom.number}. Recepción notificada.`);
                       setSelectedRoom(null);
                     }}
-                    className="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3 rounded-xl transition shadow-lg">
+                    style={{ width: '100%', backgroundColor: '#f59e0b', color: '#0f172a', fontWeight: 'bold', padding: '12px', borderRadius: '10px', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }}>
                     Enviar Check-Out / Marcar como Sucia
                   </button>
                 </div>
@@ -304,60 +329,47 @@ export default function App() {
 
         {/* VISTA 3: AMA DE LLAVES */}
         {role === 'amadelhaves' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Panel de Ama de Llaves</h2>
-            <p className="text-sm text-slate-400">Control de habitaciones pendientes por aseo post-salida y asignación de personal por piso.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Panel de Ama de Llaves</h2>
+              <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>Control de habitaciones pendientes por aseo post-salida y asignación de personal por piso.</p>
+            </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700">
-                <h3 className="font-bold text-amber-400 mb-2">Habitaciones Sucias (Por Asear)</h3>
-                <div className="space-y-2 mt-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+              <div style={{ backgroundColor: '#1e293b', padding: '20px', borderRadius: '16px', border: '1px solid #334155' }}>
+                <h3 style={{ fontWeight: 'bold', color: '#f59e0b', margin: '0 0 12px 0' }}>Habitaciones Sucias (Por Asear)</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {habitaciones.filter(h => h.status === 'Sucia').map(h => (
-                    <div key={h.id} className="flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-slate-700">
+                    <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0f172a', padding: '12px', borderRadius: '10px', border: '1px solid #334155' }}>
                       <div>
-                        <p className="font-bold">Habitación {h.number}</p>
-                        <p className="text-xs text-slate-400">Piso {h.floor} — {h.type}</p>
+                        <p style={{ fontWeight: 'bold', margin: 0 }}>Habitación {h.number}</p>
+                        <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Piso {h.floor} — {h.type}</p>
                       </div>
                       <button 
                         onClick={() => handleUpdateRoomStatus(h.id, 'Disponible')}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition">
+                        style={{ backgroundColor: '#059669', color: '#fff', fontSize: '12px', fontWeight: 'bold', padding: '6px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
                         Aseada / Disponible
                       </button>
                     </div>
                   ))}
                   {habitaciones.filter(h => h.status === 'Sucia').length === 0 && (
-                    <p className="text-sm text-slate-500 italic">No hay habitaciones sucias en este momento.</p>
+                    <p style={{ fontSize: '14px', color: '#64748b', fontStyle: 'italic', margin: 0 }}>No hay habitaciones sucias en este momento.</p>
                   )}
                 </div>
               </div>
 
-              <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 md:col-span-2">
-                <h3 className="font-bold text-amber-400 mb-2">Asignación de Asistentes Integrales por Piso</h3>
-                <div className="overflow-x-auto mt-4">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-700 text-slate-400">
-                        <th className="pb-3">Piso</th>
-                        <th className="pb-3">Asistente Asignada</th>
-                        <th className="pb-3">Estado de Limpieza</th>
-                        <th className="pb-3 text-right">Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-700/50">
-                      {[3, 4, 5, 6, 7, 8, 9, 10].map(piso => (
-                        <tr key={piso}>
-                          <td className="py-3 font-semibold">Piso {piso}</td>
-                          <td className="py-3 text-slate-300">Asistente Turno A ({piso <= 6 ? 'Grupo 1' : 'Grupo 2'})</td>
-                          <td className="py-3">
-                            <span className="px-2.5 py-1 rounded-full text-xs bg-emerald-500/20 text-emerald-400 font-medium">Al día</span>
-                          </td>
-                          <td className="py-3 text-right">
-                            <button className="text-amber-400 hover:underline text-xs font-semibold">Reasignar</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <div style={{ backgroundColor: '#1e293b', padding: '20px', borderRadius: '16px', border: '1px solid #334155' }}>
+                <h3 style={{ fontWeight: 'bold', color: '#f59e0b', margin: '0 0 12px 0' }}>Asignación de Personal por Piso</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {[3, 4, 5, 6, 7, 8, 9, 10].map(piso => (
+                    <div key={piso} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0f172a', padding: '10px 12px', borderRadius: '10px', border: '1px solid #334155', fontSize: '14px' }}>
+                      <div>
+                        <span style={{ fontWeight: '600' }}>Piso {piso}</span>
+                        <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0 }}>Asistente Turno A</p>
+                      </div>
+                      <span style={{ padding: '4px 8px', borderRadius: '20px', fontSize: '11px', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', fontWeight: '500' }}>Al día</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -366,58 +378,49 @@ export default function App() {
 
         {/* VISTA 4: ADMINISTRACIÓN E INVENTARIO */}
         {role === 'admin' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Panel Administrativo e Inventario</h2>
-            <p className="text-sm text-slate-400">Gestión de insumos, minibar, lencería y control de personal.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div>
+              <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0' }}>Panel Administrativo e Inventario</h2>
+              <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>Gestión de insumos, minibar, lencería y control de personal.</p>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-bold text-amber-400">Inventario de Minibar y Productos</h3>
-                  <button onClick={() => alert('Función de agregar producto')} className="bg-amber-500 text-slate-900 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-amber-400 transition">
-                    + Nuevo Producto
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+              <div style={{ backgroundColor: '#1e293b', padding: '24px', borderRadius: '16px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ fontWeight: 'bold', color: '#f59e0b', margin: 0 }}>Inventario de Minibar y Productos</h3>
+                  <button onClick={() => alert('Función de agregar producto')} style={{ backgroundColor: '#f59e0b', color: '#0f172a', fontSize: '12px', fontWeight: 'bold', padding: '6px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
+                    + Nuevo
                   </button>
                 </div>
-                <div className="space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {minibarStock.map(item => (
-                    <div key={item.id} className="flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-slate-700">
+                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0f172a', padding: '12px', borderRadius: '10px', border: '1px solid #334155' }}>
                       <div>
-                        <p className="font-semibold text-sm">{item.name}</p>
-                        <p className="text-xs text-slate-400">Precio: Bs. {item.price.toFixed(2)} — Stock: {item.stock}</p>
+                        <p style={{ fontWeight: '600', fontSize: '14px', margin: 0 }}>{item.name}</p>
+                        <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Precio: Bs. {item.price.toFixed(2)} — Stock: {item.stock}</p>
                       </div>
-                      <div className="flex gap-2">
-                        <button className="bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded text-xs">Modificar</button>
-                        <button className="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1 rounded text-xs">Eliminar</button>
-                      </div>
+                      <button style={{ backgroundColor: '#334155', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer' }}>Modificar</button>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 space-y-4">
-                <h3 className="font-bold text-amber-400">Control y Registro de Personal</h3>
-                <p className="text-xs text-slate-400">Administre las asistentes integrales asignadas a los pisos 3 al 10.</p>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-slate-700">
+              <div style={{ backgroundColor: '#1e293b', padding: '24px', borderRadius: '16px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h3 style={{ fontWeight: 'bold', color: '#f59e0b', margin: 0 }}>Control y Registro de Personal</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0f172a', padding: '12px', borderRadius: '10px', border: '1px solid #334155' }}>
                     <div>
-                      <p className="font-semibold text-sm">María Rodríguez</p>
-                      <p className="text-xs text-slate-400">Asistente Integral — Pisos 3 y 4</p>
+                      <p style={{ fontWeight: '600', fontSize: '14px', margin: 0 }}>María Rodríguez</p>
+                      <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Asistente Integral — Pisos 3 y 4</p>
                     </div>
-                    <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded">Activa</span>
+                    <span style={{ fontSize: '11px', backgroundColor: 'rgba(16, 185, 129, 0.2)', color: '#34d399', padding: '4px 8px', borderRadius: '6px' }}>Activa</span>
                   </div>
-                  <div className="flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-slate-700">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0f172a', padding: '12px', borderRadius: '10px', border: '1px solid #334155' }}>
                     <div>
-                      <p className="font-semibold text-sm">Carmen Silva</p>
-                      <p className="text-xs text-slate-400">Asistente Integral — Pisos 5 y 6</p>
+                      <p style={{ fontWeight: '600', fontSize: '14px', margin: 0 }}>Carmen Silva</p>
+                      <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Asistente Integral — Pisos 5 y 6</p>
                     </div>
-                    <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded">Activa</span>
-                  </div>
-                  <div className="flex justify-between items-center bg-slate-900 p-3 rounded-xl border border-slate-700">
-                    <div>
-                      <p className="font-semibold text-sm">Rosa Gómez</p>
-                      <p className="text-xs text-slate-400">Asistente Integral — Pisos 7 y 8</p>
-                    </div>
-                    <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded">Activa</span>
+                    <span style={{ fontSize: '11px', backgroundColor: 'rgba(16, 185, 129, 0.2)', color: '#34d399', padding: '4px 8px', borderRadius: '6px' }}>Activa</span>
                   </div>
                 </div>
               </div>
