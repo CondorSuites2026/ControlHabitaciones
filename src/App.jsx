@@ -11,19 +11,22 @@ export default function App() {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [roomToBill, setRoomToBill] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [filtroEstado, setFiltroEstado] = useState('Todas');
 
-  // Asistentes por piso
-  const [asistentesPiso, setAsistentesPiso] = useState({
-    3: 'María Rodríguez',
-    4: 'Carmen Silva',
-    5: 'Rosa Gómez',
-    6: 'Ana Pérez',
-    7: 'Luisa Martinez',
-    8: 'Elena Torres',
-    9: 'Patricia Rojas',
-    10: 'Sofía Blanco'
-  });
+  // Lista editable de asistentes integrales (Gestionada desde Admin)
+  const [listaAsistentes, setListaAsistentes] = useState([
+    { id: 1, nombre: 'María Rodríguez', turno: 'Mañana (Pisos 3-5)' },
+    { id: 2, nombre: 'Carmen Silva', turno: 'Mañana (Pisos 6-8)' },
+    { id: 3, nombre: 'Rosa Gómez', turno: 'Tarde (Pisos 3-5)' },
+    { id: 4, nombre: 'Ana Pérez', turno: 'Tarde (Pisos 6-8)' },
+    { id: 5, nombre: 'Luisa Martínez', turno: 'Noche (Pisos 9-10)' }
+  ]);
+
+  // Asistente seleccionada dinámicamente en el módulo móvil
+  const [asistenteSeleccionada, setAsistenteSeleccionada] = useState('');
+
+  // Estados para agregar nueva asistente en Admin
+  const [nuevoNombre, setNuevoNombre] = useState('');
+  const [nuevoTurno, setNuevoTurno] = useState('');
 
   const minibarStock = [
     { id: 'agua', name: 'Agua Mineral 500ml', price: 3.50 },
@@ -123,18 +126,46 @@ export default function App() {
     setFaltantesLenceria(prev => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) + delta) }));
   };
 
-  // Función de colores robusta
   const getStatusColor = (status) => {
     const s = (status || '').toLowerCase();
-    if (s.includes('ocupada')) return { bg: '#99f6e4', text: '#155e75' }; // Celeste
-    if (s.includes('reservada')) return { bg: '#fed7aa', text: '#9a3412' }; // Naranja
-    if (s.includes('bloqueada')) return { bg: '#ef4444', text: '#ffffff' }; // Rojo
-    if (s.includes('sucia')) return { bg: '#fef08a', text: '#854d0e' }; // Amarillo
-    return { bg: '#bbf7d0', text: '#065f46' }; // Disponible (Verde claro por defecto)
+    if (s.includes('ocupada')) return { bg: '#99f6e4', text: '#155e75' };
+    if (s.includes('reservada')) return { bg: '#fed7aa', text: '#9a3412' };
+    if (s.includes('bloqueada')) return { bg: '#ef4444', text: '#ffffff' };
+    if (s.includes('sucia')) return { bg: '#fef08a', text: '#854d0e' };
+    return { bg: '#bbf7d0', text: '#065f46' };
   };
 
+  // Agregar nueva asistente a la lista del sistema
+  const handleAgregarAsistente = (e) => {
+    e.preventDefault();
+    if (!nuevoNombre.trim()) {
+      alert('Por favor ingrese el nombre de la asistente.');
+      return;
+    }
+    const nueva = {
+      id: Date.now(),
+      nombre: nuevoNombre,
+      turno: nuevoTurno || 'General'
+    };
+    setListaAsistentes([...listaAsistentes, nueva]);
+    setNuevoNombre('');
+    setNuevoTurno('');
+  };
+
+  // Eliminar asistente de la lista
+  const handleBorrarAsistente = (id) => {
+    if (confirm('¿Está seguro de eliminar esta asistente de la lista?')) {
+      setListaAsistentes(listaAsistentes.filter(a => a.id !== id));
+    }
+  };
+
+  // Registrar check-out
   const handleEjecutarCheckout = async () => {
     if (!selectedRoom) return;
+    if (!asistenteSeleccionada) {
+      alert('⚠️ Debe seleccionar la Asistente Encargada que realiza la inspección.');
+      return;
+    }
 
     let totalMinibar = 0;
     minibarStock.forEach(item => {
@@ -147,10 +178,9 @@ export default function App() {
     });
 
     const totalCalculado = totalMinibar + totalLenceria;
-    const encargada = asistentesPiso[selectedRoom.floor] || 'Asistente Integral';
 
     const reporteCompleto = {
-      asistente: encargada,
+      asistente: asistenteSeleccionada,
       fecha: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       consumoMinibar,
       faltantesLenceria,
@@ -180,7 +210,7 @@ export default function App() {
       console.error(e);
     }
 
-    alert(`⚠️ ALERTA ENVIADA A RECEPCIÓN ⚠️\n\nCheck-out reportado por ${encargada} para la Habitación ${selectedRoom.number}.\nTotal Consumos / Cargos: Bs. ${totalCalculado.toFixed(2)}`);
+    alert(`⚠️ ALERTA ENVIADA A RECEPCIÓN ⚠️\n\nCheck-out reportado por ${asistenteSeleccionada} para la Habitación ${selectedRoom.number}.\nTotal Consumos / Cargos: Bs. ${totalCalculado.toFixed(2)}`);
     
     setConsumoMinibar({ agua: 0, refresco: 0, cerveza: 0, snack: 0 });
     setFaltantesLenceria({ toalla_c: 0, toalla_m: 0, sabana_k: 0, almohada: 0, bata: 0 });
@@ -262,19 +292,15 @@ export default function App() {
 
       <main style={{ flex: 1, padding: '16px', maxWidth: '1440px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         
-        {/* VISTA 1: RECEPCIÓN CON LEYENDA Y MATRIZ */}
+        {/* VISTA 1: RECEPCIÓN */}
         {role === 'recepcion' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            
-            {/* LEYENDA DE COLORES Y FILTROS */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', background: '#fff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ background: '#0f172a', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold' }}>
                   Total Hab.(s): {habitaciones.length}
                 </span>
               </div>
-              
-              {/* Leyenda Visual de Colores */}
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', fontSize: '12px', fontWeight: 'bold' }}>
                 <span style={{ padding: '6px 12px', borderRadius: '6px', background: '#bbf7d0', color: '#065f46' }}>Disponible</span>
                 <span style={{ padding: '6px 12px', borderRadius: '6px', background: '#99f6e4', color: '#155e75' }}>Ocupada</span>
@@ -284,7 +310,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* BANNER DE ALERTA DE CHECK-OUT */}
             {habitacionesPendientesFacturar.length > 0 && (
               <div style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                 <div style={{ color: '#991b1b', fontWeight: 'bold', fontSize: '14px' }}>
@@ -303,7 +328,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Matriz Completa por Pisos */}
             <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '8px', border: '1px solid #cbd5e1', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
                 <thead>
@@ -424,15 +448,17 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 2: ASISTENTE MÓVIL */}
+        {/* VISTA 2: ASISTENTE MÓVIL (SELECCIÓN DINÁMICA DE LA RESPONSABLE) */}
         {role === 'asistente' && (
           <div style={{ maxWidth: '650px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px', backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
             <div>
               <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#0f172a' }}>Check-Out e Inspección Móvil</h2>
-              <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>Marque los consumos de minibar o faltantes y envíe la alerta directa a Recepción.</p>
+              <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>Seleccione el piso, la habitación y la asistente responsable que ejecuta la inspección.</p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              
+              {/* DESPLEGABLE DE PISO Y DESPLEGABLE DE ASISTENTE ENCARGADA */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '6px' }}>Seleccionar Piso</label>
@@ -450,14 +476,20 @@ export default function App() {
                   </select>
                 </div>
 
+                {/* DESPLEGABLE DINÁMICO DE ASISTENTE ENCARGADA */}
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '6px' }}>Asistente Encargada</label>
-                  <input 
-                    type="text" 
-                    readOnly
-                    value={selectedRoom ? (asistentesPiso[selectedRoom.floor] || 'Asistente Integral') : 'Seleccione piso'}
-                    style={{ width: '100%', backgroundColor: '#e2e8f0', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', fontSize: '14px', fontWeight: 'bold' }}
-                  />
+                  <select 
+                    value={asistenteSeleccionada}
+                    onChange={(e) => setAsistenteSeleccionada(e.target.value)}
+                    style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', fontSize: '14px', fontWeight: 'bold', color: '#0f172a' }}>
+                    <option value="">Seleccionar responsable...</option>
+                    {listaAsistentes.map(ast => (
+                      <option key={ast.id} value={ast.nombre}>
+                        {ast.nombre} ({ast.turno})
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -478,6 +510,7 @@ export default function App() {
                     </select>
                   </div>
 
+                  {/* MINIBAR */}
                   <div>
                     <h4 style={{ fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', color: '#0f172a', marginBottom: '8px' }}>📦 Consumo de Minibar</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -494,6 +527,7 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* LENCERÍA */}
                   <div>
                     <h4 style={{ fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', color: '#0f172a', marginBottom: '8px' }}>🧺 Lencería Faltante / Dañada</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -525,8 +559,6 @@ export default function App() {
         {role === 'amadelhaves' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Panel de Ama de Llaves</h2>
-            <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Control de habitaciones pendientes por limpieza post-salida.</p>
-
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
               <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                 <h3 style={{ fontWeight: 'bold', color: '#0f172a', margin: '0 0 12px 0' }}>Habitaciones Sucias (Por Asear)</h3>
@@ -535,7 +567,7 @@ export default function App() {
                     <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
                       <div>
                         <p style={{ fontWeight: 'bold', margin: 0 }}>Habitación {h.number}</p>
-                        <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>Piso {h.floor} — Encargada: {asistentesPiso[h.floor]}</p>
+                        <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>Piso {h.floor}</p>
                       </div>
                       <button 
                         onClick={() => {
@@ -549,18 +581,18 @@ export default function App() {
                     </div>
                   ))}
                   {habitaciones.filter(h => (h.status || '').toLowerCase().includes('sucia')).length === 0 && (
-                    <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', margin: 0 }}>No hay habitaciones pendientes por asear en este momento.</p>
+                    <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', margin: 0 }}>No hay habitaciones pendientes por asear.</p>
                   )}
                 </div>
               </div>
 
               <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                <h3 style={{ fontWeight: 'bold', color: '#0f172a', margin: '0 0 12px 0' }}>Asistentes Encargadas por Piso</h3>
+                <h3 style={{ fontWeight: 'bold', color: '#0f172a', margin: '0 0 12px 0' }}>Personal Registrado Activo</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {[3, 4, 5, 6, 7, 8, 9, 10].map(piso => (
-                    <div key={piso} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '13px' }}>
-                      <span style={{ fontWeight: '600' }}>Piso {piso}</span>
-                      <span style={{ color: '#0f172a', fontWeight: 'bold' }}>{asistentesPiso[piso]}</span>
+                  {listaAsistentes.map(ast => (
+                    <div key={ast.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '13px' }}>
+                      <span style={{ fontWeight: '600' }}>{ast.nombre}</span>
+                      <span style={{ color: '#64748b', fontSize: '11px' }}>{ast.turno}</span>
                     </div>
                   ))}
                 </div>
@@ -569,28 +601,81 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 4: ADMINISTRACIÓN */}
+        {/* VISTA 4: ADMINISTRACIÓN CON TABLA EDITABLE DE ASISTENTES */}
         {role === 'admin' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Panel Administrativo</h2>
-            <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-              <h3 style={{ fontWeight: 'bold', color: '#0f172a', margin: '0 0 16px 0' }}>Configuración de Asistentes Integrales por Piso</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
-                {[3, 4, 5, 6, 7, 8, 9, 10].map(piso => (
-                  <div key={piso} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Piso {piso}</label>
-                    <input 
-                      type="text" 
-                      value={asistentesPiso[piso]}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setAsistentesPiso({...asistentesPiso, [piso]: val});
-                      }}
-                      style={{ padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
-                    />
-                  </div>
-                ))}
+            <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Panel Administrativo — Registro de Personal</h2>
+            
+            <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* FORMULARIO PARA REGISTRAR NUEVA ASISTENTE */}
+              <div>
+                <h3 style={{ fontWeight: 'bold', color: '#0f172a', margin: '0 0 12px 0', fontSize: '16px' }}>+ Registrar Nueva Asistente Integral</h3>
+                <form onSubmit={handleAgregarAsistente} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Nombre completo de la asistente..."
+                    value={nuevoNombre}
+                    onChange={(e) => setNuevoNombre(e.target.value)}
+                    style={{ flex: 1, minWidth: '200px', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                  />
+                  <input 
+                    type="text" 
+                    placeholder="Turno / Pisos asignados (ej: Mañana - Piso 3 y 4)..."
+                    value={nuevoTurno}
+                    onChange={(e) => setNuevoTurno(e.target.value)}
+                    style={{ flex: 1, minWidth: '200px', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                  />
+                  <button 
+                    type="submit"
+                    style={{ backgroundColor: '#0f172a', color: '#fff', fontWeight: 'bold', padding: '10px 20px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '14px' }}>
+                    Agregar Asistente
+                  </button>
+                </form>
               </div>
+
+              <hr style={{ borderColor: '#e2e8f0', margin: 0 }} />
+
+              {/* TABLA EDITABLE DE ASISTENTES */}
+              <div>
+                <h3 style={{ fontWeight: 'bold', color: '#0f172a', margin: '0 0 12px 0', fontSize: '16px' }}>Tabla de Asistentes Habilitadas para Check-Out</h3>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
+                        <th style={{ padding: '10px' }}># ID</th>
+                        <th style={{ padding: '10px' }}>Nombre de la Asistente</th>
+                        <th style={{ padding: '10px' }}>Turno / Asignación</th>
+                        <th style={{ padding: '10px', textAlign: 'center' }}>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {listaAsistentes.map((ast, idx) => (
+                        <tr key={ast.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '10px', fontWeight: 'bold', color: '#64748b' }}>{idx + 1}</td>
+                          <td style={{ padding: '10px', fontWeight: 'bold', color: '#0f172a' }}>{ast.nombre}</td>
+                          <td style={{ padding: '10px', color: '#475569' }}>{ast.turno}</td>
+                          <td style={{ padding: '10px', textAlign: 'center' }}>
+                            <button 
+                              onClick={() => handleBorrarAsistente(ast.id)}
+                              style={{ background: '#fee2e2', color: '#dc2626', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>
+                              🗑️ Eliminar
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {listaAsistentes.length === 0 && (
+                        <tr>
+                          <td colSpan="4" style={{ textAlign: 'center', padding: '16px', color: '#64748b', fontStyle: 'italic' }}>
+                            No hay asistentes registradas. Agregue una para habilitar el módulo móvil.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
           </div>
         )}
