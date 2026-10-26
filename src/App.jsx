@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useState } from 'react'
 import heroImg from './assets/hero.png'
 import reactLogo from './assets/react.svg'
@@ -120,3 +121,15 @@ function App() {
 }
 
 export default App
+=======
+import React from 'react';
+import ReceptionPanel from './ReceptionPanel';
+
+export default function App() {
+  return (
+    <div className="w-full min-h-screen bg-gray-50 p-2 sm:p-4">
+      <ReceptionPanel />
+    </div>
+  );
+}
+>>>>>>> f17ee5cd66ca37bedca580b688c16e778e81567d
