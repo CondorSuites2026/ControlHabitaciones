@@ -38,6 +38,7 @@ export default function App() {
   const [supervisoraSeleccionada, setSupervisoraSeleccionada] = useState('');
   const [consumosSeleccionados, setConsumosSeleccionados] = useState({});
 
+  // Estados para formularios en Administración
   const [nuevoItem, setNuevoItem] = useState({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
   const [nuevoPersonal, setNuevoPersonal] = useState({ nombre: '', rol: 'Asistente', turno: '' });
 
@@ -46,7 +47,7 @@ export default function App() {
     fetchInventario();
     fetchPersonal();
     fetchReportes();
-    sincronizarTasaBCVAutomatico(); // Sincroniza sola al iniciar
+    sincronizarTasaBCVAutomatico();
 
     const channel = supabase
       .channel('realtime_hotel')
@@ -58,7 +59,6 @@ export default function App() {
     };
   }, []);
 
-  // Sincronización automática silenciosa de la Tasa BCV
   const sincronizarTasaBCVAutomatico = async () => {
     try {
       const response = await fetch('https://ve.dolarapi.com/v1/dolares/bcv');
@@ -127,15 +127,14 @@ export default function App() {
     }));
   };
 
-  // Colores dinámicos (Incluyendo alerta intermitente para por facturar y amarillo para sucia)
   const getStatusColor = (status) => {
     const s = (status || '').toLowerCase();
-    if (s.includes('por facturar')) return { bg: '#ef4444', text: '#ffffff', pulse: true }; // Rojo intermitente de alerta
+    if (s.includes('por facturar')) return { bg: '#ef4444', text: '#ffffff' };
     if (s.includes('ocupada')) return { bg: '#99f6e4', text: '#155e75' };
     if (s.includes('reservada')) return { bg: '#fed7aa', text: '#9a3412' };
     if (s.includes('bloqueada')) return { bg: '#ef4444', text: '#ffffff' };
-    if (s.includes('sucia')) return { bg: '#fef08a', text: '#854d0e' }; // Amarillo para sucia
-    return { bg: '#bbf7d0', text: '#065f46' }; // Disponible
+    if (s.includes('sucia')) return { bg: '#fef08a', text: '#854d0e' };
+    return { bg: '#bbf7d0', text: '#065f46' };
   };
 
   const handleEjecutarCheckout = async () => {
@@ -193,7 +192,6 @@ export default function App() {
     fetchReportes();
   };
 
-  // Al facturar, pasa automáticamente a estado "Sucia" (Amarillo)
   const handleConfirmarFacturacion = async (roomId) => {
     const updated = habitaciones.map(h => h.id === roomId ? { ...h, status: 'Sucia', amount: 0, reporte: null } : h);
     setHabitaciones(updated);
@@ -206,12 +204,46 @@ export default function App() {
     alert('✅ Facturación completada. La habitación pasa a color amarillo (Sucia) para Ama de Llaves.');
   };
 
+  // Funciones para Administración (Inventario y Personal)
+  const handleAgregarInventario = async (e) => {
+    e.preventDefault();
+    if (!nuevoItem.name || !nuevoItem.id) return alert('Complete los datos del producto');
+    
+    setInventario([...inventario, nuevoItem]);
+    try {
+      await supabase.from('inventario').upsert(nuevoItem);
+    } catch (e) { console.error(e); }
+    setNuevoItem({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
+    alert('✅ Producto guardado con éxito.');
+  };
+
+  const handleAgregarPersonal = async (e) => {
+    e.preventDefault();
+    if (!nuevoPersonal.nombre) return alert('Ingrese el nombre del personal');
+
+    const item = { ...nuevoPersonal, id: Date.now() };
+    setPersonal([...personal, item]);
+    try {
+      await supabase.from('personal').insert({ nombre: nuevoPersonal.nombre, rol: nuevoPersonal.rol, turno: nuevoPersonal.turno });
+    } catch (e) { console.error(e); }
+    setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
+    alert('✅ Personal registrado con éxito.');
+  };
+
+  const handleBorrarPersonal = async (id) => {
+    if (confirm('¿Desea eliminar este registro de personal?')) {
+      setPersonal(personal.filter(p => p.id !== id));
+      try {
+        await supabase.from('personal').delete().eq('id', id);
+      } catch (e) { console.error(e); }
+    }
+  };
+
   const habitacionesPendientes = habitaciones.filter(h => (h.status || '').includes('Por Facturar'));
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f1f5f9', color: '#1e293b', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif' }}>
       
-      {/* CSS para animación parpadeante */}
       <style>{`
         @keyframes pulseAlert {
           0% { opacity: 1; transform: scale(1); }
@@ -233,13 +265,11 @@ export default function App() {
           </div>
         </div>
 
-        {/* Tasa BCV Automática en Pantalla */}
         <div style={{ display: 'flex', alignItems: 'center', background: '#1e293b', padding: '6px 14px', borderRadius: '8px', border: '1px solid #334155', gap: '8px' }}>
           <span style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 'bold' }}>💵 TASA BCV OFICIAL:</span>
           <span style={{ fontSize: '14px', color: '#fff', fontWeight: 'bold' }}>Bs. {tasaBCV.toFixed(2)}</span>
         </div>
 
-        {/* MÓDULOS */}
         <div style={{ display: 'flex', backgroundColor: '#1e293b', padding: '4px', borderRadius: '8px', gap: '4px' }}>
           {[
             { id: 'recepcion', label: 'Recepción' },
@@ -495,31 +525,138 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 5: ADMINISTRACIÓN */}
+        {/* VISTA 5: ADMINISTRACIÓN (CON FORMULARIOS Y TABLAS COMPLETAS) */}
         {role === 'admin' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <h2 style={{ fontSize: '22px', fontWeight: 'bold', margin: 0 }}>Panel Administrativo e Inventario General</h2>
-            <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-              <h3 style={{ margin: '0 0 12px 0', fontSize: '16px' }}>📦 Inventario de Productos</h3>
+
+            {/* SECCIÓN INVENTARIO */}
+            <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>📦 Gestión y Registro de Inventario (Minibar, Lencería, Amenidades)</h3>
+              
+              <form onSubmit={handleAgregarInventario} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <input placeholder="ID único (ej: agua)" value={nuevoItem.id} onChange={e => setNuevoItem({...nuevoItem, id: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                <input placeholder="Nombre del producto..." value={nuevoItem.name} onChange={e => setNuevoItem({...nuevoItem, name: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', flex: 1 }} />
+                <select value={nuevoItem.category} onChange={e => setNuevoItem({...nuevoItem, category: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                  <option value="minibar">Minibar</option>
+                  <option value="lenceria">Lencería</option>
+                  <option value="amenidad">Amenidad</option>
+                </select>
+                <input type="number" step="0.01" placeholder="Precio ($ USD)" value={nuevoItem.price_usd || ''} onChange={e => setNuevoItem({...nuevoItem, price_usd: parseFloat(e.target.value) || 0})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', width: '110px' }} />
+                <input type="number" placeholder="Stock" value={nuevoItem.stock || ''} onChange={e => setNuevoItem({...nuevoItem, stock: parseInt(e.target.value) || 0})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', width: '90px' }} />
+                <button type="submit" style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>+ Guardar Producto</button>
+              </form>
+
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                 <thead>
                   <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
                     <th style={{ padding: '8px' }}>Producto</th>
+                    <th style={{ padding: '8px' }}>Categoría</th>
                     <th style={{ padding: '8px' }}>Precio ($ USD)</th>
                     <th style={{ padding: '8px' }}>Precio (Bs. BCV {tasaBCV.toFixed(2)})</th>
+                    <th style={{ padding: '8px' }}>Stock</th>
                   </tr>
                 </thead>
                 <tbody>
                   {inventario.map(item => (
                     <tr key={item.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                       <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.name}</td>
-                      <td style={{ padding: '8px', color: '#059669', fontWeight: 'bold' }}>${item.price_usd.toFixed(2)} USD</td>
+                      <td style={{ padding: '8px', textTransform: 'uppercase', fontSize: '11px', color: '#64748b' }}>{item.category}</td>
+                      <td style={{ padding: '8px', fontWeight: 'bold', color: '#059669' }}>${item.price_usd.toFixed(2)} USD</td>
                       <td style={{ padding: '8px', fontWeight: 'bold' }}>Bs. {(item.price_usd * tasaBCV).toFixed(2)}</td>
+                      <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.stock} unids.</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            {/* SECCIÓN PERSONAL (ASISTENTES Y SUPERVISORAS) */}
+            <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>👥 Registro de Personal (Asistentes y Supervisoras)</h3>
+              
+              <form onSubmit={handleAgregarPersonal} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <input placeholder="Nombre completo..." value={nuevoPersonal.nombre} onChange={e => setNuevoPersonal({...nuevoPersonal, nombre: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', flex: 1 }} />
+                <select value={nuevoPersonal.rol} onChange={e => setNuevoPersonal({...nuevoPersonal, rol: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                  <option value="Asistente">Asistente</option>
+                  <option value="Supervisora">Supervisora</option>
+                </select>
+                <input placeholder="Turno / Pisos asignados..." value={nuevoPersonal.turno} onChange={e => setNuevoPersonal({...nuevoPersonal, turno: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', flex: 1 }} />
+                <button type="submit" style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>+ Registrar Personal</button>
+              </form>
+
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
+                    <th style={{ padding: '8px' }}>Nombre</th>
+                    <th style={{ padding: '8px' }}>Rol</th>
+                    <th style={{ padding: '8px' }}>Turno / Asignación</th>
+                    <th style={{ padding: '8px', textAlign: 'center' }}>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {personal.map(p => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '8px', fontWeight: 'bold' }}>{p.nombre}</td>
+                      <td style={{ padding: '8px' }}>
+                        <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', background: p.rol === 'Supervisora' ? '#fef3c7' : '#e2e8f0', color: p.rol === 'Supervisora' ? '#92400e' : '#334155', fontWeight: 'bold' }}>
+                          {p.rol}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px', color: '#64748b' }}>{p.turno}</td>
+                      <td style={{ padding: '8px', textAlign: 'center' }}>
+                        <button onClick={() => handleBorrarPersonal(p.id)} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', padding: '4px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* SECCIÓN REPORTES */}
+            <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '16px' }}>📊 Reportes de Consumo y Reposición</h3>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {['diario', 'semanal', 'mensual'].map(f => (
+                    <button key={f} onClick={() => setFiltroReporte(f)} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', textTransform: 'capitalize', fontWeight: 'bold', background: filtroReporte === f ? '#0f172a' : '#f8fafc', color: filtroReporte === f ? '#fff' : '#334155', cursor: 'pointer' }}>
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
+                    <th style={{ padding: '8px' }}>Fecha</th>
+                    <th style={{ padding: '8px' }}>Habitación</th>
+                    <th style={{ padding: '8px' }}>Asistente</th>
+                    <th style={{ padding: '8px' }}>Supervisora</th>
+                    <th style={{ padding: '8px' }}>Total ($ USD)</th>
+                    <th style={{ padding: '8px' }}>Total (Bs.)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportesHistorial.map(rep => (
+                    <tr key={rep.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '8px' }}>{new Date(rep.fecha).toLocaleString()}</td>
+                      <td style={{ padding: '8px', fontWeight: 'bold' }}>Hab. {rep.habitacion}</td>
+                      <td style={{ padding: '8px' }}>{rep.asistente}</td>
+                      <td style={{ padding: '8px' }}>{rep.supervisora}</td>
+                      <td style={{ padding: '8px', fontWeight: 'bold', color: '#059669' }}>${parseFloat(rep.total_usd).toFixed(2)} USD</td>
+                      <td style={{ padding: '8px', fontWeight: 'bold' }}>Bs. {parseFloat(rep.total_bs).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                  {reportesHistorial.length === 0 && (
+                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '16px', color: '#64748b' }}>No hay consumos registrados aún.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
           </div>
         )}
 
