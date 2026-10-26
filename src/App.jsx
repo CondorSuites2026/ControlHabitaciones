@@ -6,54 +6,58 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function App() {
-  const [role, setRole] = useState('recepcion');
+  const [role, setRole] = useState('recepcion'); // recepcion, asistente, supervisora, amadelhaves, admin
   const [habitaciones, setHabitaciones] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [roomToBill, setRoomToBill] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Lista editable de asistentes integrales (Gestionada desde Admin)
-  const [listaAsistentes, setListaAsistentes] = useState([
-    { id: 1, nombre: 'María Rodríguez', turno: 'Mañana (Pisos 3-5)' },
-    { id: 2, nombre: 'Carmen Silva', turno: 'Mañana (Pisos 6-8)' },
-    { id: 3, nombre: 'Rosa Gómez', turno: 'Tarde (Pisos 3-5)' },
-    { id: 4, nombre: 'Ana Pérez', turno: 'Tarde (Pisos 6-8)' },
-    { id: 5, nombre: 'Luisa Martínez', turno: 'Noche (Pisos 9-10)' }
+  // Tasa Oficial BCV (Editable en Administración o actualizada automáticamente)
+  const [tasaBCV, setTasaBCV] = useState(62.50);
+
+  // Inventario y Productos desde Supabase
+  const [inventario, setInventario] = useState([
+    { id: 'agua', name: 'Agua Mineral 500ml', category: 'minibar', price_usd: 1.00, stock: 100 },
+    { id: 'refresco', name: 'Refresco Lata', category: 'minibar', price_usd: 1.50, stock: 80 },
+    { id: 'cerveza', name: 'Cerveza Nacional', category: 'minibar', price_usd: 2.00, stock: 120 },
+    { id: 'snack', name: 'Snacks / Chocolates', category: 'minibar', price_usd: 1.25, stock: 60 },
+    { id: 'toalla_c', name: 'Toalla de Cuerpo', category: 'lenceria', price_usd: 12.00, stock: 40 },
+    { id: 'toalla_m', name: 'Toalla de Manos', category: 'lenceria', price_usd: 6.00, stock: 50 },
+    { id: 'shampoo', name: 'Kit Shampoo / Jabón', category: 'amenidad', price_usd: 0.80, stock: 200 }
   ]);
 
-  // Asistente seleccionada dinámicamente en el módulo móvil
+  // Lista de Personal (Asistentes y Supervisoras)
+  const [personal, setPersonal] = useState([
+    { id: 1, nombre: 'María Rodríguez', rol: 'Asistente', turno: 'Mañana (Pisos 3-5)' },
+    { id: 2, nombre: 'Carmen Silva', rol: 'Asistente', turno: 'Mañana (Pisos 6-8)' },
+    { id: 3, nombre: 'Rosa Gómez', rol: 'Supervisora', turno: 'Turno Completo' },
+    { id: 4, nombre: 'Ana Pérez', rol: 'Asistente', turno: 'Tarde (Pisos 3-5)' }
+  ]);
+
+  // Historial de Reportes para Administración
+  const [reportesHistorial, setReportesHistorial] = useState([]);
+  const [filtroReporte, setFiltroReporte] = useState('diario'); // diario, semanal, mensual
+
+  // Selección de personal
   const [asistenteSeleccionada, setAsistenteSeleccionada] = useState('');
+  const [supervisoraSeleccionada, setSupervisoraSeleccionada] = useState('');
 
-  // Estados para agregar nueva asistente en Admin
-  const [nuevoNombre, setNuevoNombre] = useState('');
-  const [nuevoTurno, setNuevoTurno] = useState('');
+  // Cantidades temporales en revisión móvil
+  const [consumosSeleccionados, setConsumosSeleccionados] = useState({});
 
-  const minibarStock = [
-    { id: 'agua', name: 'Agua Mineral 500ml', price: 3.50 },
-    { id: 'refresco', name: 'Refresco Lata', price: 4.00 },
-    { id: 'cerveza', name: 'Cerveza Nacional', price: 5.50 },
-    { id: 'snack', name: 'Snacks / Chocolates', price: 4.50 },
-  ];
-
-  const lenceriaList = [
-    { id: 'toalla_c', name: 'Toalla de Cuerpo', price: 15.00 },
-    { id: 'toalla_m', name: 'Toalla de Manos', price: 8.00 },
-    { id: 'sabana_k', name: 'Juego de Sábana King/Master', price: 35.00 },
-    { id: 'almohada', name: 'Funda de Almohada', price: 5.00 },
-    { id: 'bata', name: 'Bata de Baño', price: 25.00 },
-  ];
-
-  const [consumoMinibar, setConsumoMinibar] = useState({ agua: 0, refresco: 0, cerveza: 0, snack: 0 });
-  const [faltantesLenceria, setFaltantesLenceria] = useState({ toalla_c: 0, toalla_m: 0, sabana_k: 0, almohada: 0, bata: 0 });
+  // Formulario para nuevo producto en Inventario Admin
+  const [nuevoItem, setNuevoItem] = useState({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
+  const [nuevoPersonal, setNuevoPersonal] = useState({ nombre: '', rol: 'Asistente', turno: '' });
 
   useEffect(() => {
     fetchHabitaciones();
+    fetchInventario();
+    fetchPersonal();
+    fetchReportes();
 
     const channel = supabase
-      .channel('realtime_habitaciones')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'habitaciones' }, () => {
-        fetchHabitaciones();
-      })
+      .channel('realtime_hotel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'habitaciones' }, () => fetchHabitaciones())
       .subscribe();
 
     return () => {
@@ -64,66 +68,57 @@ export default function App() {
   const fetchHabitaciones = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.from('habitaciones').select('*');
-      if (error || !data || data.length === 0) {
-        generateDefaultRooms();
-      } else {
-        setHabitaciones(data);
-      }
-    } catch (err) {
+      const { data } = await supabase.from('habitaciones').select('*');
+      if (!data || data.length === 0) generateDefaultRooms();
+      else setHabitaciones(data);
+    } catch {
       generateDefaultRooms();
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchInventario = async () => {
+    try {
+      const { data } = await supabase.from('inventario').select('*');
+      if (data && data.length > 0) setInventario(data);
+    } catch (e) { console.error(e); }
+  };
+
+  const fetchPersonal = async () => {
+    try {
+      const { data } = await supabase.from('personal').select('*');
+      if (data && data.length > 0) setPersonal(data);
+    } catch (e) { console.error(e); }
+  };
+
+  const fetchReportes = async () => {
+    try {
+      const { data } = await supabase.from('reportes_consumo').select('*').order('fecha', { ascending: false });
+      if (data) setReportesHistorial(data);
+    } catch (e) { console.error(e); }
+  };
+
   const generateDefaultRooms = () => {
     const rooms = [];
     for (let f = 3; f <= 9; f++) {
       for (let n = 1; n <= 9; n++) {
-        let type = 'SENCILLA';
-        if (n <= 4) type = 'MASTER';
-        else if (n <= 7) type = 'JUNIOR';
-
-        rooms.push({
-          id: `${f}0${n}`,
-          number: `${f}0${n}`,
-          floor: f,
-          type: type,
-          status: 'Disponible',
-          guest: '',
-          amount: '0.00',
-          reporte: null
-        });
+        rooms.push({ id: `${f}0${n}`, number: `${f}0${n}`, floor: f, type: n <= 4 ? 'MASTER' : n <= 7 ? 'JUNIOR' : 'SENCILLA', status: 'Disponible', amount: 0, reporte: null });
       }
     }
     const p10 = [
-      { num: '1003', type: 'PRESIDENCIAL' },
-      { num: '1004', type: 'PRESIDENCIAL' },
-      { num: '1001', type: 'EJECUTIVA' },
-      { num: '1002', type: 'EJECUTIVA' },
+      { num: '1001', type: 'EJECUTIVA' }, { num: '1002', type: 'EJECUTIVA' },
+      { num: '1003', type: 'PRESIDENCIAL' }, { num: '1004', type: 'PRESIDENCIAL' }
     ];
-    p10.forEach(r => {
-      rooms.push({
-        id: r.num,
-        number: r.num,
-        floor: 10,
-        type: r.type,
-        status: 'Disponible',
-        guest: '',
-        amount: '0.00',
-        reporte: null
-      });
-    });
+    p10.forEach(r => rooms.push({ id: r.num, number: r.num, floor: 10, type: r.type, status: 'Disponible', amount: 0, reporte: null }));
     setHabitaciones(rooms);
   };
 
-  const handleMinibarQty = (id, delta) => {
-    setConsumoMinibar(prev => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) + delta) }));
-  };
-
-  const handleLenceriaQty = (id, delta) => {
-    setFaltantesLenceria(prev => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) + delta) }));
+  const handleQtyChange = (id, delta) => {
+    setConsumosSeleccionados(prev => ({
+      ...prev,
+      [id]: Math.max(0, (prev[id] || 0) + delta)
+    }));
   };
 
   const getStatusColor = (status) => {
@@ -135,67 +130,34 @@ export default function App() {
     return { bg: '#bbf7d0', text: '#065f46' };
   };
 
-  // Agregar nueva asistente a la lista del sistema
-  const handleAgregarAsistente = (e) => {
-    e.preventDefault();
-    if (!nuevoNombre.trim()) {
-      alert('Por favor ingrese el nombre de la asistente.');
-      return;
-    }
-    const nueva = {
-      id: Date.now(),
-      nombre: nuevoNombre,
-      turno: nuevoTurno || 'General'
-    };
-    setListaAsistentes([...listaAsistentes, nueva]);
-    setNuevoNombre('');
-    setNuevoTurno('');
-  };
-
-  // Eliminar asistente de la lista
-  const handleBorrarAsistente = (id) => {
-    if (confirm('¿Está seguro de eliminar esta asistente de la lista?')) {
-      setListaAsistentes(listaAsistentes.filter(a => a.id !== id));
-    }
-  };
-
-  // Registrar check-out
+  // Registrar Check-Out desde el Módulo Móvil
   const handleEjecutarCheckout = async () => {
     if (!selectedRoom) return;
     if (!asistenteSeleccionada) {
-      alert('⚠️ Debe seleccionar la Asistente Encargada que realiza la inspección.');
+      alert('⚠️ Por favor seleccione la Asistente Encargada.');
       return;
     }
 
-    let totalMinibar = 0;
-    minibarStock.forEach(item => {
-      totalMinibar += (consumoMinibar[item.id] || 0) * item.price;
+    let totalUSD = 0;
+    inventario.forEach(item => {
+      const qty = consumosSeleccionados[item.id] || 0;
+      totalUSD += qty * item.price_usd;
     });
 
-    let totalLenceria = 0;
-    lenceriaList.forEach(item => {
-      totalLenceria += (faltantesLenceria[item.id] || 0) * item.price;
-    });
-
-    const totalCalculado = totalMinibar + totalLenceria;
+    const totalBs = totalUSD * tasaBCV;
 
     const reporteCompleto = {
       asistente: asistenteSeleccionada,
-      fecha: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      consumoMinibar,
-      faltantesLenceria,
-      subtotalMinibar: totalMinibar,
-      subtotalLenceria: totalLenceria,
-      total: totalCalculado
+      supervisora: supervisoraSeleccionada || 'N/A',
+      fecha: new Date().toISOString(),
+      consumos: consumosSeleccionados,
+      totalUSD,
+      totalBs,
+      tasaBCV
     };
 
     const newStatus = 'Sucia / Por Facturar';
-    const updated = habitaciones.map(h => {
-      if (h.id === selectedRoom.id) {
-        return { ...h, status: newStatus, amount: totalCalculado.toFixed(2), reporte: reporteCompleto };
-      }
-      return h;
-    });
+    const updated = habitaciones.map(h => h.id === selectedRoom.id ? { ...h, status: newStatus, amount: totalUSD, reporte: reporteCompleto } : h);
     setHabitaciones(updated);
 
     try {
@@ -203,105 +165,127 @@ export default function App() {
         id: selectedRoom.id,
         number: selectedRoom.number,
         status: newStatus,
-        amount: totalCalculado.toFixed(2),
+        amount: totalUSD,
         reporte: reporteCompleto
       });
-    } catch (e) {
-      console.error(e);
-    }
 
-    alert(`⚠️ ALERTA ENVIADA A RECEPCIÓN ⚠️\n\nCheck-out reportado por ${asistenteSeleccionada} para la Habitación ${selectedRoom.number}.\nTotal Consumos / Cargos: Bs. ${totalCalculado.toFixed(2)}`);
-    
-    setConsumoMinibar({ agua: 0, refresco: 0, cerveza: 0, snack: 0 });
-    setFaltantesLenceria({ toalla_c: 0, toalla_m: 0, sabana_k: 0, almohada: 0, bata: 0 });
+      await supabase.from('reportes_consumo').insert({
+        habitacion: selectedRoom.number,
+        asistente: asistenteSeleccionada,
+        supervisora: supervisoraSeleccionada || 'N/A',
+        total_usd: totalUSD,
+        total_bs: totalBs,
+        tasa_bcv: tasaBCV,
+        desglose: consumosSeleccionados
+      });
+    } catch (e) { console.error(e); }
+
+    alert(`⚠️ ALERTA ENVIADA A RECEPCIÓN ⚠️\n\nCheck-out para la Habitación ${selectedRoom.number}.\nTotal Consumos: $${totalUSD.toFixed(2)} USD (Bs. ${totalBs.toFixed(2)})`);
+    setConsumosSeleccionados({});
     setSelectedRoom(null);
+    fetchReportes();
   };
 
+  // Confirmar Facturación en Recepción
   const handleConfirmarFacturacion = async (roomId) => {
-    const updated = habitaciones.map(h => {
-      if (h.id === roomId) {
-        return { ...h, status: 'Sucia', guest: '', amount: '0.00', reporte: null };
-      }
-      return h;
-    });
+    const updated = habitaciones.map(h => h.id === roomId ? { ...h, status: 'Sucia', amount: 0, reporte: null } : h);
     setHabitaciones(updated);
 
     try {
-      await supabase.from('habitaciones').upsert({
-        id: roomId,
-        number: roomId,
-        status: 'Sucia',
-        guest: '',
-        amount: '0.00',
-        reporte: null
-      });
-    } catch (e) {
-      console.error(e);
-    }
+      await supabase.from('habitaciones').upsert({ id: roomId, status: 'Sucia', amount: 0, reporte: null });
+    } catch (e) { console.error(e); }
 
     setRoomToBill(null);
-    alert('✅ Facturación completada. La habitación pasa a Ama de Llaves para limpieza final.');
+    alert('✅ Facturación completada. La habitación pasa a limpieza.');
   };
 
-  const habitacionesPendientesFacturar = habitaciones.filter(h => (h.status || '').includes('Por Facturar'));
+  // Agregar nuevo ítem al Inventario (Admin)
+  const handleAgregarInventario = async (e) => {
+    e.preventDefault();
+    if (!nuevoItem.name || !nuevoItem.id) return alert('Complete los datos del producto');
+    
+    const updated = [...inventario, nuevoItem];
+    setInventario(updated);
+    try {
+      await supabase.from('inventario').upsert(nuevoItem);
+    } catch (e) { console.error(e); }
+    setNuevoItem({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
+  };
+
+  // Agregar Personal (Admin)
+  const handleAgregarPersonal = async (e) => {
+    e.preventDefault();
+    if (!nuevoPersonal.nombre) return alert('Ingrese el nombre del personal');
+
+    const item = { ...nuevoPersonal, id: Date.now() };
+    setPersonal([...personal, item]);
+    try {
+      await supabase.from('personal').insert({ nombre: nuevoPersonal.nombre, rol: nuevoPersonal.rol, turno: nuevoPersonal.turno });
+    } catch (e) { console.error(e); }
+    setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
+  };
+
+  const habitacionesPendientes = habitaciones.filter(h => (h.status || '').includes('Por Facturar'));
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f1f5f9', color: '#1e293b', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif' }}>
       
-      {/* HEADER PRINCIPAL */}
+      {/* HEADER DE NAVEGACIÓN Y CONFIGURACIÓN DE TASA BCV */}
       <header style={{ backgroundColor: '#0f172a', borderBottom: '1px solid #334155', padding: '12px 24px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', color: '#fff' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ backgroundColor: '#f59e0b', color: '#0f172a', padding: '6px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '16px' }}>CS</div>
           <div>
             <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>HOTEL CÓNDOR SUITES</h1>
-            <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0 }}>Sistema en Linea de Control Check-Out e Inspecciones.</p>
+            <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0 }}>Control de Check-Out & Inventario en Vivo</p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {habitacionesPendientesFacturar.length > 0 && (
-            <div style={{ background: '#ef4444', color: '#fff', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
-              ⚠️ {habitacionesPendientesFacturar.length} Check-out por facturar
-            </div>
-          )}
+        {/* TASA BCV */}
+        <div style={{ display: 'flex', alignItems: 'center', background: '#1e293b', padding: '4px 12px', borderRadius: '8px', border: '1px solid #334155', gap: '8px' }}>
+          <span style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 'bold' }}>💵 TASA BCV:</span>
+          <input 
+            type="number" 
+            step="0.01" 
+            value={tasaBCV} 
+            onChange={(e) => setTasaBCV(parseFloat(e.target.value) || 0)}
+            style={{ width: '70px', background: '#0f172a', border: '1px solid #cbd5e1', color: '#fff', borderRadius: '4px', padding: '2px 6px', fontSize: '13px', fontWeight: 'bold', textAlign: 'center' }}
+          />
+          <span style={{ fontSize: '11px', color: '#94a3b8' }}>Bs./USD</span>
+        </div>
 
-          <div style={{ display: 'flex', backgroundColor: '#1e293b', padding: '4px', borderRadius: '8px', border: '1px solid #334155', gap: '4px' }}>
+        {/* MÓDULOS DEL SISTEMA */}
+        <div style={{ display: 'flex', backgroundColor: '#1e293b', padding: '4px', borderRadius: '8px', gap: '4px' }}>
+          {[
+            { id: 'recepcion', label: 'Recepción' },
+            { id: 'asistente', label: 'Piso / Móvil' },
+            { id: 'supervisora', label: 'Supervisora' },
+            { id: 'amadelhaves', label: 'Ama de Llaves' },
+            { id: 'admin', label: 'Administración' }
+          ].map(m => (
             <button 
-              onClick={() => setRole('recepcion')} 
-              style={{ padding: '6px 14px', borderRadius: '6px', fontWeight: '600', fontSize: '13px', cursor: 'pointer', border: 'none', backgroundColor: role === 'recepcion' ? '#f59e0b' : 'transparent', color: role === 'recepcion' ? '#0f172a' : '#cbd5e1' }}>
-              Recepción (PC)
+              key={m.id} 
+              onClick={() => setRole(m.id)}
+              style={{
+                padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer', border: 'none',
+                backgroundColor: role === m.id ? '#f59e0b' : 'transparent',
+                color: role === m.id ? '#0f172a' : '#cbd5e1'
+              }}>
+              {m.label}
             </button>
-            <button 
-              onClick={() => setRole('asistente')} 
-              style={{ padding: '6px 14px', borderRadius: '6px', fontWeight: '600', fontSize: '13px', cursor: 'pointer', border: 'none', backgroundColor: role === 'asistente' ? '#f59e0b' : 'transparent', color: role === 'asistente' ? '#0f172a' : '#cbd5e1' }}>
-              Piso / Móvil
-            </button>
-            <button 
-              onClick={() => setRole('amadelhaves')} 
-              style={{ padding: '6px 14px', borderRadius: '6px', fontWeight: '600', fontSize: '13px', cursor: 'pointer', border: 'none', backgroundColor: role === 'amadelhaves' ? '#f59e0b' : 'transparent', color: role === 'amadelhaves' ? '#0f172a' : '#cbd5e1' }}>
-              Ama de Llaves
-            </button>
-            <button 
-              onClick={() => setRole('admin')} 
-              style={{ padding: '6px 14px', borderRadius: '6px', fontWeight: '600', fontSize: '13px', cursor: 'pointer', border: 'none', backgroundColor: role === 'admin' ? '#f59e0b' : 'transparent', color: role === 'admin' ? '#0f172a' : '#cbd5e1' }}>
-              Administración
-            </button>
-          </div>
+          ))}
         </div>
       </header>
 
       <main style={{ flex: 1, padding: '16px', maxWidth: '1440px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-        
+
         {/* VISTA 1: RECEPCIÓN */}
         {role === 'recepcion' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', background: '#fff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ background: '#0f172a', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold' }}>
-                  Total Hab.(s): {habitaciones.length}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', fontSize: '12px', fontWeight: 'bold' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+              <span style={{ background: '#0f172a', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold' }}>
+                Total Habitaciones: {habitaciones.length}
+              </span>
+              <div style={{ display: 'flex', gap: '8px', fontSize: '12px', fontWeight: 'bold' }}>
                 <span style={{ padding: '6px 12px', borderRadius: '6px', background: '#bbf7d0', color: '#065f46' }}>Disponible</span>
                 <span style={{ padding: '6px 12px', borderRadius: '6px', background: '#99f6e4', color: '#155e75' }}>Ocupada</span>
                 <span style={{ padding: '6px 12px', borderRadius: '6px', background: '#fed7aa', color: '#9a3412' }}>Reservada</span>
@@ -310,72 +294,49 @@ export default function App() {
               </div>
             </div>
 
-            {habitacionesPendientesFacturar.length > 0 && (
-              <div style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                <div style={{ color: '#991b1b', fontWeight: 'bold', fontSize: '14px' }}>
-                  🔔 ¡ATENCIÓN RECEPCIÓN! Hay {habitacionesPendientesFacturar.length} salida(s) con consumos por facturar.
+            {habitacionesPendientes.length > 0 && (
+              <div style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ color: '#991b1b', fontWeight: 'bold' }}>
+                  🔔 ¡ATENCIÓN RECEPCIÓN! Hay {habitacionesPendientes.length} salida(s) pendientes por facturar.
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  {habitacionesPendientesFacturar.map(h => (
-                    <button 
-                      key={h.id}
-                      onClick={() => setRoomToBill(h)}
-                      style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>
-                      Facturar Hab. {h.number} (Bs. {h.amount})
+                  {habitacionesPendientes.map(h => (
+                    <button key={h.id} onClick={() => setRoomToBill(h)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      Facturar Hab. {h.number} (${h.amount})
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '8px', border: '1px solid #cbd5e1', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
                 <thead>
-                  <tr style={{ background: '#e2e8f0', color: '#0f172a', borderBottom: '2px solid #cbd5e1' }}>
-                    <th style={{ padding: '10px', borderRight: '1px solid #cbd5e1', width: '90px' }}>Ubicación</th>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-                      <th key={n} style={{ padding: '10px', textAlign: 'center', borderRight: '1px solid #cbd5e1' }}>0{n}</th>
-                    ))}
+                  <tr style={{ background: '#e2e8f0', color: '#0f172a' }}>
+                    <th style={{ padding: '10px', borderRight: '1px solid #cbd5e1' }}>Ubicación</th>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => <th key={n} style={{ padding: '10px', textAlign: 'center', borderRight: '1px solid #cbd5e1' }}>0{n}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {[3, 4, 5, 6, 7, 8, 9, 10].map(piso => (
                     <tr key={piso} style={{ borderBottom: '1px solid #cbd5e1' }}>
-                      <td style={{ padding: '10px', fontWeight: 'bold', background: '#f8fafc', borderRight: '1px solid #cbd5e1', color: '#0f172a' }}>
-                        PISO {piso < 10 ? `0${piso}` : piso}
-                      </td>
+                      <td style={{ padding: '10px', fontWeight: 'bold', background: '#f8fafc', borderRight: '1px solid #cbd5e1' }}>PISO {piso}</td>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(numCol => {
-                        const numHabStr = piso === 10 ? (numCol === 1 ? '1001' : numCol === 2 ? '1002' : numCol === 3 ? '1003' : numCol === 4 ? '1004' : null) : `${piso}0${numCol}`;
-                        const hab = habitaciones.find(h => h.number === numHabStr);
-
-                        if (!hab) return <td key={numCol} style={{ background: '#f1f5f9', borderRight: '1px solid #cbd5e1' }}></td>;
-
+                        const numStr = piso === 10 ? (numCol <= 4 ? `100${numCol}` : null) : `${piso}0${numCol}`;
+                        const hab = habitaciones.find(h => h.number === numStr);
+                        if (!hab) return <td key={numCol} style={{ background: '#f1f5f9' }}></td>;
                         const colors = getStatusColor(hab.status);
 
                         return (
                           <td 
-                            key={hab.id}
-                            onClick={() => {
-                              if ((hab.status || '').includes('Por Facturar')) setRoomToBill(hab);
-                            }}
-                            style={{
-                              padding: '8px',
-                              backgroundColor: colors.bg,
-                              color: colors.text,
-                              borderRight: '1px solid #cbd5e1',
-                              cursor: (hab.status || '').includes('Por Facturar') ? 'pointer' : 'default',
-                              verticalAlign: 'top',
-                              height: '75px'
-                            }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '11px' }}>
-                              <span>{hab.number} / {hab.type.substring(0,3)}</span>
-                            </div>
-                            <div style={{ fontSize: '10px', marginTop: '4px', fontWeight: 'bold', textTransform: 'capitalize' }}>
-                              {hab.status}
-                            </div>
-                            {hab.amount !== '0.00' && (
-                              <div style={{ fontSize: '10px', color: '#b91c1c', fontWeight: '900', marginTop: '2px' }}>
-                                Bs. {hab.amount}
+                            key={hab.id} 
+                            onClick={() => (hab.status || '').includes('Por Facturar') && setRoomToBill(hab)}
+                            style={{ padding: '8px', backgroundColor: colors.bg, color: colors.text, borderRight: '1px solid #cbd5e1', cursor: 'pointer', height: '70px', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: 'bold' }}>{hab.number} / {hab.type.substring(0,3)}</div>
+                            <div style={{ fontSize: '10px', marginTop: '4px' }}>{hab.status}</div>
+                            {hab.amount > 0 && (
+                              <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 'bold', marginTop: '2px' }}>
+                                ${hab.amount} USD <br/><small>(Bs. {(hab.amount * tasaBCV).toFixed(2)})</small>
                               </div>
                             )}
                           </td>
@@ -389,58 +350,43 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL DE FACTURACIÓN */}
+        {/* MODAL DE FACTURACIÓN EN RECEPCIÓN */}
         {roomToBill && roomToBill.reporte && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-            <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', maxWidth: '500px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 'bold', color: '#0f172a' }}>
-                🧾 Comanda de Check-Out — Habitación {roomToBill.number}
-              </h3>
+            <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', maxWidth: '500px', width: '100%' }}>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 'bold' }}>🧾 Facturación Check-Out — Habitación {roomToBill.number}</h3>
               <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 16px 0' }}>
-                Reportado por: <strong>{roomToBill.reporte.asistente}</strong> a las {roomToBill.reporte.fecha}
+                Asistente: <strong>{roomToBill.reporte.asistente}</strong> | Supervisora: <strong>{roomToBill.reporte.supervisora}</strong>
               </p>
 
-              <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px', fontSize: '13px' }}>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '12px', textTransform: 'uppercase', color: '#0f172a' }}>Desglose de Consumos:</h4>
-                
-                {Object.entries(roomToBill.reporte.consumoMinibar).map(([id, qty]) => {
+              <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '12px', textTransform: 'uppercase' }}>Consumos Registrados:</h4>
+                {Object.entries(roomToBill.reporte.consumos).map(([id, qty]) => {
                   if (qty <= 0) return null;
-                  const item = minibarStock.find(i => i.id === id);
+                  const item = inventario.find(i => i.id === id);
                   return (
-                    <div key={id} style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0' }}>
+                    <div key={id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', margin: '4px 0' }}>
                       <span>{qty}x {item?.name}</span>
-                      <strong>Bs. {(qty * (item?.price || 0)).toFixed(2)}</strong>
+                      <strong>${(qty * (item?.price_usd || 0)).toFixed(2)} USD</strong>
                     </div>
                   );
                 })}
-
-                {Object.entries(roomToBill.reporte.faltantesLenceria).map(([id, qty]) => {
-                  if (qty <= 0) return null;
-                  const item = lenceriaList.find(i => i.id === id);
-                  return (
-                    <div key={id} style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0', color: '#b91c1c' }}>
-                      <span>{qty}x {item?.name} (Daño/Faltante)</span>
-                      <strong>Bs. {(qty * (item?.price || 0)).toFixed(2)}</strong>
-                    </div>
-                  );
-                })}
-
-                <hr style={{ margin: '10px 0', borderColor: '#cbd5e1' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 'bold' }}>
-                  <span>TOTAL A COBRAR EN RECEPCIÓN:</span>
-                  <span style={{ color: '#059669' }}>Bs. {roomToBill.reporte.total.toFixed(2)}</span>
+                <hr style={{ margin: '10px 0' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold' }}>
+                  <span>TOTAL EN DÓLARES:</span>
+                  <span>${roomToBill.reporte.totalUSD.toFixed(2)} USD</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 'bold', color: '#059669', marginTop: '4px' }}>
+                  <span>TOTAL EN BOLÍVARES (BCV {tasaBCV}):</span>
+                  <span>Bs. {roomToBill.reporte.totalBs.toFixed(2)}</span>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                  onClick={() => handleConfirmarFacturacion(roomToBill.id)}
-                  style={{ flex: 1, background: '#059669', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  ✅ Cobrado / Confirmar Factura
+                <button onClick={() => handleConfirmarFacturacion(roomToBill.id)} style={{ flex: 1, background: '#059669', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  ✅ Cobrado / Procesar Pago
                 </button>
-                <button 
-                  onClick={() => setRoomToBill(null)}
-                  style={{ background: '#cbd5e1', color: '#334155', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                <button onClick={() => setRoomToBill(null)} style={{ background: '#cbd5e1', color: '#334155', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
                   Cerrar
                 </button>
               </div>
@@ -448,235 +394,227 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 2: ASISTENTE MÓVIL (SELECCIÓN DINÁMICA DE LA RESPONSABLE) */}
+        {/* VISTA 2: ASISTENTE MÓVIL */}
         {role === 'asistente' && (
-          <div style={{ maxWidth: '650px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px', backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-            <div>
-              <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#0f172a' }}>Check-Out e Inspección Móvil</h2>
-              <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>Seleccione el piso, la habitación y la asistente responsable que ejecuta la inspección.</p>
-            </div>
+          <div style={{ maxWidth: '650px', margin: '0 auto', background: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Check-Out e Inspección Móvil</h2>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              
-              {/* DESPLEGABLE DE PISO Y DESPLEGABLE DE ASISTENTE ENCARGADA */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '6px' }}>Seleccionar Piso</label>
-                  <select 
-                    onChange={(e) => {
-                      const pisoSel = parseInt(e.target.value);
-                      const primerHab = habitaciones.find(h => h.floor === pisoSel);
-                      setSelectedRoom(primerHab || null);
-                    }}
-                    style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', fontSize: '14px' }}>
-                    <option value="">Seleccione piso...</option>
-                    {[3, 4, 5, 6, 7, 8, 9, 10].map(p => (
-                      <option key={p} value={p}>Piso {p}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* DESPLEGABLE DINÁMICO DE ASISTENTE ENCARGADA */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '6px' }}>Asistente Encargada</label>
-                  <select 
-                    value={asistenteSeleccionada}
-                    onChange={(e) => setAsistenteSeleccionada(e.target.value)}
-                    style={{ width: '100%', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', fontSize: '14px', fontWeight: 'bold', color: '#0f172a' }}>
-                    <option value="">Seleccionar responsable...</option>
-                    {listaAsistentes.map(ast => (
-                      <option key={ast.id} value={ast.nombre}>
-                        {ast.nombre} ({ast.turno})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>Seleccionar Piso</label>
+                <select onChange={(e) => setSelectedRoom(habitaciones.find(h => h.floor === parseInt(e.target.value)) || null)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                  <option value="">Seleccione piso...</option>
+                  {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
+                </select>
               </div>
 
-              {selectedRoom && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', backgroundColor: '#f8fafc', padding: '18px', borderRadius: '10px', border: '1px solid #cbd5e1' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>Habitación a Inspeccionar</label>
-                    <select 
-                      value={selectedRoom.id}
-                      onChange={(e) => {
-                        const r = habitaciones.find(item => item.id === e.target.value);
-                        setSelectedRoom(r);
-                      }}
-                      style={{ width: '100%', backgroundColor: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', fontSize: '14px', fontWeight: 'bold' }}>
-                      {habitaciones.filter(h => h.floor === selectedRoom.floor).map(h => (
-                        <option key={h.id} value={h.id}>Habitación {h.number} ({h.type}) — {h.status}</option>
-                      ))}
-                    </select>
-                  </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>Asistente Encargada</label>
+                <select value={asistenteSeleccionada} onChange={(e) => setAsistenteSeleccionada(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>
+                  <option value="">Seleccionar Asistente...</option>
+                  {personal.filter(p => p.rol === 'Asistente').map(a => <option key={a.id} value={a.nombre}>{a.nombre}</option>)}
+                </select>
+              </div>
+            </div>
 
-                  {/* MINIBAR */}
-                  <div>
-                    <h4 style={{ fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', color: '#0f172a', marginBottom: '8px' }}>📦 Consumo de Minibar</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {minibarStock.map(item => (
-                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                          <span style={{ fontSize: '13px', fontWeight: '600' }}>{item.name} <small style={{ color: '#64748b' }}>(Bs. {item.price.toFixed(2)})</small></span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <button type="button" onClick={() => handleMinibarQty(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>-</button>
-                            <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumoMinibar[item.id] || 0}</span>
-                            <button type="button" onClick={() => handleMinibarQty(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', backgroundColor: '#0f172a', color: '#fff', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>+</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* LENCERÍA */}
-                  <div>
-                    <h4 style={{ fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', color: '#0f172a', marginBottom: '8px' }}>🧺 Lencería Faltante / Dañada</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {lenceriaList.map(item => (
-                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                          <span style={{ fontSize: '13px', fontWeight: '600' }}>{item.name} <small style={{ color: '#64748b' }}>(Bs. {item.price.toFixed(2)})</small></span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <button type="button" onClick={() => handleLenceriaQty(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>-</button>
-                            <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{faltantesLenceria[item.id] || 0}</span>
-                            <button type="button" onClick={() => handleLenceriaQty(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', backgroundColor: '#f59e0b', color: '#0f172a', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>+</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <button 
-                    onClick={handleEjecutarCheckout}
-                    style={{ width: '100%', backgroundColor: '#0f172a', color: '#fff', fontWeight: 'bold', padding: '14px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '14px', marginTop: '8px' }}>
-                    🚨 Ejecutar Check-Out y Alertar a Recepción
-                  </button>
+            {selectedRoom && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>Habitación del Piso {selectedRoom.floor}</label>
+                  <select value={selectedRoom.id} onChange={(e) => setSelectedRoom(habitaciones.find(h => h.id === e.target.value))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>
+                    {habitaciones.filter(h => h.floor === selectedRoom.floor).map(h => <option key={h.id} value={h.id}>Habitación {h.number} ({h.type}) — {h.status}</option>)}
+                  </select>
                 </div>
-              )}
+
+                {/* PRODUCTOS E INVENTARIO */}
+                <div>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', textTransform: 'uppercase' }}>📦 Consumos de Minibar y Lencería</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {inventario.map(item => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                        <div>
+                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>${item.price_usd.toFixed(2)} USD (Bs. {(item.price_usd * tasaBCV).toFixed(2)})</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
+                          <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
+                          <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#0f172a', color: '#fff', fontWeight: 'bold' }}>+</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <button onClick={handleEjecutarCheckout} style={{ width: '100%', background: '#0f172a', color: '#fff', padding: '14px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
+                  🚨 Ejecutar Check-Out y Alertar a Recepción
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* VISTA 3: MODAL / SECCIÓN DE SUPERVISORAS */}
+        {role === 'supervisora' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h2 style={{ fontSize: '22px', fontWeight: 'bold', margin: 0 }}>Panel de Control de Supervisoras</h2>
+            <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '6px' }}>Supervisora en Turno</label>
+                <select value={supervisoraSeleccionada} onChange={(e) => setSupervisoraSeleccionada(e.target.value)} style={{ width: '300px', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontWeight: 'bold' }}>
+                  <option value="">Seleccionar Supervisora...</option>
+                  {personal.filter(p => p.rol === 'Supervisora').map(s => <option key={s.id} value={s.nombre}>{s.nombre}</option>)}
+                </select>
+              </div>
+
+              <h3 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>Auditoría e Inspección de Pisos</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                {habitaciones.filter(h => h.status !== 'Disponible').map(h => (
+                  <div key={h.id} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                      <span>Habitación {h.number}</span>
+                      <span style={{ fontSize: '11px', background: '#0f172a', color: '#fff', padding: '2px 6px', borderRadius: '4px' }}>Piso {h.floor}</span>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0' }}>Estado: <strong>{h.status}</strong></p>
+                    <button 
+                      onClick={() => {
+                        supabase.from('habitaciones').upsert({ id: h.id, status: 'Disponible' });
+                        fetchHabitaciones();
+                      }}
+                      style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', width: '100%', marginTop: '8px' }}>
+                      Aprobar Auditoría / Marcar Disponible
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
-        {/* VISTA 3: AMA DE LLAVES */}
+        {/* VISTA 4: AMA DE LLAVES */}
         {role === 'amadelhaves' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Panel de Ama de Llaves</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
-              <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                <h3 style={{ fontWeight: 'bold', color: '#0f172a', margin: '0 0 12px 0' }}>Habitaciones Sucias (Por Asear)</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {habitaciones.filter(h => (h.status || '').toLowerCase().includes('sucia')).map(h => (
-                    <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                      <div>
-                        <p style={{ fontWeight: 'bold', margin: 0 }}>Habitación {h.number}</p>
-                        <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>Piso {h.floor}</p>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          const updated = habitaciones.map(room => room.id === h.id ? { ...room, status: 'Disponible' } : room);
-                          setHabitaciones(updated);
-                          supabase.from('habitaciones').upsert({ id: h.id, status: 'Disponible' });
-                        }}
-                        style={{ backgroundColor: '#10b981', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '6px 10px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}>
-                        Aseada / Disponible
-                      </button>
+            <h2 style={{ fontSize: '22px', fontWeight: 'bold', margin: 0 }}>Panel de Ama de Llaves</h2>
+            <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+              <h3 style={{ margin: '0 0 12px 0' }}>Habitaciones Sucias (Pendientes por Limpieza)</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {habitaciones.filter(h => (h.status || '').toLowerCase().includes('sucia')).map(h => (
+                  <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                    <div>
+                      <strong>Habitación {h.number}</strong> — Piso {h.floor}
                     </div>
-                  ))}
-                  {habitaciones.filter(h => (h.status || '').toLowerCase().includes('sucia')).length === 0 && (
-                    <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', margin: 0 }}>No hay habitaciones pendientes por asear.</p>
-                  )}
-                </div>
-              </div>
-
-              <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                <h3 style={{ fontWeight: 'bold', color: '#0f172a', margin: '0 0 12px 0' }}>Personal Registrado Activo</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {listaAsistentes.map(ast => (
-                    <div key={ast.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '13px' }}>
-                      <span style={{ fontWeight: '600' }}>{ast.nombre}</span>
-                      <span style={{ color: '#64748b', fontSize: '11px' }}>{ast.turno}</span>
-                    </div>
-                  ))}
-                </div>
+                    <button onClick={() => { supabase.from('habitaciones').upsert({ id: h.id, status: 'Disponible' }); fetchHabitaciones(); }} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      Aseada / Disponible
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         )}
 
-        {/* VISTA 4: ADMINISTRACIÓN CON TABLA EDITABLE DE ASISTENTES */}
+        {/* VISTA 5: ADMINISTRACIÓN E INVENTARIO Y REPORTES */}
         {role === 'admin' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>Panel Administrativo — Registro de Personal</h2>
-            
-            <div style={{ background: '#fff', padding: '24px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <h2 style={{ fontSize: '22px', fontWeight: 'bold', margin: 0 }}>Panel Administrativo e Inventario General</h2>
+
+            {/* SECCIÓN 1: INVENTARIO DE PRODUCTOS (USD / BS) */}
+            <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>📦 Gestión de Inventario (Minibar, Lencería y Amenidades)</h3>
               
-              {/* FORMULARIO PARA REGISTRAR NUEVA ASISTENTE */}
-              <div>
-                <h3 style={{ fontWeight: 'bold', color: '#0f172a', margin: '0 0 12px 0', fontSize: '16px' }}>+ Registrar Nueva Asistente Integral</h3>
-                <form onSubmit={handleAgregarAsistente} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  <input 
-                    type="text" 
-                    placeholder="Nombre completo de la asistente..."
-                    value={nuevoNombre}
-                    onChange={(e) => setNuevoNombre(e.target.value)}
-                    style={{ flex: 1, minWidth: '200px', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px' }}
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="Turno / Pisos asignados (ej: Mañana - Piso 3 y 4)..."
-                    value={nuevoTurno}
-                    onChange={(e) => setNuevoTurno(e.target.value)}
-                    style={{ flex: 1, minWidth: '200px', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px' }}
-                  />
-                  <button 
-                    type="submit"
-                    style={{ backgroundColor: '#0f172a', color: '#fff', fontWeight: 'bold', padding: '10px 20px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '14px' }}>
-                    Agregar Asistente
-                  </button>
-                </form>
-              </div>
+              <form onSubmit={handleAgregarInventario} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <input placeholder="ID único (ej: agua_litro)" value={nuevoItem.id} onChange={e => setNuevoItem({...nuevoItem, id: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                <input placeholder="Nombre Producto" value={nuevoItem.name} onChange={e => setNuevoItem({...nuevoItem, name: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', flex: 1 }} />
+                <select value={nuevoItem.category} onChange={e => setNuevoItem({...nuevoItem, category: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                  <option value="minibar">Minibar</option>
+                  <option value="lenceria">Lencería</option>
+                  <option value="amenidad">Amenidad</option>
+                </select>
+                <input type="number" step="0.01" placeholder="Precio ($ USD)" value={nuevoItem.price_usd || ''} onChange={e => setNuevoItem({...nuevoItem, price_usd: parseFloat(e.target.value) || 0})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', width: '110px' }} />
+                <input type="number" placeholder="Stock" value={nuevoItem.stock || ''} onChange={e => setNuevoItem({...nuevoItem, stock: parseInt(e.target.value) || 0})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', width: '90px' }} />
+                <button type="submit" style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>+ Guardar Producto</button>
+              </form>
 
-              <hr style={{ borderColor: '#e2e8f0', margin: 0 }} />
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
+                    <th style={{ padding: '8px' }}>Producto</th>
+                    <th style={{ padding: '8px' }}>Categoría</th>
+                    <th style={{ padding: '8px' }}>Precio ($ USD)</th>
+                    <th style={{ padding: '8px' }}>Precio (Bs. BCV)</th>
+                    <th style={{ padding: '8px' }}>Stock Actual</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inventario.map(item => (
+                    <tr key={item.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.name}</td>
+                      <td style={{ padding: '8px', textTransform: 'uppercase', fontSize: '11px', color: '#64748b' }}>{item.category}</td>
+                      <td style={{ padding: '8px', fontWeight: 'bold', color: '#059669' }}>${item.price_usd.toFixed(2)} USD</td>
+                      <td style={{ padding: '8px', fontWeight: 'bold' }}>Bs. {(item.price_usd * tasaBCV).toFixed(2)}</td>
+                      <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.stock} unids.</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-              {/* TABLA EDITABLE DE ASISTENTES */}
-              <div>
-                <h3 style={{ fontWeight: 'bold', color: '#0f172a', margin: '0 0 12px 0', fontSize: '16px' }}>Tabla de Asistentes Habilitadas para Check-Out</h3>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
-                        <th style={{ padding: '10px' }}># ID</th>
-                        <th style={{ padding: '10px' }}>Nombre de la Asistente</th>
-                        <th style={{ padding: '10px' }}>Turno / Asignación</th>
-                        <th style={{ padding: '10px', textAlign: 'center' }}>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {listaAsistentes.map((ast, idx) => (
-                        <tr key={ast.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                          <td style={{ padding: '10px', fontWeight: 'bold', color: '#64748b' }}>{idx + 1}</td>
-                          <td style={{ padding: '10px', fontWeight: 'bold', color: '#0f172a' }}>{ast.nombre}</td>
-                          <td style={{ padding: '10px', color: '#475569' }}>{ast.turno}</td>
-                          <td style={{ padding: '10px', textAlign: 'center' }}>
-                            <button 
-                              onClick={() => handleBorrarAsistente(ast.id)}
-                              style={{ background: '#fee2e2', color: '#dc2626', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>
-                              🗑️ Eliminar
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {listaAsistentes.length === 0 && (
-                        <tr>
-                          <td colSpan="4" style={{ textAlign: 'center', padding: '16px', color: '#64748b', fontStyle: 'italic' }}>
-                            No hay asistentes registradas. Agregue una para habilitar el módulo móvil.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+            {/* SECCIÓN 2: REPORTES Y CONSUMOS (DIARIO, SEMANAL, MENSUAL) */}
+            <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '16px' }}>📊 Reportes de Consumo y Reposición</h3>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {['diario', 'semanal', 'mensual'].map(f => (
+                    <button key={f} onClick={() => setFiltroReporte(f)} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', textTransform: 'capitalize', fontWeight: 'bold', background: filtroReporte === f ? '#0f172a' : '#f8fafc', color: filtroReporte === f ? '#fff' : '#334155', cursor: 'pointer' }}>
+                      {f}
+                    </button>
+                  ))}
                 </div>
               </div>
 
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
+                    <th style={{ padding: '8px' }}>Fecha</th>
+                    <th style={{ padding: '8px' }}>Habitación</th>
+                    <th style={{ padding: '8px' }}>Asistente</th>
+                    <th style={{ padding: '8px' }}>Supervisora</th>
+                    <th style={{ padding: '8px' }}>Total ($ USD)</th>
+                    <th style={{ padding: '8px' }}>Total (Bs.)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportesHistorial.map(rep => (
+                    <tr key={rep.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '8px' }}>{new Date(rep.fecha).toLocaleString()}</td>
+                      <td style={{ padding: '8px', fontWeight: 'bold' }}>Hab. {rep.habitacion}</td>
+                      <td style={{ padding: '8px' }}>{rep.asistente}</td>
+                      <td style={{ padding: '8px' }}>{rep.supervisora}</td>
+                      <td style={{ padding: '8px', fontWeight: 'bold', color: '#059669' }}>${parseFloat(rep.total_usd).toFixed(2)} USD</td>
+                      <td style={{ padding: '8px', fontWeight: 'bold' }}>Bs. {parseFloat(rep.total_bs).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                  {reportesHistorial.length === 0 && (
+                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '16px', color: '#64748b' }}>No hay consumos registrados aún.</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
+
+            {/* SECCIÓN 3: GESTIÓN DE PERSONAL */}
+            <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>👥 Registro de Personal (Asistentes e Inspectoras)</h3>
+              <form onSubmit={handleAgregarPersonal} style={{ display: 'flex', gap: '8px' }}>
+                <input placeholder="Nombre completo..." value={nuevoPersonal.nombre} onChange={e => setNuevoPersonal({...nuevoPersonal, nombre: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', flex: 1 }} />
+                <select value={nuevoPersonal.rol} onChange={e => setNuevoPersonal({...nuevoPersonal, rol: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                  <option value="Asistente">Asistente</option>
+                  <option value="Supervisora">Supervisora</option>
+                </select>
+                <input placeholder="Turno / Piso" value={nuevoPersonal.turno} onChange={e => setNuevoPersonal({...nuevoPersonal, turno: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', flex: 1 }} />
+                <button type="submit" style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>+ Registrar</button>
+              </form>
+            </div>
+
           </div>
         )}
 
