@@ -37,6 +37,9 @@ export default function App() {
   const [asistenteSeleccionada, setAsistenteSeleccionada] = useState('');
   const [supervisoraSeleccionada, setSupervisoraSeleccionada] = useState('');
   const [consumosSeleccionados, setConsumosSeleccionados] = useState({});
+  
+  // Estado para la evidencia multimedia (fotos / videos)
+  const [archivoEvidencia, setArchivoEvidencia] = useState(null);
 
   // Estados para formularios en Administración
   const [nuevoItem, setNuevoItem] = useState({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
@@ -159,7 +162,8 @@ export default function App() {
       consumos: consumosSeleccionados,
       totalUSD,
       totalBs,
-      tasaBCV
+      tasaBCV,
+      tieneEvidencia: archivoEvidencia ? archivoEvidencia.name : 'Sin archivo adjunto'
     };
 
     const newStatus = 'Sucia / Por Facturar';
@@ -188,6 +192,7 @@ export default function App() {
 
     alert(`⚠️ Check-out enviado para la Habitación ${selectedRoom.number}. Recepción notificada.`);
     setConsumosSeleccionados({});
+    setArchivoEvidencia(null);
     setSelectedRoom(null);
     fetchReportes();
   };
@@ -204,7 +209,6 @@ export default function App() {
     alert('✅ Facturación completada. La habitación pasa a color amarillo (Sucia) para Ama de Llaves.');
   };
 
-  // Funciones para Administración (Inventario y Personal)
   const handleAgregarInventario = async (e) => {
     e.preventDefault();
     if (!nuevoItem.name || !nuevoItem.id) return alert('Complete los datos del producto');
@@ -373,8 +377,11 @@ export default function App() {
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
             <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', maxWidth: '500px', width: '100%' }}>
               <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 'bold' }}>🧾 Facturación Check-Out — Habitación {roomToBill.number}</h3>
-              <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 16px 0' }}>
+              <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 8px 0' }}>
                 Asistente: <strong>{roomToBill.reporte.asistente}</strong>
+              </p>
+              <p style={{ fontSize: '12px', color: '#475569', margin: '0 0 16px 0' }}>
+                Evidencia adjunta: <strong>{roomToBill.reporte.tieneEvidencia}</strong>
               </p>
 
               <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
@@ -412,7 +419,7 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 2: ASISTENTE MÓVIL */}
+        {/* VISTA 2: ASISTENTE MÓVIL (CON SECCIÓN DE FOTOS Y VIDEOS) */}
         {role === 'asistente' && (
           <div style={{ maxWidth: '650px', margin: '0 auto', background: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Check-Out e Inspección Móvil</h2>
@@ -461,6 +468,24 @@ export default function App() {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* SECCIÓN ADJUNTAR FOTOS O VIDEOS DE EVIDENCIA */}
+                <div style={{ background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', textTransform: 'uppercase' }}>
+                    📸 Adjuntar Fotos o Videos de Evidencia (Daños / Estado)
+                  </label>
+                  <input 
+                    type="file" 
+                    accept="image/*,video/*"
+                    onChange={(e) => setArchivoEvidencia(e.target.files[0])}
+                    style={{ width: '100%', fontSize: '12px', color: '#475569' }}
+                  />
+                  {archivoEvidencia && (
+                    <p style={{ fontSize: '11px', color: '#059669', fontWeight: 'bold', margin: '4px 0 0 0' }}>
+                      Archivo seleccionado: {archivoEvidencia.name}
+                    </p>
+                  )}
                 </div>
 
                 <button onClick={handleEjecutarCheckout} style={{ width: '100%', background: '#0f172a', color: '#fff', padding: '14px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
@@ -525,7 +550,7 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 5: ADMINISTRACIÓN (CON FORMULARIOS Y TABLAS COMPLETAS) */}
+        {/* VISTA 5: ADMINISTRACIÓN */}
         {role === 'admin' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <h2 style={{ fontSize: '22px', fontWeight: 'bold', margin: 0 }}>Panel Administrativo e Inventario General</h2>
