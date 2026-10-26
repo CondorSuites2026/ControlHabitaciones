@@ -4,12 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Cliente optimizado sin bloqueo de auth lock
 const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-  }
+  auth: { persistSession: false, autoRefreshToken: false }
 });
 
 export default function App() {
@@ -38,20 +34,15 @@ export default function App() {
   ]);
 
   const [reportesHistorial, setReportesHistorial] = useState([]);
-  const [filtroReporte, setFiltroReporte] = useState('diario');
   const [asistenteSeleccionada, setAsistenteSeleccionada] = useState('');
   const [supervisoraSeleccionada, setSupervisoraSeleccionada] = useState('');
   const [consumosSeleccionados, setConsumosSeleccionados] = useState({});
   const [archivoEvidencia, setArchivoEvidencia] = useState(null);
 
   const [nuevoItem, setNuevoItem] = useState({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
-  const [nuevoPersonal, setNuevoPersonal] = useState({ nombre: '', rol: 'Asistente', turno: '' });
 
   useEffect(() => {
-    fetchHabitaciones();
-    fetchInventario();
-    fetchPersonal();
-    fetchReportes();
+    inicializarApp();
     sincronizarTasaBCVOnline();
 
     const interval = setInterval(() => {
@@ -60,6 +51,13 @@ export default function App() {
 
     return () => clearInterval(interval);
   }, []);
+
+  const inicializarApp = async () => {
+    await fetchHabitaciones();
+    fetchInventario();
+    fetchPersonal();
+    fetchReportes();
+  };
 
   const sincronizarTasaBCVOnline = async () => {
     try {
@@ -71,13 +69,36 @@ export default function App() {
     }
   };
 
+  const getDefaultRoomsArray = () => {
+    const rooms = [];
+    for (let f = 3; f <= 9; f++) {
+      for (let n = 1; n <= 9; n++) {
+        rooms.push({ id: `${f}0${n}`, number: `${f}0${n}`, floor: f, type: n <= 4 ? 'MASTER' : n <= 7 ? 'JUNIOR' : 'SENCILLA', status: 'Disponible', amount: 0, reporte: null });
+      }
+    }
+    const p10 = [
+      { num: '1001', type: 'EJECUTIVA' }, { num: '1002', type: 'EJECUTIVA' },
+      { num: '1003', type: 'PRESIDENCIAL' }, { num: '1004', type: 'PRESIDENCIAL' }
+    ];
+    p10.forEach(r => rooms.push({ id: r.num, number: r.num, floor: 10, type: r.type, status: 'Disponible', amount: 0, reporte: null }));
+    return rooms;
+  };
+
   const fetchHabitaciones = async () => {
     try {
       const { data, error } = await supabase.from('habitaciones').select('*');
-      if (error || !data || data.length === 0) generateDefaultRooms();
-      else setHabitaciones(data);
+      if (error || !data || data.length === 0) {
+        const defaultRooms = getDefaultRoomsArray();
+        setHabitaciones(defaultRooms);
+        // Poblar Supabase si está vacía
+        for (const room of defaultRooms) {
+          await supabase.from('habitaciones').upsert(room);
+        }
+      } else {
+        setHabitaciones(data);
+      }
     } catch {
-      generateDefaultRooms();
+      setHabitaciones(getDefaultRoomsArray());
     }
   };
 
@@ -109,21 +130,6 @@ export default function App() {
       const { data } = await supabase.from('reportes_consumo').select('*').order('fecha', { ascending: false });
       if (data) setReportesHistorial(data);
     } catch (e) { console.error(e); }
-  };
-
-  const generateDefaultRooms = () => {
-    const rooms = [];
-    for (let f = 3; f <= 9; f++) {
-      for (let n = 1; n <= 9; n++) {
-        rooms.push({ id: `${f}0${n}`, number: `${f}0${n}`, floor: f, type: n <= 4 ? 'MASTER' : n <= 7 ? 'JUNIOR' : 'SENCILLA', status: 'Disponible', amount: 0, reporte: null });
-      }
-    }
-    const p10 = [
-      { num: '1001', type: 'EJECUTIVA' }, { num: '1002', type: 'EJECUTIVA' },
-      { num: '1003', type: 'PRESIDENCIAL' }, { num: '1004', type: 'PRESIDENCIAL' }
-    ];
-    p10.forEach(r => rooms.push({ id: r.num, number: r.num, floor: 10, type: r.type, status: 'Disponible', amount: 0, reporte: null }));
-    setHabitaciones(rooms);
   };
 
   const handleQtyChange = (id, delta) => {
@@ -519,7 +525,7 @@ export default function App() {
           <div className="card-box">
             <h2 style={{ fontSize: '22px', margin: 0 }}>Panel de Ama de Llaves</h2>
             {habitaciones.filter(h => (h.status || '').toLowerCase() === 'sucia').map(h => (
-              <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fef08a', padding: '10px', borderRadius: '6px' }}>
+              <div key={h.id} style={{ display: 'flex', justifyContent: 'space-xx', alignItems: 'center', background: '#fef08a', padding: '10px', borderRadius: '6px' }}>
                 <strong>Habitación {h.number} (Piso {h.floor})</strong>
                 <button onClick={() => { supabase.from('habitaciones').upsert({ id: h.id, status: 'Disponible' }); fetchHabitaciones(); }} style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
                   Marcar Aseada / Disponible
@@ -534,7 +540,14 @@ export default function App() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div className="card-box">
               <h3 style={{ margin: 0 }}>📦 Gestión de Inventario</h3>
-              <form onSubmit={handleAgregarInventario} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (!nuevoItem.name || !nuevoItem.id) return alert('Complete los datos');
+                setInventario([...inventario, nuevoItem]);
+                await supabase.from('inventario').upsert(nuevoItem);
+                setNuevoItem({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
+                alert('✅ Producto guardado.');
+              }} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <input placeholder="ID" value={nuevoItem.id} onChange={e => setNuevoItem({...nuevoItem, id: e.target.value})} style={{ width: '100px' }} />
                 <input placeholder="Nombre" value={nuevoItem.name} onChange={e => setNuevoItem({...nuevoItem, name: e.target.value})} style={{ flex: 1 }} />
                 <select value={nuevoItem.category} onChange={e => setNuevoItem({...nuevoItem, category: e.target.value})} style={{ width: '120px' }}>
