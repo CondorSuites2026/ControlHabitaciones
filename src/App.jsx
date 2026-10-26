@@ -3,7 +3,14 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Cliente optimizado sin bloqueo de auth lock
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  }
+});
 
 export default function App() {
   const [role, setRole] = useState('recepcion');
@@ -239,7 +246,7 @@ export default function App() {
     <div className="app-container">
       <style>{`
         body { margin: 0; background-color: #f1f5f9; font-family: system-ui, sans-serif; color: #1e293b; }
-        .app-container { min-height: 100vh; display: flex; flexDirection: column; }
+        .app-container { min-height: 100vh; display: flex; flex-direction: column; }
         header { background-color: #0f172a; border-bottom: 1px solid #334155; padding: 12px 24px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; color: #fff; }
         .logo-box { display: flex; align-items: center; gap: 12px; }
         .logo-badge { background-color: #f59e0b; color: #0f172a; padding: 6px 10px; border-radius: 6px; font-weight: 900; font-size: 16px; }
