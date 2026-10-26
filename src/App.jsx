@@ -13,7 +13,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [subiendoArchivo, setSubiendoArchivo] = useState(false);
 
-  // Tasa BCV (editable manualmente por si la API falla y con respaldo online)
+  // Tasa BCV informativa (sincronizada automáticamente desde API o respaldo)
   const [tasaBCV, setTasaBCV] = useState(65.00);
 
   const [inventario, setInventario] = useState([
@@ -50,7 +50,7 @@ export default function App() {
     fetchReportes();
     sincronizarTasaBCVOnline();
 
-    // Intervalo de sincronización automática cada 4 segundos
+    // Intervalo de sincronización automática cada 4 segundos para mantener todo en tiempo real
     const interval = setInterval(() => {
       fetchHabitacionesSilencioso();
     }, 4000);
@@ -58,7 +58,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Sincronización robusta de la tasa BCV
+  // Sincronización automática de la tasa BCV oficial
   const sincronizarTasaBCVOnline = async () => {
     try {
       const response = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar/unit/bcv');
@@ -73,7 +73,7 @@ export default function App() {
         }
       }
     } catch (error) {
-      console.error("Usando tasa manual o por defecto.", error);
+      console.error("Usando tasa por defecto.", error);
     }
   };
 
@@ -300,7 +300,7 @@ export default function App() {
         }
       `}</style>
 
-      {/* HEADER CON TASA EDITABLE Y BOTÓN DE ACTUALIZACIÓN FUNCIONAL */}
+      {/* HEADER CON TASA BCV PURAMENTE INFORMATIVA (VISUAL) Y BOTÓN DE ACTUALIZACIÓN */}
       <header style={{ backgroundColor: '#0f172a', borderBottom: '1px solid #334155', padding: '12px 24px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', color: '#fff' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ backgroundColor: '#f59e0b', color: '#0f172a', padding: '6px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '16px' }}>CS</div>
@@ -310,17 +310,11 @@ export default function App() {
           </div>
         </div>
 
-        {/* TASA BCV EDITABLE DIRECTAMENTE + BOTÓN RECARGAR */}
+        {/* TASA BCV INFORMATIVA Y BOTÓN RECARGAR */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', background: '#1e293b', padding: '4px 12px', borderRadius: '8px', border: '1px solid #334155', gap: '6px' }}>
-            <span style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 'bold' }}>💵 TASA BCV:</span>
-            <input 
-              type="number" 
-              step="0.01" 
-              value={tasaBCV} 
-              onChange={(e) => setTasaBCV(parseFloat(e.target.value) || 0)}
-              style={{ width: '75px', background: '#0f172a', border: '1px solid #cbd5e1', color: '#fff', borderRadius: '4px', padding: '2px 6px', fontSize: '13px', fontWeight: 'bold', textAlign: 'center' }}
-            />
+          <div style={{ display: 'flex', alignItems: 'center', background: '#1e293b', padding: '6px 14px', borderRadius: '8px', border: '1px solid #334155', gap: '8px' }}>
+            <span style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 'bold' }}>💵 TASA BCV OFICIAL:</span>
+            <span style={{ fontSize: '14px', color: '#fff', fontWeight: 'bold' }}>Bs. {tasaBCV.toFixed(2)}</span>
           </div>
           <button 
             onClick={() => { fetchHabitaciones(); alert('🔄 Datos actualizados desde Supabase con éxito.'); }} 
