@@ -38,8 +38,6 @@ export default function App() {
   const [asistenteSeleccionada, setAsistenteSeleccionada] = useState('');
   const [supervisoraSeleccionada, setSupervisoraSeleccionada] = useState('');
   const [consumosSeleccionados, setConsumosSeleccionados] = useState({});
-  
-  // Archivo de evidencia multimedia
   const [archivoEvidencia, setArchivoEvidencia] = useState(null);
 
   const [nuevoItem, setNuevoItem] = useState({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
@@ -52,12 +50,18 @@ export default function App() {
     fetchReportes();
     sincronizarTasaBCVAutomatico();
 
+    // Sincronización en tiempo real + intervalo de respaldo cada 4 segundos
+    const interval = setInterval(() => {
+      fetchHabitacionesSilencioso();
+    }, 4000);
+
     const channel = supabase
       .channel('realtime_hotel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'habitaciones' }, () => fetchHabitaciones())
       .subscribe();
 
     return () => {
+      clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -66,11 +70,9 @@ export default function App() {
     try {
       const response = await fetch('https://ve.dolarapi.com/v1/dolares/bcv');
       const data = await response.json();
-      if (data && data.promedio) {
-        setTasaBCV(data.promedio);
-      }
+      if (data && data.promedio) setTasaBCV(data.promedio);
     } catch (error) {
-      console.error("Usando tasa por defecto o manual.", error);
+      console.error(error);
     }
   };
 
@@ -84,6 +86,15 @@ export default function App() {
       generateDefaultRooms();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchHabitacionesSilencioso = async () => {
+    try {
+      const { data } = await supabase.from('habitaciones').select('*');
+      if (data && data.length > 0) setHabitaciones(data);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -140,7 +151,6 @@ export default function App() {
     return { bg: '#bbf7d0', text: '#065f46' };
   };
 
-  // Función para subir la evidencia multimedia a Supabase Storage
   const subirEvidenciaASupabase = async (file) => {
     if (!file) return null;
     try {
@@ -149,26 +159,16 @@ export default function App() {
       const fileName = `${selectedRoom.number}_${Date.now()}.${fileExt}`;
       const filePath = `checkout_evidencias/${fileName}`;
 
-      const { data, error } = await supabase.storage
-        .from('evidencias')
-        .upload(filePath, file);
+      const { error } = await supabase.storage.from('evidencias').upload(filePath, file);
+      if (error) return null;
 
-      if (error) {
-        console.error('Error subiendo archivo a Supabase Storage:', error.message);
-        return null;
-      }
-
-      const { data: publicData } = supabase.storage
-        .from('evidencias')
-        .getPublicUrl(filePath);
-
+      const { data: publicData } = supabase.storage.from('evidencias').getPublicUrl(filePath);
       return {
         url: publicData?.publicUrl || null,
         tipo: file.type.startsWith('video') ? 'video' : 'imagen',
         nombre: file.name
       };
     } catch (err) {
-      console.error(err);
       return null;
     } finally {
       setSubiendoArchivo(false);
@@ -189,12 +189,8 @@ export default function App() {
     });
 
     const totalBs = totalUSD * tasaBCV;
-
-    // Subida real del archivo multimedia
     let datosEvidencia = null;
-    if (archivoEvidencia) {
-      datosEvidencia = await subirEvidenciaASupabase(archivoEvidencia);
-    }
+    if (archivoEvidencia) datosEvidencia = await subirEvidenciaASupabase(archivoEvidencia);
 
     const reporteCompleto = {
       asistente: asistenteSeleccionada,
@@ -231,7 +227,7 @@ export default function App() {
       });
     } catch (e) { console.error(e); }
 
-    alert(`⚠️ Check-out enviado con éxito para la Habitación ${selectedRoom.number}. Recepción notificada.`);
+    alert(`⚠️ Check-out enviado para la Habitación ${selectedRoom.number}. Recepción notificada.`);
     setConsumosSeleccionados({});
     setArchivoEvidencia(null);
     setSelectedRoom(null);
@@ -253,30 +249,28 @@ export default function App() {
   const handleAgregarInventario = async (e) => {
     e.preventDefault();
     if (!nuevoItem.name || !nuevoItem.id) return alert('Complete los datos del producto');
-
     setInventario([...inventario, nuevoItem]);
     try {
       await supabase.from('inventario').upsert(nuevoItem);
     } catch (e) { console.error(e); }
     setNuevoItem({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
-    alert('✅ Producto guardado en Supabase.');
+    alert('✅ Producto guardado.');
   };
 
   const handleAgregarPersonal = async (e) => {
     e.preventDefault();
     if (!nuevoPersonal.nombre) return alert('Ingrese el nombre del personal');
-
     const item = { ...nuevoPersonal, id: Date.now() };
     setPersonal([...personal, item]);
     try {
       await supabase.from('personal').insert({ nombre: nuevoPersonal.nombre, rol: nuevoPersonal.rol, turno: nuevoPersonal.turno });
     } catch (e) { console.error(e); }
     setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
-    alert('✅ Personal guardado en Supabase.');
+    alert('✅ Personal registrado.');
   };
 
   const handleBorrarPersonal = async (id) => {
-    if (confirm('¿Desea eliminar este registro de personal?')) {
+    if (confirm('¿Desea eliminar este registro?')) {
       setPersonal(personal.filter(p => p.id !== id));
       try {
         await supabase.from('personal').delete().eq('id', id);
@@ -288,7 +282,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f1f5f9', color: '#1e293b', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif' }}>
-
+      
       <style>{`
         @keyframes pulseAlert {
           0% { opacity: 1; transform: scale(1); }
@@ -306,13 +300,18 @@ export default function App() {
           <div style={{ backgroundColor: '#f59e0b', color: '#0f172a', padding: '6px 10px', borderRadius: '6px', fontWeight: '900', fontSize: '16px' }}>CS</div>
           <div>
             <h1 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>HOTEL CÓNDOR SUITES</h1>
-            <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0 }}>Control en Vivo con Sincronización Automática BCV y Supabase Storage</p>
+            <p style={{ fontSize: '11px', color: '#94a3b8', margin: 0 }}>Control en Vivo con Sincronización Automática Supabase</p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', background: '#1e293b', padding: '6px 14px', borderRadius: '8px', border: '1px solid #334155', gap: '8px' }}>
-          <span style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 'bold' }}>💵 TASA BCV OFICIAL:</span>
-          <span style={{ fontSize: '14px', color: '#fff', fontWeight: 'bold' }}>Bs. {tasaBCV.toFixed(2)}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', background: '#1e293b', padding: '6px 14px', borderRadius: '8px', border: '1px solid #334155', gap: '8px' }}>
+            <span style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 'bold' }}>💵 TASA BCV:</span>
+            <span style={{ fontSize: '14px', color: '#fff', fontWeight: 'bold' }}>Bs. {tasaBCV.toFixed(2)}</span>
+          </div>
+          <button onClick={fetchHabitaciones} style={{ background: '#334155', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+            🔄 Actualizar PC
+          </button>
         </div>
 
         <div style={{ display: 'flex', backgroundColor: '#1e293b', padding: '4px', borderRadius: '8px', gap: '4px' }}>
@@ -323,8 +322,8 @@ export default function App() {
             { id: 'amadelhaves', label: 'Ama de Llaves' },
             { id: 'admin', label: 'Administración' }
           ].map(m => (
-            <button
-              key={m.id}
+            <button 
+              key={m.id} 
               onClick={() => setRole(m.id)}
               style={{
                 padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer', border: 'none',
@@ -413,7 +412,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL DE FACTURACIÓN EN RECEPCIÓN (CON PREVISUALIZACIÓN DE EVIDENCIA) */}
+        {/* MODAL DE FACTURACIÓN */}
         {roomToBill && roomToBill.reporte && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
             <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', maxWidth: '520px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -422,23 +421,15 @@ export default function App() {
                 Asistente: <strong>{roomToBill.reporte.asistente}</strong>
               </p>
 
-              {/* VISUALIZADOR DE EVIDENCIA */}
-              {roomToBill.reporte.evidencia ? (
+              {roomToBill.reporte.evidencia && (
                 <div style={{ background: '#f1f5f9', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '6px' }}>
-                    📸 EVIDENCIA MULTIMEDIA GUARDADA EN SUPABASE:
-                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', display: 'block', marginBottom: '6px' }}>📸 EVIDENCIA MULTIMEDIA:</span>
                   {roomToBill.reporte.evidencia.tipo === 'video' ? (
-                    <video src={roomToBill.reporte.evidencia.url} controls style={{ width: '100%', maxHeight: '200px', borderRadius: '6px' }} />
+                    <video src={roomToBill.reporte.evidencia.url} controls style={{ width: '100%', maxHeight: '180px', borderRadius: '6px' }} />
                   ) : (
-                    <img src={roomToBill.reporte.evidencia.url} alt="Evidencia" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '6px' }} />
+                    <img src={roomToBill.reporte.evidencia.url} alt="Evidencia" style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: '6px' }} />
                   )}
-                  <a href={roomToBill.reporte.evidencia.url} target="_blank" rel="noreferrer" style={{ fontSize: '11px', color: '#2563eb', fontWeight: 'bold', display: 'inline-block', marginTop: '6px' }}>
-                    🔗 Abrir original en alta resolución
-                  </a>
                 </div>
-              ) : (
-                <p style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic', margin: '0 0 12px 0' }}>Sin fotos/videos adjuntos.</p>
               )}
 
               <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
@@ -527,29 +518,16 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* ADJUNTAR ARCHIVO QUE SE GUARDA EN SUPABASE STORAGE */}
                 <div style={{ background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', textTransform: 'uppercase' }}>
-                    📸 Adjuntar Foto o Video de Evidencia (Daños / Estado)
+                    📸 Adjuntar Foto o Video de Evidencia
                   </label>
-                  <input 
-                    type="file" 
-                    accept="image/*,video/*"
-                    onChange={(e) => setArchivoEvidencia(e.target.files[0])}
-                    style={{ width: '100%', fontSize: '12px', color: '#475569' }}
-                  />
-                  {archivoEvidencia && (
-                    <p style={{ fontSize: '11px', color: '#059669', fontWeight: 'bold', margin: '4px 0 0 0' }}>
-                      Archivo listo para subir a Supabase: {archivoEvidencia.name}
-                    </p>
-                  )}
+                  <input type="file" accept="image/*,video/*" onChange={(e) => setArchivoEvidencia(e.target.files[0])} style={{ width: '100%', fontSize: '12px', color: '#475569' }} />
+                  {archivoEvidencia && <p style={{ fontSize: '11px', color: '#059669', fontWeight: 'bold', margin: '4px 0 0 0' }}>Archivo: {archivoEvidencia.name}</p>}
                 </div>
 
-                <button 
-                  onClick={handleEjecutarCheckout} 
-                  disabled={subiendoArchivo}
-                  style={{ width: '100%', background: subiendoArchivo ? '#64748b' : '#0f172a', color: '#fff', padding: '14px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
-                  {subiendoArchivo ? 'Subiendo Evidencia a Supabase...' : '🚨 Ejecutar Check-Out y Activar Alerta en Recepción'}
+                <button onClick={handleEjecutarCheckout} disabled={subiendoArchivo} style={{ width: '100%', background: subiendoArchivo ? '#64748b' : '#0f172a', color: '#fff', padding: '14px', borderRadius: '8px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}>
+                  {subiendoArchivo ? 'Subiendo Evidencia...' : '🚨 Ejecutar Check-Out y Activar Alerta en Recepción'}
                 </button>
               </div>
             )}
@@ -570,12 +548,7 @@ export default function App() {
                       <span style={{ fontSize: '11px', background: '#0f172a', color: '#fff', padding: '2px 6px', borderRadius: '4px' }}>Piso {h.floor}</span>
                     </div>
                     <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0' }}>Estado: <strong>{h.status}</strong></p>
-                    <button 
-                      onClick={() => {
-                        supabase.from('habitaciones').upsert({ id: h.id, status: 'Disponible' });
-                        fetchHabitaciones();
-                      }}
-                      style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', width: '100%', marginTop: '8px' }}>
+                    <button onClick={() => { supabase.from('habitaciones').upsert({ id: h.id, status: 'Disponible' }); fetchHabitaciones(); }} style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', width: '100%', marginTop: '8px' }}>
                       Aprobar Auditoría / Marcar Disponible
                     </button>
                   </div>
@@ -602,9 +575,6 @@ export default function App() {
                     </button>
                   </div>
                 ))}
-                {habitaciones.filter(h => (h.status || '').toLowerCase() === 'sucia').length === 0 && (
-                  <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic' }}>No hay habitaciones sucias en este momento.</p>
-                )}
               </div>
             </div>
           </div>
@@ -615,21 +585,19 @@ export default function App() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <h2 style={{ fontSize: '22px', fontWeight: 'bold', margin: 0 }}>Panel Administrativo e Inventario General</h2>
 
-            {/* SECCIÓN INVENTARIO */}
             <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px' }}>📦 Gestión y Registro de Inventario (Minibar, Lencería, Amenidades)</h3>
-              
+              <h3 style={{ margin: 0, fontSize: '16px' }}>📦 Gestión de Inventario</h3>
               <form onSubmit={handleAgregarInventario} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <input placeholder="ID único (ej: agua)" value={nuevoItem.id} onChange={e => setNuevoItem({...nuevoItem, id: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-                <input placeholder="Nombre del producto..." value={nuevoItem.name} onChange={e => setNuevoItem({...nuevoItem, name: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', flex: 1 }} />
+                <input placeholder="ID único" value={nuevoItem.id} onChange={e => setNuevoItem({...nuevoItem, id: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                <input placeholder="Nombre" value={nuevoItem.name} onChange={e => setNuevoItem({...nuevoItem, name: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', flex: 1 }} />
                 <select value={nuevoItem.category} onChange={e => setNuevoItem({...nuevoItem, category: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
                   <option value="minibar">Minibar</option>
                   <option value="lenceria">Lencería</option>
                   <option value="amenidad">Amenidad</option>
                 </select>
-                <input type="number" step="0.01" placeholder="Precio ($ USD)" value={nuevoItem.price_usd || ''} onChange={e => setNuevoItem({...nuevoItem, price_usd: parseFloat(e.target.value) || 0})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', width: '110px' }} />
-                <input type="number" placeholder="Stock" value={nuevoItem.stock || ''} onChange={e => setNuevoItem({...nuevoItem, stock: parseInt(e.target.value) || 0})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', width: '90px' }} />
-                <button type="submit" style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>+ Guardar Producto</button>
+                <input type="number" step="0.01" placeholder="Precio ($)" value={nuevoItem.price_usd || ''} onChange={e => setNuevoItem({...nuevoItem, price_usd: parseFloat(e.target.value) || 0})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', width: '100px' }} />
+                <input type="number" placeholder="Stock" value={nuevoItem.stock || ''} onChange={e => setNuevoItem({...nuevoItem, stock: parseInt(e.target.value) || 0})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', width: '80px' }} />
+                <button type="submit" style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>+ Guardar</button>
               </form>
 
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
@@ -638,7 +606,7 @@ export default function App() {
                     <th style={{ padding: '8px' }}>Producto</th>
                     <th style={{ padding: '8px' }}>Categoría</th>
                     <th style={{ padding: '8px' }}>Precio ($ USD)</th>
-                    <th style={{ padding: '8px' }}>Precio (Bs. BCV {tasaBCV.toFixed(2)})</th>
+                    <th style={{ padding: '8px' }}>Precio (Bs.)</th>
                     <th style={{ padding: '8px' }}>Stock</th>
                   </tr>
                 </thead>
@@ -656,18 +624,16 @@ export default function App() {
               </table>
             </div>
 
-            {/* SECCIÓN PERSONAL */}
             <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px' }}>👥 Registro de Personal (Asistentes y Supervisoras)</h3>
-              
+              <h3 style={{ margin: 0, fontSize: '16px' }}>👥 Registro de Personal</h3>
               <form onSubmit={handleAgregarPersonal} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <input placeholder="Nombre completo..." value={nuevoPersonal.nombre} onChange={e => setNuevoPersonal({...nuevoPersonal, nombre: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', flex: 1 }} />
+                <input placeholder="Nombre completo" value={nuevoPersonal.nombre} onChange={e => setNuevoPersonal({...nuevoPersonal, nombre: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', flex: 1 }} />
                 <select value={nuevoPersonal.rol} onChange={e => setNuevoPersonal({...nuevoPersonal, rol: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
                   <option value="Asistente">Asistente</option>
                   <option value="Supervisora">Supervisora</option>
                 </select>
-                <input placeholder="Turno / Pisos asignados..." value={nuevoPersonal.turno} onChange={e => setNuevoPersonal({...nuevoPersonal, turno: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', flex: 1 }} />
-                <button type="submit" style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>+ Registrar Personal</button>
+                <input placeholder="Turno" value={nuevoPersonal.turno} onChange={e => setNuevoPersonal({...nuevoPersonal, turno: e.target.value})} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', flex: 1 }} />
+                <button type="submit" style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>+ Registrar</button>
               </form>
 
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
@@ -675,69 +641,21 @@ export default function App() {
                   <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
                     <th style={{ padding: '8px' }}>Nombre</th>
                     <th style={{ padding: '8px' }}>Rol</th>
-                    <th style={{ padding: '8px' }}>Turno / Asignación</th>
-                    <th style={{ padding: '8px', textAlign: 'center' }}>Acciones</th>
+                    <th style={{ padding: '8px' }}>Turno</th>
+                    <th style={{ padding: '8px', textAlign: 'center' }}>Acción</th>
                   </tr>
                 </thead>
                 <tbody>
                   {personal.map(p => (
                     <tr key={p.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                       <td style={{ padding: '8px', fontWeight: 'bold' }}>{p.nombre}</td>
-                      <td style={{ padding: '8px' }}>
-                        <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', background: p.rol === 'Supervisora' ? '#fef3c7' : '#e2e8f0', color: p.rol === 'Supervisora' ? '#92400e' : '#334155', fontWeight: 'bold' }}>
-                          {p.rol}
-                        </span>
-                      </td>
+                      <td style={{ padding: '8px' }}>{p.rol}</td>
                       <td style={{ padding: '8px', color: '#64748b' }}>{p.turno}</td>
                       <td style={{ padding: '8px', textAlign: 'center' }}>
-                        <button onClick={() => handleBorrarPersonal(p.id)} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', padding: '4px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>
-                          Eliminar
-                        </button>
+                        <button onClick={() => handleBorrarPersonal(p.id)} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', padding: '4px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>Eliminar</button>
                       </td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* SECCIÓN REPORTES */}
-            <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, fontSize: '16px' }}>📊 Reportes de Consumo y Reposición</h3>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {['diario', 'semanal', 'mensual'].map(f => (
-                    <button key={f} onClick={() => setFiltroReporte(f)} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', textTransform: 'capitalize', fontWeight: 'bold', background: filtroReporte === f ? '#0f172a' : '#f8fafc', color: filtroReporte === f ? '#fff' : '#334155', cursor: 'pointer' }}>
-                      {f}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
-                    <th style={{ padding: '8px' }}>Fecha</th>
-                    <th style={{ padding: '8px' }}>Habitación</th>
-                    <th style={{ padding: '8px' }}>Asistente</th>
-                    <th style={{ padding: '8px' }}>Supervisora</th>
-                    <th style={{ padding: '8px' }}>Total ($ USD)</th>
-                    <th style={{ padding: '8px' }}>Total (Bs.)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportesHistorial.map(rep => (
-                    <tr key={rep.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '8px' }}>{new Date(rep.fecha).toLocaleString()}</td>
-                      <td style={{ padding: '8px', fontWeight: 'bold' }}>Hab. {rep.habitacion}</td>
-                      <td style={{ padding: '8px' }}>{rep.asistente}</td>
-                      <td style={{ padding: '8px' }}>{rep.supervisora}</td>
-                      <td style={{ padding: '8px', fontWeight: 'bold', color: '#059669' }}>${parseFloat(rep.total_usd).toFixed(2)} USD</td>
-                      <td style={{ padding: '8px', fontWeight: 'bold' }}>Bs. {parseFloat(rep.total_bs).toFixed(2)}</td>
-                    </tr>
-                  ))}
-                  {reportesHistorial.length === 0 && (
-                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '16px', color: '#64748b' }}>No hay consumos registrados aún.</td></tr>
-                  )}
                 </tbody>
               </table>
             </div>
