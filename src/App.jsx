@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 
-// Safe extraction of Supabase environment variables without triggering esbuild import.meta issues
+// Extracción segura de variables de entorno de Supabase
 const getEnvVar = (key) => {
   try {
     if (typeof process !== 'undefined' && process.env && process.env[key]) {
       return process.env[key];
     }
   } catch (e) {
-    // Ignore error
+    // Ignorar error
   }
   return '';
 };
@@ -15,7 +15,6 @@ const getEnvVar = (key) => {
 const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
 const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
 
-// Helper to safely get or create Supabase client using CDN global or mock fallback
 const getSupabaseClient = () => {
   if (typeof window !== 'undefined' && window.supabase && supabaseUrl && supabaseAnonKey) {
     return window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
@@ -23,7 +22,6 @@ const getSupabaseClient = () => {
     });
   }
   
-  // Safe mock client if CDN or env keys are missing to prevent runtime exceptions
   const createMockQuery = () => {
     const query = {
       select: () => query,
@@ -32,6 +30,7 @@ const getSupabaseClient = () => {
       upsert: () => Promise.resolve({ data: null, error: null }),
       insert: () => Promise.resolve({ data: null, error: null }),
       update: () => query,
+      delete: () => query,
       then: (onfulfilled) => Promise.resolve({ data: [], error: null }).then(onfulfilled),
       catch: (onrejected) => Promise.resolve({ data: [], error: null }).catch(onrejected)
     };
@@ -40,6 +39,8 @@ const getSupabaseClient = () => {
 
   return {
     from: () => createMockQuery(),
+    channel: () => ({ on: () => ({ on: () => ({ subscribe: () => {} }) }), unsubscribe: () => {} }),
+    removeChannel: () => {},
     storage: {
       from: () => ({
         upload: () => Promise.resolve({ error: null }),
@@ -92,18 +93,24 @@ export default function App() {
     inicializarApp();
     sincronizarTasaBCVOnline();
 
-    const interval = setInterval(() => {
-      fetchHabitacionesSilencioso();
-    }, 3000);
+    // Suscripción Realtime para sincronizar automáticamente cambios de otras sesiones o paneles
+    const subscription = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventario' }, () => fetchInventario())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'personal' }, () => fetchPersonal())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'habitaciones' }, () => fetchHabitacionesSilencioso())
+      .subscribe();
 
-    return () => clearInterval(interval);
+    return () => {
+      supabase.removeChannel(subscription);
+    };
   }, []);
 
   const inicializarApp = async () => {
     await fetchHabitaciones();
-    fetchInventario();
-    fetchPersonal();
-    fetchReportes();
+    await fetchInventario();
+    await fetchPersonal();
+    await fetchReportes();
   };
 
   const sincronizarTasaBCVOnline = async () => {
@@ -117,14 +124,13 @@ export default function App() {
         const response = await fetch(url, { method: 'GET' });
         if (!response.ok) continue;
         const data = await response.json();
-        
         const price = data.promedio || data.price;
         if (price && !isNaN(price)) {
           setTasaBCV(parseFloat(price));
           return;
         }
       } catch (error) {
-        // Continue fallback
+        // Continuar con respaldos
       }
     }
   };
@@ -156,7 +162,8 @@ export default function App() {
       } else {
         setHabitaciones(data);
       }
-    } catch {
+    } catch (e) {
+      console.error('Error cargando habitaciones:', e);
       setHabitaciones(getDefaultRoomsArray());
     }
   };
@@ -173,15 +180,23 @@ export default function App() {
   const fetchInventario = async () => {
     try {
       const { data, error } = await supabase.from('inventario').select('*');
-      if (!error && data && data.length > 0) setInventario(data);
-    } catch (e) { console.error(e); }
+      if (!error && data && data.length > 0) {
+        setInventario(data);
+      }
+    } catch (e) { 
+      console.error('Error al obtener inventario de Supabase:', e); 
+    }
   };
 
   const fetchPersonal = async () => {
     try {
       const { data, error } = await supabase.from('personal').select('*');
-      if (!error && data && data.length > 0) setPersonal(data);
-    } catch (e) { console.error(e); }
+      if (!error && data && data.length > 0) {
+        setPersonal(data);
+      }
+    } catch (e) { 
+      console.error('Error al obtener personal de Supabase:', e); 
+    }
   };
 
   const fetchReportes = async () => {
@@ -205,40 +220,61 @@ export default function App() {
     try {
       const { data, error } = await supabase.from('personal').insert([nuevoObj]).select();
       if (error) throw error;
+      
       if (data && data.length > 0) {
-        setPersonal(prev => [...prev, data[0]]);
+        setPersonal(prev => [...prev.filter(p => p.id !== data[0].id), data[0]]);
       } else {
-        setPersonal(prev => [...prev, { ...nuevoObj, id: Date.now() }]);
+        await fetchPersonal();
       }
+      
       setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
-      alert(`✅ Personal (${nuevoObj.nombre}) agregado exitosamente.`);
+      alert(`✅ Personal (${nuevoObj.nombre}) agregado y sincronizado exitosamente.`);
     } catch (err) {
-      console.error('Error al guardar personal:', err);
-      setPersonal(prev => [...prev, { ...nuevoObj, id: Date.now() }]);
-      setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
-      alert('✅ Personal guardado localmente.');
+      console.error('Error al guardar personal en Supabase:', err);
+      alert('❌ Error al sincronizar con Supabase: ' + (err.message || 'Verifique las políticas RLS o conexión.'));
     }
   };
 
   const handleEliminarPersonal = async (id) => {
     if (!confirm('¿Desea eliminar a este integrante del personal?')) return;
     try {
-      await supabase.from('personal').delete().eq('id', id);
+      const { error } = await supabase.from('personal').delete().eq('id', id);
+      if (error) throw error;
       setPersonal(prev => prev.filter(p => p.id !== id));
       alert('🗑️ Personal eliminado.');
     } catch (err) {
-      setPersonal(prev => prev.filter(p => p.id !== id));
+      console.error('Error al eliminar personal:', err);
+      alert('❌ No se pudo eliminar de Supabase.');
+    }
+  };
+
+  const handleGuardarInventario = async (e) => {
+    e.preventDefault();
+    if (!nuevoItem.name || !nuevoItem.id) return alert('Complete los datos del producto');
+    
+    try {
+      const { data, error } = await supabase.from('inventario').upsert([nuevoItem]).select();
+      if (error) throw error;
+
+      await fetchInventario();
+      setNuevoItem({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
+      alert('✅ Producto guardado y sincronizado con Supabase.');
+    } catch (err) {
+      console.error('Error al guardar inventario:', err);
+      alert('❌ Error al guardar en Supabase: ' + (err.message || 'Revise la conexión.'));
     }
   };
 
   const handleEliminarInventario = async (id) => {
     if (!confirm('¿Desea eliminar este producto del inventario?')) return;
     try {
-      await supabase.from('inventario').delete().eq('id', id);
+      const { error } = await supabase.from('inventario').delete().eq('id', id);
+      if (error) throw error;
       setInventario(prev => prev.filter(i => i.id !== id));
       alert('🗑️ Producto eliminado.');
     } catch (err) {
-      setInventario(prev => prev.filter(i => i.id !== id));
+      console.error('Error al eliminar producto:', err);
+      alert('❌ No se pudo eliminar de Supabase.');
     }
   };
 
@@ -272,20 +308,18 @@ export default function App() {
       });
 
       if (uploadError) {
-        console.error('Error al subir archivo a Supabase Storage:', uploadError);
-        alert(`⚠️ No se pudo subir la foto/video (${uploadError.message}). El check-out continuará sin evidencia multimedia.`);
+        console.error('Error al subir archivo a Storage:', uploadError);
         return null;
       }
 
       const { data } = supabase.storage.from('evidencias').getPublicUrl(filePath);
-      
       return {
         url: data?.publicUrl || '',
         tipo: file.type.startsWith('video') ? 'video' : 'imagen',
         nombre: file.name
       };
     } catch (err) {
-      console.error('Excepción durante la carga de evidencia:', err);
+      console.error('Excepción al subir archivo:', err);
       return null;
     } finally {
       setSubiendoArchivo(false);
@@ -432,7 +466,7 @@ export default function App() {
             <span>💵 TASA BCV OFICIAL:</span>
             <span style={{ color: '#fff' }}>Bs. {tasaBCV.toFixed(2)}</span>
           </div>
-          <button className="btn-update" onClick={() => { fetchHabitaciones(); alert('🔄 Datos actualizados.'); }}>
+          <button className="btn-update" onClick={() => { inicializarApp(); alert('🔄 Datos sincronizados.'); }}>
             🔄 Actualizar PC
           </button>
         </div>
@@ -588,7 +622,7 @@ export default function App() {
                 <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Asistente Encargada (Diurno)</label>
                 <select value={asistenteSeleccionada} onChange={(e) => { setAsistenteSeleccionada(e.target.value); if(e.target.value) setEquipoNocturnoSeleccionado(''); }}>
                   <option value="">Seleccionar Asistente...</option>
-                  {personal.filter(p => p.rol === 'Asistente').map(a => <option key={a.id} value={a.nombre}>{a.nombre} ({a.turno})</option>)}
+                  {personal.filter(p => (p.rol || '').toLowerCase().includes('asistente')).map(a => <option key={a.id} value={a.nombre}>{a.nombre} ({a.turno})</option>)}
                 </select>
               </div>
             </div>
@@ -598,7 +632,7 @@ export default function App() {
                 <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>🌙 Equipo Nocturno (7 PM - 7 AM)</label>
                 <select value={equipoNocturnoSeleccionado} onChange={(e) => { setEquipoNocturnoSeleccionado(e.target.value); if(e.target.value) setAsistenteSeleccionada(''); }}>
                   <option value="">Seleccionar Personal Nocturno...</option>
-                  {personal.filter(p => p.rol === 'Equipo Nocturno').map(a => <option key={a.id} value={a.nombre}>{a.nombre} ({a.turno})</option>)}
+                  {personal.filter(p => (p.rol || '').toLowerCase().includes('nocturno')).map(a => <option key={a.id} value={a.nombre}>{a.nombre} ({a.turno})</option>)}
                 </select>
               </div>
 
@@ -606,7 +640,7 @@ export default function App() {
                 <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Supervisora de Turno</label>
                 <select value={supervisoraSeleccionada} onChange={(e) => setSupervisoraSeleccionada(e.target.value)}>
                   <option value="">Seleccionar Supervisora (Opcional)...</option>
-                  {personal.filter(p => p.rol === 'Supervisora').map(a => <option key={a.id} value={a.nombre}>{a.nombre}</option>)}
+                  {personal.filter(p => (p.rol || '').toLowerCase().includes('supervisora')).map(a => <option key={a.id} value={a.nombre}>{a.nombre}</option>)}
                 </select>
               </div>
             </div>
@@ -626,7 +660,7 @@ export default function App() {
                     <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px' }}>
                       <div>
                         <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
-                        <div style={{ fontSize: '11px', color: '#64748b' }}>${item.price_usd.toFixed(2)} USD</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>${(item.price_usd || 0).toFixed(2)} USD</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
@@ -661,21 +695,7 @@ export default function App() {
             {/* GESTIÓN DE INVENTARIO */}
             <div className="card-box">
               <h3 style={{ margin: 0, fontSize: '18px' }}>📦 Gestión de Inventario</h3>
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                if (!nuevoItem.name || !nuevoItem.id) return alert('Complete los datos del producto');
-                
-                try {
-                  await supabase.from('inventario').upsert(nuevoItem);
-                  setInventario(prev => [...prev.filter(i => i.id !== nuevoItem.id), nuevoItem]);
-                  setNuevoItem({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
-                  alert('✅ Producto guardado en inventario.');
-                } catch (err) {
-                  setInventario(prev => [...prev.filter(i => i.id !== nuevoItem.id), nuevoItem]);
-                  setNuevoItem({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
-                  alert('✅ Producto guardado.');
-                }
-              }} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <form onSubmit={handleGuardarInventario} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <input placeholder="ID (ej: cerveza)" value={nuevoItem.id} onChange={e => setNuevoItem({...nuevoItem, id: e.target.value})} style={{ width: '120px' }} />
                 <input placeholder="Nombre del Producto" value={nuevoItem.name} onChange={e => setNuevoItem({...nuevoItem, name: e.target.value})} style={{ flex: 1, minWidth: '180px' }} />
                 <select value={nuevoItem.category} onChange={e => setNuevoItem({...nuevoItem, category: e.target.value})} style={{ width: '130px' }}>
@@ -706,7 +726,7 @@ export default function App() {
                         <td><code>{item.id}</code></td>
                         <td><strong>{item.name}</strong></td>
                         <td style={{ textTransform: 'capitalize' }}>{item.category}</td>
-                        <td>${item.price_usd.toFixed(2)}</td>
+                        <td>${(item.price_usd || 0).toFixed(2)}</td>
                         <td>{item.stock} unidades</td>
                         <td style={{ textAlign: 'center' }}>
                           <button onClick={() => handleEliminarInventario(item.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
@@ -760,7 +780,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {personal.filter(p => p.rol === 'Asistente').map(p => (
+                    {personal.filter(p => (p.rol || '').toLowerCase().includes('asistente')).map(p => (
                       <tr key={p.id}>
                         <td><strong>{p.nombre}</strong></td>
                         <td><span style={{ background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{p.rol}</span></td>
@@ -789,7 +809,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {personal.filter(p => p.rol === 'Supervisora').map(p => (
+                    {personal.filter(p => (p.rol || '').toLowerCase().includes('supervisora')).map(p => (
                       <tr key={p.id}>
                         <td><strong>{p.nombre}</strong></td>
                         <td><span style={{ background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{p.rol}</span></td>
@@ -818,7 +838,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {personal.filter(p => p.rol === 'Equipo Nocturno').map(p => (
+                    {personal.filter(p => (p.rol || '').toLowerCase().includes('nocturno')).map(p => (
                       <tr key={p.id}>
                         <td><strong>{p.nombre}</strong></td>
                         <td><span style={{ background: '#f3e8ff', color: '#6b21a8', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{p.rol}</span></td>
