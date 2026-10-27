@@ -89,6 +89,11 @@ export default function App() {
   const [amaEstadoNuevo, setAmaEstadoNuevo] = useState('Limpia / Disponible');
   const [amaNotas, setAmaNotas] = useState('');
 
+  // Modal para cambio rápido de estado desde Recepción (Ocupar, Reservar, Disponible)
+  const [showChangeStatusModal, setShowChangeStatusModal] = useState(false);
+  const [roomToChangeStatus, setRoomToChangeStatus] = useState(null);
+  const [nuevoEstatusRecepcion, setNuevoEstatusRecepcion] = useState('Ocupada');
+
   // Estado para la edición de producto
   const [editingProduct, setEditingProduct] = useState(null);
 
@@ -362,12 +367,52 @@ export default function App() {
     alert(`✅ Estado de Habitación ${safeVal(selectedAmaRoom.number)} actualizado por Ama de Llaves a: ${newStatus}`);
   };
 
+  // Función para cambiar estatus de habitación en Recepción (Ocupada, Reservada, Disponible, etc.)
+  const handleCambiarEstatusRecepcion = async (e) => {
+    e.preventDefault();
+    if (!roomToChangeStatus) return;
+
+    const habActualizadas = habitaciones.map(room => {
+      if (String(room.id) === String(roomToChangeStatus.id)) {
+        return {
+          ...room,
+          status: nuevoEstatusRecepcion
+        };
+      }
+      return room;
+    });
+
+    setHabitaciones(habActualizadas);
+    localStorage.setItem('condor_habitaciones', JSON.stringify(habActualizadas));
+
+    try {
+      const { error } = await supabase.from('habitaciones').upsert({
+        id: String(roomToChangeStatus.id),
+        number: safeVal(roomToChangeStatus.number),
+        floor: roomToChangeStatus.floor,
+        type: safeVal(roomToChangeStatus.type),
+        status: nuevoEstatusRecepcion,
+        amount: roomToChangeStatus.amount || 0,
+        reporte: roomToChangeStatus.reporte || null
+      });
+
+      if (error) {
+        console.error('Error enviando estatus a Supabase:', error);
+      }
+    } catch (err) {}
+
+    setShowChangeStatusModal(false);
+    setRoomToChangeStatus(null);
+    alert(`✅ Habitación ${safeVal(roomToChangeStatus.number)} marcada como: ${nuevoEstatusRecepcion.toUpperCase()}`);
+  };
+
   const handleAgregarPersonal = async (e) => {
     e.preventDefault();
     if (!nuevoPersonal.nombre || !nuevoPersonal.turno) {
       return alert('⚠️ Ingrese el nombre y el turno del personal.');
     }
     
+    // Asignar ID entero
     const numericId = Math.floor(Date.now() % 2147483647);
     
     const nuevoObj = {
@@ -382,9 +427,9 @@ export default function App() {
     try {
       const { error } = await supabase.from('personal').insert([nuevoObj]);
       if (error) {
-        alert(`⚠️ Supabase: ${error.message || 'Error guardando en base de datos'}`);
+        alert(`⚠️ Error al guardar en Supabase: ${error.message}`);
       } else {
-        alert(`✅ Personal (${nuevoObj.nombre}) guardado con éxito.`);
+        alert(`✅ Personal (${nuevoObj.nombre}) guardado con éxito en Supabase.`);
       }
     } catch (err) {}
 
@@ -392,228 +437,218 @@ export default function App() {
   };
 
   const handleEliminarPersonal = async (id) => {
-    if (!window.confirm('¿Desea eliminar a este integrante del personal?')) return;
     setPersonal(prev => prev.filter(p => p.id !== id));
     try {
       await supabase.from('personal').delete().eq('id', id);
-    } catch (err) {}
+    } catch (e) {}
   };
 
   const handleEliminarInventario = async (id) => {
-    if (!window.confirm('¿Desea eliminar este producto del inventario?')) return;
     setInventario(prev => prev.filter(i => i.id !== id));
     try {
       await supabase.from('inventario').delete().eq('id', id);
-    } catch (err) {}
+    } catch (e) {}
   };
 
   const handleGuardarEdicionProducto = async (e) => {
     e.preventDefault();
     if (!editingProduct) return;
 
-    const updated = inventario.map(item => item.id === editingProduct.id ? editingProduct : item);
-    setInventario(updated);
+    setInventario(prev => prev.map(item => item.id === editingProduct.id ? editingProduct : item));
 
     try {
-      const { error } = await supabase.from('inventario').upsert(editingProduct);
-      if (error) {
-        alert(`⚠️ Supabase Error: ${error.message}`);
-      } else {
-        alert(`✅ Producto "${editingProduct.name}" actualizado correctamente (Precio: $${editingProduct.price_usd}).`);
-      }
-    } catch (err) {}
+      await supabase.from('inventario').upsert(editingProduct);
+    } catch (e) {}
 
     setEditingProduct(null);
+    alert('✅ Producto actualizado correctamente.');
   };
 
-  const handleQtyChange = (id, delta) => {
-    setConsumosSeleccionados(prev => ({
-      ...prev,
-      [id]: Math.max(0, (prev[id] || 0) + delta)
-    }));
-  };
-
-  const getStatusClass = (status) => {
-    const s = safeVal(status).toLowerCase();
-    if (s.includes('por facturar')) return 'badge-danger';
-    if (s.includes('ocupada')) return 'badge-ocupada';
-    if (s.includes('reservada')) return 'badge-reservada';
-    if (s.includes('sucia')) return 'badge-sucia';
-    return 'badge-disponible';
-  };
-
-  const subirEvidenciaASupabase = async (file) => {
-    if (!file) return null;
-    try {
-      setSubiendoArchivo(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `evidencia_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
-      const filePath = `checkout_evidencias/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage.from('evidencias').upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true
-      });
-
-      if (uploadError) {
-        return { url: '', tipo: file.type.startsWith('video') ? 'video' : 'imagen', nombre: file.name };
-      }
-
-      const { data } = supabase.storage.from('evidencias').getPublicUrl(filePath);
-      
-      return {
-        url: data?.publicUrl || '',
-        tipo: file.type.startsWith('video') ? 'video' : 'imagen',
-        nombre: file.name
-      };
-    } catch (err) {
-      return null;
-    } finally {
-      setSubiendoArchivo(false);
-    }
+  const handleQtyChange = (itemId, change) => {
+    setConsumosSeleccionados(prev => {
+      const actual = prev[itemId] || 0;
+      const nuevo = Math.max(0, actual + change);
+      return { ...prev, [itemId]: nuevo };
+    });
   };
 
   const handleEjecutarCheckout = async () => {
-    if (!selectedRoom) {
-      alert('⚠️ Por favor seleccione una habitación.');
-      return;
-    }
-    if (!asistenteSeleccionada && !equipoNocturnoSeleccionado) {
-      alert('⚠️ Por favor seleccione la Asistente Encargada o el integrante del Equipo Nocturno.');
-      return;
-    }
+    if (!selectedRoom) return alert('⚠️ Seleccione una habitación.');
+    if (!asistenteSeleccionada) return alert('⚠️ Seleccione la asistente encargada.');
 
-    try {
-      let totalUSD = 0;
-      inventario.forEach(item => {
-        const qty = Number(consumosSeleccionados[item.id]) || 0;
-        totalUSD += qty * (Number(item.price_usd) || 0);
-      });
+    setSubiendoArchivo(true);
+    let evidenciaData = null;
 
-      const totalBs = totalUSD * tasaBCV;
-      let datosEvidencia = null;
-
-      if (archivoEvidencia) {
-        datosEvidencia = await subirEvidenciaASupabase(archivoEvidencia);
-      }
-
-      const responsable = equipoNocturnoSeleccionado ? `[Nocturno] ${equipoNocturnoSeleccionado}` : asistenteSeleccionada;
-
-      const reporteCompleto = {
-        asistente: safeVal(responsable, 'N/A'),
-        supervisora: safeVal(supervisoraSeleccionada, 'N/A'),
-        fecha: new Date().toISOString(),
-        consumos: { ...consumosSeleccionados },
-        totalUSD,
-        totalBs,
-        tasaBCV,
-        evidencia: datosEvidencia
-      };
-
-      const newStatus = 'Sucia / Por Facturar';
-
-      const habActualizadas = habitaciones.map(room => {
-        if (String(room.id) === String(selectedRoom.id)) {
-          return { ...room, status: newStatus, amount: totalUSD, reporte: reporteCompleto };
-        }
-        return room;
-      });
-
-      setHabitaciones(habActualizadas);
-      localStorage.setItem('condor_habitaciones', JSON.stringify(habActualizadas));
-
+    if (archivoEvidencia) {
       try {
-        await supabase.from('habitaciones').upsert({
-          id: selectedRoom.id,
-          number: safeVal(selectedRoom.number),
-          floor: selectedRoom.floor,
-          type: safeVal(selectedRoom.type),
-          status: newStatus,
-          amount: totalUSD,
-          reporte: reporteCompleto
-        });
+        const fileExt = archivoEvidencia.name.split('.').pop();
+        const fileName = `${Date.now()}_${selectedRoom.number}.${fileExt}`;
+        const filePath = `evidencias/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('hotel_evidencias')
+          .upload(filePath, archivoEvidencia);
+
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from('hotel_evidencias')
+            .getPublicUrl(filePath);
+
+          evidenciaData = {
+            url: urlData.publicUrl,
+            tipo: archivoEvidencia.type.startsWith('video') ? 'video' : 'imagen'
+          };
+        }
       } catch (e) {}
-
-      setConsumosSeleccionados({});
-      setArchivoEvidencia(null);
-      setSelectedRoom(null);
-      alert(`✅ Check-Out registrado en Habitación ${safeVal(selectedRoom.number)}. Notificación enviada en tiempo real.`);
-    } catch (err) {
-      alert('⚠️ Ocurrió un error al procesar el check-out.');
     }
-  };
 
-  const handleConfirmarFacturacion = async (roomId) => {
-    const habActualizadas = habitaciones.map(room => {
-      if (String(room.id) === String(roomId)) {
-        return { ...room, status: 'Sucia', amount: 0 };
+    let totalUSD = 0;
+    Object.entries(consumosSeleccionados).forEach(([id, qty]) => {
+      if (qty > 0) {
+        const item = inventario.find(i => String(i.id) === String(id));
+        if (item) totalUSD += (Number(item.price_usd) || 0) * qty;
       }
-      return room;
+    });
+
+    const totalBs = totalUSD * tasaBCV;
+    const nuevoEstatus = 'Sucia (Por Facturar)';
+
+    const reporteObj = {
+      asistente: asistenteSeleccionada,
+      consumos: consumosSeleccionados,
+      totalUSD,
+      totalBs,
+      evidencia: evidenciaData,
+      fecha: new Date().toISOString()
+    };
+
+    const habActualizadas = habitaciones.map(r => {
+      if (String(r.id) === String(selectedRoom.id)) {
+        return {
+          ...r,
+          status: nuevoEstatus,
+          amount: totalUSD,
+          reporte: reporteObj
+        };
+      }
+      return r;
     });
 
     setHabitaciones(habActualizadas);
     localStorage.setItem('condor_habitaciones', JSON.stringify(habActualizadas));
 
     try {
-      await supabase.from('habitaciones').update({
+      await supabase.from('habitaciones').upsert({
+        id: String(selectedRoom.id),
+        number: safeVal(selectedRoom.number),
+        floor: selectedRoom.floor,
+        type: safeVal(selectedRoom.type),
+        status: nuevoEstatus,
+        amount: totalUSD,
+        reporte: reporteObj
+      });
+    } catch (e) {}
+
+    setSubiendoArchivo(false);
+    setSelectedRoom(null);
+    setConsumosSeleccionados({});
+    setArchivoEvidencia(null);
+    alert(`✅ Check-Out registrado para Hab. ${safeVal(selectedRoom.number)}. Enviado a Recepción para Facturación.`);
+  };
+
+  const handleConfirmarFacturacion = async (roomId) => {
+    const habActualizadas = habitaciones.map(r => {
+      if (String(r.id) === String(roomId)) {
+        return {
+          ...r,
+          status: 'Sucia',
+          amount: 0,
+          reporte: null
+        };
+      }
+      return r;
+    });
+
+    setHabitaciones(habActualizadas);
+    localStorage.setItem('condor_habitaciones', JSON.stringify(habActualizadas));
+
+    const habToUpdate = habitaciones.find(h => String(h.id) === String(roomId));
+
+    try {
+      await supabase.from('habitaciones').upsert({
+        id: String(roomId),
+        number: safeVal(habToUpdate?.number),
+        floor: habToUpdate?.floor,
+        type: safeVal(habToUpdate?.type),
         status: 'Sucia',
-        amount: 0
-      }).eq('id', roomId);
+        amount: 0,
+        reporte: null
+      });
     } catch (e) {}
 
     setRoomToBill(null);
-    alert('✅ Facturación completada. La habitación pasa a estatus SUCIA.');
+    alert('✅ Cobro confirmado. Habitación marcada como SUCIA para limpieza.');
   };
 
   const habitacionesPendientes = habitaciones.filter(h => safeVal(h.status).toLowerCase().includes('por facturar'));
 
+  const getStatusClass = (statusStr) => {
+    const s = safeVal(statusStr).toLowerCase();
+    if (s.includes('disponible') || s.includes('limpia')) return 'badge-disponible';
+    if (s.includes('ocupada')) return 'badge-ocupada';
+    if (s.includes('reservada')) return 'badge-reservada';
+    if (s.includes('facturar')) return 'badge-facturar';
+    if (s.includes('sucia')) return 'badge-sucia';
+    return 'badge-bloqueada';
+  };
+
   return (
-    <div style={{ fontFamily: 'sans-serif', minHeight: '100vh', background: '#f1f5f9', color: '#0f172a', padding: '16px' }}>
+    <div style={{ fontFamily: 'sans-serif', minHeight: '100vh', background: '#f1f5f9', color: '#0f172a' }}>
       <style>{`
-        .nav-btn { background: #1e293b; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .nav-btn.active { background: #2563eb; }
-        .card-box { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 12px; }
+        .alerta-parpadeante { animation: parpadeo 1.2s infinite; }
+        @keyframes parpadeo { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; font-size: 13px; }
+        th, td { padding: 10px; border: 1px solid #e2e8f0; text-align: left; }
+        th { background: #f8fafc; font-weight: bold; color: #475569; }
         .badge-disponible { background: #dcfce7; color: #166534; }
-        .badge-sucia { background: #fef9c3; color: #854d0e; }
-        .badge-ocupada { background: #e0f2fe; color: #075985; }
+        .badge-ocupada { background: #fee2e2; color: #991b1b; }
         .badge-reservada { background: #f3e8ff; color: #6b21a8; }
-        .badge-danger { background: #fee2e2; color: #991b1b; }
-        .alerta-parpadeante { animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
-        th { background: #f8fafc; }
-        select, input, textarea { padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; box-sizing: border-box; }
-        button.primary { background: #2563eb; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        button.success { background: #16a34a; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
-        .modal-card { background: #fff; padding: 20px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; }
+        .badge-facturar { background: #fef3c7; color: #92400e; }
+        .badge-sucia { background: #fef08a; color: #854d0e; }
+        .badge-bloqueada { background: #e2e8f0; color: #475569; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,23,42,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+        .modal-card { background: #fff; padding: 20px; border-radius: 12px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); }
+        .card-box { background: #fff; padding: 16px; border-radius: 10px; border: 1px solid #cbd5e1; display: flex; flexDirection: column; gap: 12px; }
+        button.primary { background: #0f172a; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        button.success { background: #16a34a; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        select, input, textarea { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13px; box-sizing: border-box; }
       `}</style>
 
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px', background: '#fff', padding: '12px 16px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      {/* HEADER */}
+      <header style={{ background: '#0f172a', color: '#fff', padding: '12px 20px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#0f172a' }}>Hotel Condor Suites</h1>
-          <span style={{ fontSize: '12px', color: '#64748b' }}>Tasa BCV Oficial: <strong>Bs. {tasaBCV.toFixed(2)} / USD</strong></span>
+          <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>🏨 Hotel Condor Suites</h1>
+          <span style={{ fontSize: '12px', color: '#94a3b8' }}>Sistema Integral de Control y Recepción</span>
         </div>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {[
-            { id: 'recepcion', label: 'Recepción' },
-            { id: 'asistente', label: 'Piso / Móvil' },
-            { id: 'supervisora', label: 'Supervisión' },
-            { id: 'amadeclaves', label: '🔑 Ama de Llaves' },
-            { id: 'admin', label: 'Administración' }
-          ].map(m => (
-            <button 
-              key={m.id} 
-              onClick={() => setRole(m.id)}
-              className={`nav-btn ${role === m.id ? 'active' : ''}`}>
-              {m.label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ background: '#1e293b', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', border: '1px solid #334155' }}>
+            💵 Tasa BCV: <strong>Bs. {tasaBCV.toFixed(2)}</strong>
+          </div>
+          <select 
+            value={role} 
+            onChange={e => setRole(e.target.value)}
+            style={{ width: 'auto', background: '#334155', color: '#fff', border: '1px solid #475569', fontWeight: 'bold' }}>
+            <option value="recepcion">🏢 Recepción / Tablero</option>
+            <option value="amadeclaves">🔑 Ama de Llaves</option>
+            <option value="asistente">📱 Asistente Móvil</option>
+            <option value="supervisora">📋 Supervisora</option>
+            <option value="admin">⚙️ Administración</option>
+          </select>
         </div>
       </header>
 
-      <main>
+      {/* CONTENIDO PRINCIPAL */}
+      <main style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
         {/* VISTA 1: RECEPCIÓN */}
         {role === 'recepcion' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -654,9 +689,17 @@ export default function App() {
                         return (
                           <td 
                             key={hab.id} 
-                            onClick={() => esAlerta && setRoomToBill(hab)}
+                            onClick={() => {
+                              if (esAlerta) {
+                                setRoomToBill(hab);
+                              } else {
+                                setRoomToChangeStatus(hab);
+                                setNuevoEstatusRecepcion(hab.status || 'Ocupada');
+                                setShowChangeStatusModal(true);
+                              }
+                            }}
                             className={`${badgeClass} ${esAlerta ? 'alerta-parpadeante' : ''}`}
-                            style={{ cursor: esAlerta ? 'pointer' : 'default', height: '70px', verticalAlign: 'top' }}>
+                            style={{ cursor: 'pointer', height: '70px', verticalAlign: 'top', position: 'relative' }}>
                             <div style={{ fontWeight: 'bold' }}>{safeVal(hab.number)} / {safeVal(hab.type).substring(0,3)}</div>
                             <div style={{ fontSize: '10px', marginTop: '4px', fontWeight: 'bold' }}>{safeVal(hab.status)}</div>
                             {Number(hab.amount) > 0 && (
@@ -667,6 +710,7 @@ export default function App() {
                                 </div>
                               </div>
                             )}
+                            <div style={{ fontSize: '9px', opacity: 0.7, marginTop: '2px', textAlign: 'right' }}>✏️ cambiar</div>
                           </td>
                         );
                       })}
@@ -674,6 +718,37 @@ export default function App() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL CAMBIO DE ESTATUS RECEPCIÓN */}
+        {showChangeStatusModal && roomToChangeStatus && (
+          <div className="modal-overlay">
+            <div className="modal-card">
+              <h3 style={{ margin: '0 0 12px 0', fontSize: '18px' }}>🏢 Estado de Habitación {safeVal(roomToChangeStatus.number)}</h3>
+              <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 12px 0' }}>Piso {safeVal(roomToChangeStatus.floor)} — Tipo: {safeVal(roomToChangeStatus.type)}</p>
+              
+              <form onSubmit={handleCambiarEstatusRecepcion} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>Seleccionar Nuevo Estatus</label>
+                  <select 
+                    value={nuevoEstatusRecepcion} 
+                    onChange={e => setNuevoEstatusRecepcion(e.target.value)}
+                    style={{ padding: '10px', fontSize: '14px', fontWeight: 'bold' }}>
+                    <option value="Ocupada">🔴 OCUPADA (Huésped en Habitación)</option>
+                    <option value="Disponible">🟢 DISPONIBLE (Lista para Check-In)</option>
+                    <option value="Reservada">🟣 RESERVADA (Confirmada)</option>
+                    <option value="Sucia">🟡 SUCIA (Pendiente por Limpieza)</option>
+                    <option value="Bloqueada / Mantenimiento">⚙️ BLOQUEADA / MANTENIMIENTO</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <button type="submit" className="primary" style={{ flex: 1, padding: '12px' }}>💾 Aplicar y Sincronizar</button>
+                  <button type="button" onClick={() => setShowChangeStatusModal(false)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Cancelar</button>
+                </div>
+              </form>
             </div>
           </div>
         )}
@@ -1181,7 +1256,7 @@ export default function App() {
                         <td><span style={{ background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{safeVal(p.rol)}</span></td>
                         <td>{safeVal(p.turno)}</td>
                         <td style={{ textAlign: 'center' }}>
-                          <button onClick={() => handleEliminarPersonal(p.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                          <button onClick={() => handleEliminarPersonal(p.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'fontSize: 11px' }}>
                             Eliminar
                           </button>
                         </td>
