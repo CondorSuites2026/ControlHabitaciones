@@ -204,18 +204,14 @@ export default function App() {
     };
 
     try {
-      const { data, error } = await supabase.from('personal').insert([nuevoObj]).select();
+      const { error } = await supabase.from('personal').insert([nuevoObj]);
       if (error) throw error;
-      if (data && data.length > 0) {
-        setPersonal(prev => [...prev, data[0]]);
-      } else {
-        await fetchPersonal();
-      }
+      await fetchPersonal();
       setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
-      alert(`✅ Personal (${nuevoObj.nombre}) agregado y guardado en Supabase.`);
+      alert(`✅ Personal (${nuevoObj.nombre}) agregado y guardado exitosamente en Supabase.`);
     } catch (err) {
       console.error('Error al guardar personal en Supabase:', err);
-      alert('❌ Error al guardar en Supabase: ' + (err.message || 'Verifique las políticas RLS.'));
+      alert('❌ Error al guardar en Supabase: ' + (err.message || 'Error desconocido'));
     }
   };
 
