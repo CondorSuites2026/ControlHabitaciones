@@ -15,7 +15,6 @@ const getEnvVar = (key) => {
 const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
 const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
 
-// Helper to safely get or create Supabase client using CDN global or mock fallback
 const getSupabaseClient = () => {
   if (typeof window !== 'undefined' && window.supabase && supabaseUrl && supabaseAnonKey) {
     return window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
@@ -208,9 +207,8 @@ export default function App() {
       if (error) throw error;
       await fetchPersonal();
       setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
-      alert(`✅ Personal (${nuevoObj.nombre}) agregado y guardado exitosamente en Supabase.`);
+      alert(`✅ Personal (${nuevoObj.nombre}) agregado exitosamente.`);
     } catch (err) {
-      console.error('Error al guardar personal en Supabase:', err);
       alert('❌ Error al guardar en Supabase: ' + (err.message || 'Error desconocido'));
     }
   };
@@ -220,7 +218,6 @@ export default function App() {
     try {
       await supabase.from('personal').delete().eq('id', id);
       setPersonal(prev => prev.filter(p => p.id !== id));
-      alert('🗑️ Personal eliminado.');
     } catch (err) {
       setPersonal(prev => prev.filter(p => p.id !== id));
     }
@@ -231,7 +228,6 @@ export default function App() {
     try {
       await supabase.from('inventario').delete().eq('id', id);
       setInventario(prev => prev.filter(i => i.id !== id));
-      alert('🗑️ Producto eliminado.');
     } catch (err) {
       setInventario(prev => prev.filter(i => i.id !== id));
     }
@@ -258,7 +254,7 @@ export default function App() {
 
   const getStatusClass = (status) => {
     const s = (status || '').toLowerCase();
-    if (s.includes('por facturar')) return 'badge-danger';
+    if (s.includes('por facturar') || s.includes('sucia / por facturar')) return 'badge-danger';
     if (s.includes('ocupada')) return 'badge-ocupada';
     if (s.includes('reservada')) return 'badge-reservada';
     if (s.includes('sucia')) return 'badge-sucia';
@@ -278,9 +274,7 @@ export default function App() {
         upsert: true
       });
 
-      if (uploadError) {
-        return null;
-      }
+      if (uploadError) return null;
 
       const { data } = supabase.storage.from('evidencias').getPublicUrl(filePath);
       return {
@@ -332,8 +326,10 @@ export default function App() {
 
       const newStatus = 'Sucia / Por Facturar';
 
+      // Actualizar en Supabase usando tanto id como number para asegurar coincidencia
+      const roomTargetId = selectedRoom.id;
       const { error: errorHab } = await supabase.from('habitaciones').upsert({
-        id: selectedRoom.id,
+        id: roomTargetId,
         number: selectedRoom.number,
         floor: selectedRoom.floor,
         type: selectedRoom.type,
@@ -354,6 +350,14 @@ export default function App() {
         desglose: consumosSeleccionados
       });
 
+      // Actualizar estado local inmediatamente
+      setHabitaciones(prev => prev.map(h => h.id === roomTargetId || h.number === selectedRoom.number ? {
+        ...h,
+        status: newStatus,
+        amount: totalUSD,
+        reporte: reporteCompleto
+      } : h));
+
       alert(`✅ Check-out ejecutado exitosamente para la Habitación ${selectedRoom.number}.`);
       setConsumosSeleccionados({});
       setArchivoEvidencia(null);
@@ -367,29 +371,49 @@ export default function App() {
     }
   };
 
-  const handleConfirmarFacturacion = async (roomId) => {
+  const handleConfirmarFacturacion = async (roomItem) => {
     try {
-      await supabase.from('habitaciones').update({ status: 'Sucia', amount: 0, reporte: null }).eq('id', roomId);
+      const targetId = roomItem.id;
+      await supabase.from('habitaciones').update({ status: 'Sucia', amount: 0, reporte: null }).eq('id', targetId);
+      
+      setHabitaciones(prev => prev.map(h => h.id === targetId || h.number === roomItem.number ? {
+        ...h,
+        status: 'Sucia',
+        amount: 0,
+        reporte: null
+      } : h));
+
       setRoomToBill(null);
-      fetchHabitaciones();
+      await fetchHabitaciones();
       alert('✅ Facturación completada. La habitación pasa a Sucia.');
     } catch (e) {
       alert('Error al confirmar facturación.');
     }
   };
 
-  const handleCambiarEstadoHabitacion = async (roomId, nuevoEstado) => {
+  const handleCambiarEstadoHabitacion = async (roomItem, nuevoEstado) => {
     try {
-      await supabase.from('habitaciones').update({ status: nuevoEstado }).eq('id', roomId);
+      const targetId = roomItem.id;
+      await supabase.from('habitaciones').update({ status: nuevoEstado }).eq('id', targetId);
+
+      // Actualización inmediata del estado local para reflejar el cambio al instante
+      setHabitaciones(prev => prev.map(h => h.id === targetId || h.number === roomItem.number ? {
+        ...h,
+        status: nuevoEstado
+      } : h));
+
       setRoomToEditStatus(null);
-      fetchHabitaciones();
-      alert(`✅ Habitación actualizada a: ${nuevoEstado}`);
+      await fetchHabitaciones();
+      alert(`✅ Habitación ${roomItem.number} actualizada a: ${nuevoEstado}`);
     } catch (e) {
       alert('Error al actualizar estado.');
     }
   };
 
-  const habitacionesPendientes = habitaciones.filter(h => (h.status || '').includes('Por Facturar'));
+  const habitacionesPendientes = habitaciones.filter(h => {
+    const st = (h.status || '').toLowerCase();
+    return st.includes('por facturar') || st.includes('sucia / por facturar');
+  });
 
   return (
     <div className="app-container">
@@ -448,7 +472,7 @@ export default function App() {
 
           <button 
             onClick={() => setRole('asistente')}
-            className={`btn-update`}
+            className="btn-update"
             style={{ background: role === 'asistente' ? '#10b981' : '#f59e0b', color: role === 'asistente' ? '#fff' : '#0f172a' }}>
             📱 Asistente Móvil
           </button>
@@ -507,7 +531,7 @@ export default function App() {
                         const hab = habitaciones.find(h => h.number === numStr);
                         if (!hab) return <td key={numCol} style={{ background: '#f8fafc' }}></td>;
                         const badgeClass = getStatusClass(hab.status);
-                        const esAlerta = (hab.status || '').includes('Por Facturar');
+                        const esAlerta = (hab.status || '').toLowerCase().includes('por facturar');
 
                         return (
                           <td 
@@ -544,13 +568,13 @@ export default function App() {
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Estado actual: <strong>{roomToEditStatus.status}</strong></p>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus.id, 'Ocupada')} style={{ background: '#0284c7' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
                   🔴 Marcar como OCUPADA
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus.id, 'Reservada')} style={{ background: '#d97706' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#d97706' }}>
                   🟡 Marcar como RESERVADA
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus.id, 'Disponible')} style={{ background: '#059669' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#059669' }}>
                   🟢 Marcar como DISPONIBLE
                 </button>
                 <button onClick={() => setRoomToEditStatus(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '8px' }}>
@@ -603,7 +627,7 @@ export default function App() {
               </div>
 
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button className="success" onClick={() => handleConfirmarFacturacion(roomToBill.id)} style={{ flex: 1 }}>
+                <button className="success" onClick={() => handleConfirmarFacturacion(roomToBill)} style={{ flex: 1 }}>
                   ✅ Cobrado / Cambiar a Sucia
                 </button>
                 <button onClick={() => setRoomToBill(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
@@ -741,7 +765,7 @@ export default function App() {
                       <td><strong>Hab. {h.number}</strong></td>
                       <td>{h.status}</td>
                       <td style={{ textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        <button onClick={() => handleCambiarEstadoHabitacion(h.id, 'Disponible')} style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
+                        <button onClick={() => handleCambiarEstadoHabitacion(h, 'Disponible')} style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
                           Marcar Limpia (Disponible)
                         </button>
                       </td>
