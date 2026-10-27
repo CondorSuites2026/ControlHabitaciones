@@ -193,23 +193,27 @@ export default function App() {
 
   const handleAgregarPersonal = async (e) => {
     e.preventDefault();
-    if (!nuevoPersonal.nombre || !nuevoPersonal.turno) {
+    if (!nuevoPersonal.nombre.trim() || !nuevoPersonal.turno.trim()) {
       return alert('⚠️ Ingrese el nombre y el turno del personal.');
     }
+    
+    // Objeto limpio sin enviar ID manual para que Supabase autogenere el correlativo
     const nuevoObj = {
-      nombre: nuevoPersonal.nombre,
+      nombre: nuevoPersonal.nombre.trim(),
       rol: nuevoPersonal.rol,
-      turno: nuevoPersonal.turno
+      turno: nuevoPersonal.turno.trim()
     };
 
     try {
       const { error } = await supabase.from('personal').insert([nuevoObj]);
       if (error) throw error;
+      
       await fetchPersonal();
       setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
-      alert(`✅ Personal (${nuevoObj.nombre}) agregado exitosamente.`);
+      alert(`✅ Personal (${nuevoObj.nombre}) agregado y guardado en Supabase exitosamente.`);
     } catch (err) {
-      alert('❌ Error al guardar en Supabase: ' + (err.message || 'Error desconocido'));
+      console.error('Error al guardar personal:', err);
+      alert('❌ Error al guardar en Supabase: ' + (err.message || 'Verifique conexión o permisos RLS'));
     }
   };
 
@@ -218,6 +222,7 @@ export default function App() {
     try {
       await supabase.from('personal').delete().eq('id', id);
       setPersonal(prev => prev.filter(p => p.id !== id));
+      alert('🗑️ Personal eliminado.');
     } catch (err) {
       setPersonal(prev => prev.filter(p => p.id !== id));
     }
@@ -228,6 +233,7 @@ export default function App() {
     try {
       await supabase.from('inventario').delete().eq('id', id);
       setInventario(prev => prev.filter(i => i.id !== id));
+      alert('🗑️ Producto eliminado.');
     } catch (err) {
       setInventario(prev => prev.filter(i => i.id !== id));
     }
@@ -325,9 +331,8 @@ export default function App() {
       };
 
       const newStatus = 'Sucia / Por Facturar';
-
-      // Actualizar en Supabase usando tanto id como number para asegurar coincidencia
       const roomTargetId = selectedRoom.id;
+
       const { error: errorHab } = await supabase.from('habitaciones').upsert({
         id: roomTargetId,
         number: selectedRoom.number,
@@ -350,7 +355,6 @@ export default function App() {
         desglose: consumosSeleccionados
       });
 
-      // Actualizar estado local inmediatamente
       setHabitaciones(prev => prev.map(h => h.id === roomTargetId || h.number === selectedRoom.number ? {
         ...h,
         status: newStatus,
@@ -396,7 +400,6 @@ export default function App() {
       const targetId = roomItem.id;
       await supabase.from('habitaciones').update({ status: nuevoEstado }).eq('id', targetId);
 
-      // Actualización inmediata del estado local para reflejar el cambio al instante
       setHabitaciones(prev => prev.map(h => h.id === targetId || h.number === roomItem.number ? {
         ...h,
         status: nuevoEstado
