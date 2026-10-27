@@ -73,16 +73,20 @@ export default function App() {
     { id: 1, nombre: 'María Rodríguez', rol: 'Asistente', turno: 'Mañana (Pisos 3-5)' },
     { id: 2, nombre: 'Carmen Silva', rol: 'Asistente', turno: 'Mañana (Pisos 6-8)' },
     { id: 3, nombre: 'Rosa Gómez', rol: 'Supervisora', turno: 'General (Pisos 3-10)' },
-    { id: 4, nombre: 'Ana Pérez', rol: 'Asistente', turno: 'Tarde (Pisos 3-5)' }
+    { id: 4, nombre: 'Ana Pérez', rol: 'Asistente', turno: 'Tarde (Pisos 3-5)' },
+    { id: 5, nombre: 'José Luces', rol: 'Equipo Nocturno', turno: 'Nocturno (7 PM - 7 AM)' },
+    { id: 6, nombre: 'Linares Castillo', rol: 'Equipo Nocturno', turno: 'Nocturno (7 PM - 7 AM)' }
   ]);
 
   const [reportesHistorial, setReportesHistorial] = useState([]);
   const [asistenteSeleccionada, setAsistenteSeleccionada] = useState('');
   const [supervisoraSeleccionada, setSupervisoraSeleccionada] = useState('');
+  const [equipoNocturnoSeleccionado, setEquipoNocturnoSeleccionado] = useState('');
   const [consumosSeleccionados, setConsumosSeleccionados] = useState({});
   const [archivoEvidencia, setArchivoEvidencia] = useState(null);
 
   const [nuevoItem, setNuevoItem] = useState({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
+  const [nuevoPersonal, setNuevoPersonal] = useState({ nombre: '', rol: 'Asistente', turno: '' });
 
   useEffect(() => {
     inicializarApp();
@@ -103,7 +107,6 @@ export default function App() {
   };
 
   const sincronizarTasaBCVOnline = async () => {
-    // Endpoints fallback en caso de bloqueos CORS o fallos en Vercel API
     const endpoints = [
       'https://ve.dolarapi.com/v1/dolares/oficial',
       'https://pydolarvenezuela-api.vercel.app/api/v1/dollar/unit/bcv'
@@ -115,17 +118,15 @@ export default function App() {
         if (!response.ok) continue;
         const data = await response.json();
         
-        // Soporta respuesta de ve.dolarapi.com (data.promedio) y pydolarvenezuela (data.price)
         const price = data.promedio || data.price;
         if (price && !isNaN(price)) {
           setTasaBCV(parseFloat(price));
           return;
         }
       } catch (error) {
-        // Intenta silenciosamente con el siguiente endpoint de respaldo
+        // Continue fallback
       }
     }
-    // Si falla la conexión externa por políticas CORS del navegador, se conserva el valor por defecto sin interrumpir la app
   };
 
   const getDefaultRoomsArray = () => {
@@ -171,15 +172,15 @@ export default function App() {
 
   const fetchInventario = async () => {
     try {
-      const { data } = await supabase.from('inventario').select('*');
-      if (data && data.length > 0) setInventario(data);
+      const { data, error } = await supabase.from('inventario').select('*');
+      if (!error && data && data.length > 0) setInventario(data);
     } catch (e) { console.error(e); }
   };
 
   const fetchPersonal = async () => {
     try {
-      const { data } = await supabase.from('personal').select('*');
-      if (data && data.length > 0) setPersonal(data);
+      const { data, error } = await supabase.from('personal').select('*');
+      if (!error && data && data.length > 0) setPersonal(data);
     } catch (e) { console.error(e); }
   };
 
@@ -188,6 +189,57 @@ export default function App() {
       const { data } = await supabase.from('reportes_consumo').select('*').order('fecha', { ascending: false });
       if (data) setReportesHistorial(data);
     } catch (e) { console.error(e); }
+  };
+
+  const handleAgregarPersonal = async (e) => {
+    e.preventDefault();
+    if (!nuevoPersonal.nombre || !nuevoPersonal.turno) {
+      return alert('⚠️ Ingrese el nombre y el turno del personal.');
+    }
+    const nuevoObj = {
+      nombre: nuevoPersonal.nombre,
+      rol: nuevoPersonal.rol,
+      turno: nuevoPersonal.turno
+    };
+
+    try {
+      const { data, error } = await supabase.from('personal').insert([nuevoObj]).select();
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setPersonal(prev => [...prev, data[0]]);
+      } else {
+        setPersonal(prev => [...prev, { ...nuevoObj, id: Date.now() }]);
+      }
+      setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
+      alert(`✅ Personal (${nuevoObj.nombre}) agregado exitosamente.`);
+    } catch (err) {
+      console.error('Error al guardar personal:', err);
+      setPersonal(prev => [...prev, { ...nuevoObj, id: Date.now() }]);
+      setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
+      alert('✅ Personal guardado localmente.');
+    }
+  };
+
+  const handleEliminarPersonal = async (id) => {
+    if (!confirm('¿Desea eliminar a este integrante del personal?')) return;
+    try {
+      await supabase.from('personal').delete().eq('id', id);
+      setPersonal(prev => prev.filter(p => p.id !== id));
+      alert('🗑️ Personal eliminado.');
+    } catch (err) {
+      setPersonal(prev => prev.filter(p => p.id !== id));
+    }
+  };
+
+  const handleEliminarInventario = async (id) => {
+    if (!confirm('¿Desea eliminar este producto del inventario?')) return;
+    try {
+      await supabase.from('inventario').delete().eq('id', id);
+      setInventario(prev => prev.filter(i => i.id !== id));
+      alert('🗑️ Producto eliminado.');
+    } catch (err) {
+      setInventario(prev => prev.filter(i => i.id !== id));
+    }
   };
 
   const handleQtyChange = (id, delta) => {
@@ -245,8 +297,8 @@ export default function App() {
       alert('⚠️ Por favor seleccione una habitación.');
       return;
     }
-    if (!asistenteSeleccionada) {
-      alert('⚠️ Por favor seleccione la Asistente Encargada.');
+    if (!asistenteSeleccionada && !equipoNocturnoSeleccionado) {
+      alert('⚠️ Por favor seleccione la Asistente Encargada o el integrante del Equipo Nocturno.');
       return;
     }
 
@@ -264,8 +316,10 @@ export default function App() {
         datosEvidencia = await subirEvidenciaASupabase(archivoEvidencia);
       }
 
+      const responsable = equipoNocturnoSeleccionado ? `[Nocturno] ${equipoNocturnoSeleccionado}` : asistenteSeleccionada;
+
       const reporteCompleto = {
-        asistente: asistenteSeleccionada,
+        asistente: responsable,
         supervisora: supervisoraSeleccionada || 'N/A',
         fecha: new Date().toISOString(),
         consumos: { ...consumosSeleccionados },
@@ -291,7 +345,7 @@ export default function App() {
 
       await supabase.from('reportes_consumo').insert({
         habitacion: selectedRoom.number,
-        asistente: asistenteSeleccionada,
+        asistente: responsable,
         supervisora: supervisoraSeleccionada || 'N/A',
         total_usd: totalUSD,
         total_bs: totalBs,
@@ -531,10 +585,28 @@ export default function App() {
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Asistente Encargada</label>
-                <select value={asistenteSeleccionada} onChange={(e) => setAsistenteSeleccionada(e.target.value)}>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Asistente Encargada (Diurno)</label>
+                <select value={asistenteSeleccionada} onChange={(e) => { setAsistenteSeleccionada(e.target.value); if(e.target.value) setEquipoNocturnoSeleccionado(''); }}>
                   <option value="">Seleccionar Asistente...</option>
-                  {personal.filter(p => p.rol === 'Asistente').map(a => <option key={a.id} value={a.nombre}>{a.nombre}</option>)}
+                  {personal.filter(p => p.rol === 'Asistente').map(a => <option key={a.id} value={a.nombre}>{a.nombre} ({a.turno})</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>🌙 Equipo Nocturno (7 PM - 7 AM)</label>
+                <select value={equipoNocturnoSeleccionado} onChange={(e) => { setEquipoNocturnoSeleccionado(e.target.value); if(e.target.value) setAsistenteSeleccionada(''); }}>
+                  <option value="">Seleccionar Personal Nocturno...</option>
+                  {personal.filter(p => p.rol === 'Equipo Nocturno').map(a => <option key={a.id} value={a.nombre}>{a.nombre} ({a.turno})</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Supervisora de Turno</label>
+                <select value={supervisoraSeleccionada} onChange={(e) => setSupervisoraSeleccionada(e.target.value)}>
+                  <option value="">Seleccionar Supervisora (Opcional)...</option>
+                  {personal.filter(p => p.rol === 'Supervisora').map(a => <option key={a.id} value={a.nombre}>{a.nombre}</option>)}
                 </select>
               </div>
             </div>
@@ -583,58 +655,30 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 3: SUPERVISORA */}
-        {role === 'supervisora' && (
-          <div className="card-box">
-            <h2 style={{ fontSize: '22px', margin: 0 }}>Panel de Control de Supervisoras</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-              {habitaciones.filter(h => h.status !== 'Disponible').map(h => (
-                <div key={h.id} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                    <span>Habitación {h.number}</span>
-                    <span>Piso {h.floor}</span>
-                  </div>
-                  <p style={{ fontSize: '12px', color: '#64748b' }}>Estado: <strong>{h.status}</strong></p>
-                  <button onClick={() => { supabase.from('habitaciones').upsert({ id: h.id, status: 'Disponible' }); fetchHabitaciones(); }} style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px', borderRadius: '6px', width: '100%', fontWeight: 'bold', cursor: 'pointer', marginTop: '8px' }}>
-                    Aprobar Auditoría
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* VISTA 4: AMA DE LLAVES */}
-        {role === 'amadelhaves' && (
-          <div className="card-box">
-            <h2 style={{ fontSize: '22px', margin: 0 }}>Panel de Ama de Llaves</h2>
-            {habitaciones.filter(h => (h.status || '').toLowerCase() === 'sucia').map(h => (
-              <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fef08a', padding: '10px', borderRadius: '6px' }}>
-                <strong>Habitación {h.number} (Piso {h.floor})</strong>
-                <button onClick={() => { supabase.from('habitaciones').upsert({ id: h.id, status: 'Disponible' }); fetchHabitaciones(); }} style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  Marcar Aseada / Disponible
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* VISTA 5: ADMINISTRACIÓN */}
         {role === 'admin' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* GESTIÓN DE INVENTARIO */}
             <div className="card-box">
-              <h3 style={{ margin: 0 }}>📦 Gestión de Inventario</h3>
+              <h3 style={{ margin: 0, fontSize: '18px' }}>📦 Gestión de Inventario</h3>
               <form onSubmit={async (e) => {
                 e.preventDefault();
-                if (!nuevoItem.name || !nuevoItem.id) return alert('Complete los datos');
-                setInventario([...inventario, nuevoItem]);
-                await supabase.from('inventario').upsert(nuevoItem);
-                setNuevoItem({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
-                alert('✅ Producto guardado.');
+                if (!nuevoItem.name || !nuevoItem.id) return alert('Complete los datos del producto');
+                
+                try {
+                  await supabase.from('inventario').upsert(nuevoItem);
+                  setInventario(prev => [...prev.filter(i => i.id !== nuevoItem.id), nuevoItem]);
+                  setNuevoItem({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
+                  alert('✅ Producto guardado en inventario.');
+                } catch (err) {
+                  setInventario(prev => [...prev.filter(i => i.id !== nuevoItem.id), nuevoItem]);
+                  setNuevoItem({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
+                  alert('✅ Producto guardado.');
+                }
               }} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <input placeholder="ID" value={nuevoItem.id} onChange={e => setNuevoItem({...nuevoItem, id: e.target.value})} style={{ width: '100px' }} />
-                <input placeholder="Nombre" value={nuevoItem.name} onChange={e => setNuevoItem({...nuevoItem, name: e.target.value})} style={{ flex: 1 }} />
-                <select value={nuevoItem.category} onChange={e => setNuevoItem({...nuevoItem, category: e.target.value})} style={{ width: '120px' }}>
+                <input placeholder="ID (ej: cerveza)" value={nuevoItem.id} onChange={e => setNuevoItem({...nuevoItem, id: e.target.value})} style={{ width: '120px' }} />
+                <input placeholder="Nombre del Producto" value={nuevoItem.name} onChange={e => setNuevoItem({...nuevoItem, name: e.target.value})} style={{ flex: 1, minWidth: '180px' }} />
+                <select value={nuevoItem.category} onChange={e => setNuevoItem({...nuevoItem, category: e.target.value})} style={{ width: '130px' }}>
                   <option value="minibar">Minibar</option>
                   <option value="lenceria">Lencería</option>
                   <option value="amenidad">Amenidad</option>
@@ -643,6 +687,152 @@ export default function App() {
                 <input type="number" placeholder="Stock" value={nuevoItem.stock || ''} onChange={e => setNuevoItem({...nuevoItem, stock: parseInt(e.target.value) || 0})} style={{ width: '80px' }} />
                 <button type="submit" className="primary" style={{ width: 'auto' }}>+ Guardar</button>
               </form>
+
+              <div style={{ overflowX: 'auto', marginTop: '12px' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Producto</th>
+                      <th>Categoría</th>
+                      <th>Precio (USD)</th>
+                      <th>Stock</th>
+                      <th style={{ width: '80px', textAlign: 'center' }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inventario.map(item => (
+                      <tr key={item.id}>
+                        <td><code>{item.id}</code></td>
+                        <td><strong>{item.name}</strong></td>
+                        <td style={{ textTransform: 'capitalize' }}>{item.category}</td>
+                        <td>${item.price_usd.toFixed(2)}</td>
+                        <td>{item.stock} unidades</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button onClick={() => handleEliminarInventario(item.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* GESTIÓN DE PERSONAL */}
+            <div className="card-box">
+              <h3 style={{ margin: 0, fontSize: '18px' }}>👥 Gestión de Personal (Asistentes, Supervisoras y Equipo Nocturno)</h3>
+              <form onSubmit={handleAgregarPersonal} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <input 
+                  placeholder="Nombre y Apellido" 
+                  value={nuevoPersonal.nombre} 
+                  onChange={e => setNuevoPersonal({...nuevoPersonal, nombre: e.target.value})} 
+                  style={{ flex: 1, minWidth: '180px' }} 
+                />
+                <select 
+                  value={nuevoPersonal.rol} 
+                  onChange={e => setNuevoPersonal({...nuevoPersonal, rol: e.target.value})} 
+                  style={{ width: '180px' }}>
+                  <option value="Asistente">Asistente (Piso)</option>
+                  <option value="Supervisora">Supervisora</option>
+                  <option value="Equipo Nocturno">Equipo Nocturno (7 PM - 7 AM)</option>
+                </select>
+                <input 
+                  placeholder="Turno / Pisos Asignados (ej: 7 PM a 7 AM / Pisos 3-10)" 
+                  value={nuevoPersonal.turno} 
+                  onChange={e => setNuevoPersonal({...nuevoPersonal, turno: e.target.value})} 
+                  style={{ flex: 1, minWidth: '200px' }} 
+                />
+                <button type="submit" className="primary" style={{ width: 'auto' }}>+ Agregar Personal</button>
+              </form>
+
+              {/* TABLA ASISTENTES */}
+              <div style={{ marginTop: '16px' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#0f172a', fontSize: '14px' }}>🧹 Asistentes de Piso (Turno Diurno / Tarde)</h4>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Rol</th>
+                      <th>Turno / Asignación</th>
+                      <th style={{ width: '80px', textAlign: 'center' }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {personal.filter(p => p.rol === 'Asistente').map(p => (
+                      <tr key={p.id}>
+                        <td><strong>{p.nombre}</strong></td>
+                        <td><span style={{ background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{p.rol}</span></td>
+                        <td>{p.turno}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button onClick={() => handleEliminarPersonal(p.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* TABLA SUPERVISORAS */}
+              <div style={{ marginTop: '16px' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#0f172a', fontSize: '14px' }}>📋 Supervisoras</h4>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Rol</th>
+                      <th>Turno / Asignación</th>
+                      <th style={{ width: '80px', textAlign: 'center' }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {personal.filter(p => p.rol === 'Supervisora').map(p => (
+                      <tr key={p.id}>
+                        <td><strong>{p.nombre}</strong></td>
+                        <td><span style={{ background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{p.rol}</span></td>
+                        <td>{p.turno}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button onClick={() => handleEliminarPersonal(p.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* TABLA EQUIPO NOCTURNO */}
+              <div style={{ marginTop: '16px' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#0f172a', fontSize: '14px' }}>🌙 Equipo Nocturno (7 PM a 7 AM)</h4>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Rol</th>
+                      <th>Horario de Guardia</th>
+                      <th style={{ width: '80px', textAlign: 'center' }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {personal.filter(p => p.rol === 'Equipo Nocturno').map(p => (
+                      <tr key={p.id}>
+                        <td><strong>{p.nombre}</strong></td>
+                        <td><span style={{ background: '#f3e8ff', color: '#6b21a8', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{p.rol}</span></td>
+                        <td>{p.turno}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button onClick={() => handleEliminarPersonal(p.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
