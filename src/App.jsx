@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
 
-// Extracción segura de variables de entorno de Supabase
 const getEnvVar = (key) => {
   try {
     if (typeof process !== 'undefined' && process.env && process.env[key]) {
       return process.env[key];
     }
-  } catch (e) {
-    // Ignorar error
-  }
+  } catch (e) {}
   return '';
 };
 
@@ -93,7 +90,6 @@ export default function App() {
     inicializarApp();
     sincronizarTasaBCVOnline();
 
-    // Suscripción Realtime para sincronizar automáticamente cambios de otras sesiones o paneles
     const subscription = supabase
       .channel('schema-db-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'inventario' }, () => fetchInventario())
@@ -129,9 +125,7 @@ export default function App() {
           setTasaBCV(parseFloat(price));
           return;
         }
-      } catch (error) {
-        // Continuar con respaldos
-      }
+      } catch (error) {}
     }
   };
 
@@ -163,7 +157,6 @@ export default function App() {
         setHabitaciones(data);
       }
     } catch (e) {
-      console.error('Error cargando habitaciones:', e);
       setHabitaciones(getDefaultRoomsArray());
     }
   };
@@ -172,9 +165,7 @@ export default function App() {
     try {
       const { data } = await supabase.from('habitaciones').select('*');
       if (data && data.length > 0) setHabitaciones(data);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
   };
 
   const fetchInventario = async () => {
@@ -183,9 +174,7 @@ export default function App() {
       if (!error && data && data.length > 0) {
         setInventario(data);
       }
-    } catch (e) { 
-      console.error('Error al obtener inventario de Supabase:', e); 
-    }
+    } catch (e) {}
   };
 
   const fetchPersonal = async () => {
@@ -194,16 +183,14 @@ export default function App() {
       if (!error && data && data.length > 0) {
         setPersonal(data);
       }
-    } catch (e) { 
-      console.error('Error al obtener personal de Supabase:', e); 
-    }
+    } catch (e) {}
   };
 
   const fetchReportes = async () => {
     try {
       const { data } = await supabase.from('reportes_consumo').select('*').order('fecha', { ascending: false });
       if (data) setReportesHistorial(data);
-    } catch (e) { console.error(e); }
+    } catch (e) {}
   };
 
   const handleAgregarPersonal = async (e) => {
@@ -228,10 +215,9 @@ export default function App() {
       }
       
       setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
-      alert(`✅ Personal (${nuevoObj.nombre}) agregado y sincronizado exitosamente.`);
+      alert(`✅ Personal (${nuevoObj.nombre}) agregado exitosamente.`);
     } catch (err) {
-      console.error('Error al guardar personal en Supabase:', err);
-      alert('❌ Error al sincronizar con Supabase: ' + (err.message || 'Verifique las políticas RLS o conexión.'));
+      alert('❌ Error al sincronizar con Supabase: ' + (err.message || 'Verifique conexión.'));
     }
   };
 
@@ -243,7 +229,6 @@ export default function App() {
       setPersonal(prev => prev.filter(p => p.id !== id));
       alert('🗑️ Personal eliminado.');
     } catch (err) {
-      console.error('Error al eliminar personal:', err);
       alert('❌ No se pudo eliminar de Supabase.');
     }
   };
@@ -258,9 +243,8 @@ export default function App() {
 
       await fetchInventario();
       setNuevoItem({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
-      alert('✅ Producto guardado y sincronizado con Supabase.');
+      alert('✅ Producto guardado en inventario.');
     } catch (err) {
-      console.error('Error al guardar inventario:', err);
       alert('❌ Error al guardar en Supabase: ' + (err.message || 'Revise la conexión.'));
     }
   };
@@ -273,7 +257,6 @@ export default function App() {
       setInventario(prev => prev.filter(i => i.id !== id));
       alert('🗑️ Producto eliminado.');
     } catch (err) {
-      console.error('Error al eliminar producto:', err);
       alert('❌ No se pudo eliminar de Supabase.');
     }
   };
@@ -307,10 +290,7 @@ export default function App() {
         upsert: true
       });
 
-      if (uploadError) {
-        console.error('Error al subir archivo a Storage:', uploadError);
-        return null;
-      }
+      if (uploadError) return null;
 
       const { data } = supabase.storage.from('evidencias').getPublicUrl(filePath);
       return {
@@ -319,7 +299,6 @@ export default function App() {
         nombre: file.name
       };
     } catch (err) {
-      console.error('Excepción al subir archivo:', err);
       return null;
     } finally {
       setSubiendoArchivo(false);
@@ -394,7 +373,6 @@ export default function App() {
       await fetchHabitaciones();
       fetchReportes();
     } catch (e) {
-      console.error('Error al procesar el check-out:', e);
       alert('❌ Error al procesar el check-out: ' + (e.message || 'Error desconocido'));
     } finally {
       setSubiendoArchivo(false);
@@ -408,7 +386,6 @@ export default function App() {
       fetchHabitaciones();
       alert('✅ Facturación completada. La habitación pasa a color amarillo (Sucia).');
     } catch (e) {
-      console.error(e);
       alert('Error al confirmar facturación.');
     }
   };
@@ -420,7 +397,7 @@ export default function App() {
       <style>{`
         body { margin: 0; background-color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; color: #1e293b; }
         .app-container { min-height: 100vh; display: flex; flex-direction: column; }
-        header { background-color: #0f172a; border-bottom: 1px solid #334155; padding: 12px 24px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; color: #fff; }
+        header { background-color: #0f172a; border-bottom: 1px solid #334155; padding: 12px 24px; display: flex; flex-wrap: wrap; justifyContent: space-between; align-items: center; gap: 12px; color: #fff; }
         .logo-box { display: flex; align-items: center; gap: 12px; }
         .logo-badge { background-color: #f59e0b; color: #0f172a; padding: 6px 10px; border-radius: 6px; font-weight: 900; font-size: 16px; }
         .nav-buttons { display: flex; background: #1e293b; padding: 4px; border-radius: 8px; gap: 4px; flex-wrap: wrap; }
@@ -451,7 +428,6 @@ export default function App() {
         button.success { background: #059669; color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; }
       `}</style>
 
-      {/* HEADER */}
       <header>
         <div className="logo-box">
           <div className="logo-badge">CS</div>
@@ -490,7 +466,6 @@ export default function App() {
       </header>
 
       <main>
-        {/* VISTA 1: RECEPCIÓN */}
         {role === 'recepcion' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {habitacionesPendientes.length > 0 && (
@@ -551,7 +526,6 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL DE FACTURACIÓN */}
         {roomToBill && roomToBill.reporte && (
           <div className="modal-overlay">
             <div className="modal-card">
@@ -604,7 +578,6 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 2: ASISTENTE MÓVIL */}
         {role === 'asistente' && (
           <div style={{ maxWidth: '650px', margin: '0 auto' }} className="card-box">
             <h2 style={{ fontSize: '20px', margin: 0 }}>Check-Out e Inspección Móvil</h2>
@@ -689,10 +662,8 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 5: ADMINISTRACIÓN */}
         {role === 'admin' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {/* GESTIÓN DE INVENTARIO */}
             <div className="card-box">
               <h3 style={{ margin: 0, fontSize: '18px' }}>📦 Gestión de Inventario</h3>
               <form onSubmit={handleGuardarInventario} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -740,7 +711,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* GESTIÓN DE PERSONAL */}
             <div className="card-box">
               <h3 style={{ margin: 0, fontSize: '18px' }}>👥 Gestión de Personal (Asistentes, Supervisoras y Equipo Nocturno)</h3>
               <form onSubmit={handleAgregarPersonal} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -767,7 +737,6 @@ export default function App() {
                 <button type="submit" className="primary" style={{ width: 'auto' }}>+ Agregar Personal</button>
               </form>
 
-              {/* TABLA ASISTENTES */}
               <div style={{ marginTop: '16px' }}>
                 <h4 style={{ margin: '0 0 8px 0', color: '#0f172a', fontSize: '14px' }}>🧹 Asistentes de Piso (Turno Diurno / Tarde)</h4>
                 <table>
@@ -796,7 +765,6 @@ export default function App() {
                 </table>
               </div>
 
-              {/* TABLA SUPERVISORAS */}
               <div style={{ marginTop: '16px' }}>
                 <h4 style={{ margin: '0 0 8px 0', color: '#0f172a', fontSize: '14px' }}>📋 Supervisoras</h4>
                 <table>
@@ -825,7 +793,6 @@ export default function App() {
                 </table>
               </div>
 
-              {/* TABLA EQUIPO NOCTURNO */}
               <div style={{ marginTop: '16px' }}>
                 <h4 style={{ margin: '0 0 8px 0', color: '#0f172a', fontSize: '14px' }}>🌙 Equipo Nocturno (7 PM a 7 AM)</h4>
                 <table>
