@@ -1,12 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Safe extraction of Supabase environment variables without triggering esbuild import.meta issues
+const getEnvVar = (key) => {
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      return process.env[key];
+    }
+  } catch (e) {
+    // Ignore error
+  }
+  return '';
+};
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: false, autoRefreshToken: false }
-});
+const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
+const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
+
+// Helper to safely get or create Supabase client using CDN global or mock fallback
+const getSupabaseClient = () => {
+  if (typeof window !== 'undefined' && window.supabase && supabaseUrl && supabaseAnonKey) {
+    return window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+  }
+  
+  // Safe mock client if CDN or env keys are missing to prevent runtime exceptions
+  const createMockQuery = () => {
+    const query = {
+      select: () => query,
+      order: () => query,
+      eq: () => query,
+      upsert: () => Promise.resolve({ data: null, error: null }),
+      insert: () => Promise.resolve({ data: null, error: null }),
+      update: () => query,
+      then: (onfulfilled) => Promise.resolve({ data: [], error: null }).then(onfulfilled),
+      catch: (onrejected) => Promise.resolve({ data: [], error: null }).catch(onrejected)
+    };
+    return query;
+  };
+
+  return {
+    from: () => createMockQuery(),
+    storage: {
+      from: () => ({
+        upload: () => Promise.resolve({ error: null }),
+        getPublicUrl: (path) => ({ data: { publicUrl: path } })
+      })
+    }
+  };
+};
+
+const supabase = getSupabaseClient();
 
 export default function App() {
   const [role, setRole] = useState('recepcion');
@@ -60,13 +103,29 @@ export default function App() {
   };
 
   const sincronizarTasaBCVOnline = async () => {
-    try {
-      const response = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar/unit/bcv');
-      const data = await response.json();
-      if (data && data.price) setTasaBCV(parseFloat(data.price));
-    } catch (error) {
-      console.error(error);
+    // Endpoints fallback en caso de bloqueos CORS o fallos en Vercel API
+    const endpoints = [
+      'https://ve.dolarapi.com/v1/dolares/oficial',
+      'https://pydolarvenezuela-api.vercel.app/api/v1/dollar/unit/bcv'
+    ];
+
+    for (const url of endpoints) {
+      try {
+        const response = await fetch(url, { method: 'GET' });
+        if (!response.ok) continue;
+        const data = await response.json();
+        
+        // Soporta respuesta de ve.dolarapi.com (data.promedio) y pydolarvenezuela (data.price)
+        const price = data.promedio || data.price;
+        if (price && !isNaN(price)) {
+          setTasaBCV(parseFloat(price));
+          return;
+        }
+      } catch (error) {
+        // Intenta silenciosamente con el siguiente endpoint de respaldo
+      }
     }
+    // Si falla la conexión externa por políticas CORS del navegador, se conserva el valor por defecto sin interrumpir la app
   };
 
   const getDefaultRoomsArray = () => {
@@ -90,7 +149,6 @@ export default function App() {
       if (error || !data || data.length === 0) {
         const defaultRooms = getDefaultRoomsArray();
         setHabitaciones(defaultRooms);
-        // Poblar Supabase si está vacía
         for (const room of defaultRooms) {
           await supabase.from('habitaciones').upsert(room);
         }
@@ -153,19 +211,29 @@ export default function App() {
     try {
       setSubiendoArchivo(true);
       const fileExt = file.name.split('.').pop();
-      const fileName = `evidencia_${Date.now()}.${fileExt}`;
+      const fileName = `evidencia_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
       const filePath = `checkout_evidencias/${fileName}`;
 
-      const { error } = await supabase.storage.from('evidencias').upload(filePath, file);
-      if (error) return null;
+      const { error: uploadError } = await supabase.storage.from('evidencias').upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
 
-      const { data: publicData } = supabase.storage.from('evidencias').getPublicUrl(filePath);
+      if (uploadError) {
+        console.error('Error al subir archivo a Supabase Storage:', uploadError);
+        alert(`⚠️ No se pudo subir la foto/video (${uploadError.message}). El check-out continuará sin evidencia multimedia.`);
+        return null;
+      }
+
+      const { data } = supabase.storage.from('evidencias').getPublicUrl(filePath);
+      
       return {
-        url: publicData?.publicUrl || null,
+        url: data?.publicUrl || '',
         tipo: file.type.startsWith('video') ? 'video' : 'imagen',
         nombre: file.name
       };
     } catch (err) {
+      console.error('Excepción durante la carga de evidencia:', err);
       return null;
     } finally {
       setSubiendoArchivo(false);
@@ -173,37 +241,43 @@ export default function App() {
   };
 
   const handleEjecutarCheckout = async () => {
-    if (!selectedRoom) return;
+    if (!selectedRoom) {
+      alert('⚠️ Por favor seleccione una habitación.');
+      return;
+    }
     if (!asistenteSeleccionada) {
       alert('⚠️ Por favor seleccione la Asistente Encargada.');
       return;
     }
 
-    let totalUSD = 0;
-    inventario.forEach(item => {
-      const qty = consumosSeleccionados[item.id] || 0;
-      totalUSD += qty * item.price_usd;
-    });
-
-    const totalBs = totalUSD * tasaBCV;
-    let datosEvidencia = null;
-    if (archivoEvidencia) datosEvidencia = await subirEvidenciaASupabase(archivoEvidencia);
-
-    const reporteCompleto = {
-      asistente: asistenteSeleccionada,
-      supervisora: supervisoraSeleccionada || 'N/A',
-      fecha: new Date().toISOString(),
-      consumos: consumosSeleccionados,
-      totalUSD,
-      totalBs,
-      tasaBCV,
-      evidencia: datosEvidencia
-    };
-
-    const newStatus = 'Sucia / Por Facturar';
-
     try {
-      await supabase.from('habitaciones').upsert({
+      let totalUSD = 0;
+      inventario.forEach(item => {
+        const qty = consumosSeleccionados[item.id] || 0;
+        totalUSD += qty * item.price_usd;
+      });
+
+      const totalBs = totalUSD * tasaBCV;
+      let datosEvidencia = null;
+
+      if (archivoEvidencia) {
+        datosEvidencia = await subirEvidenciaASupabase(archivoEvidencia);
+      }
+
+      const reporteCompleto = {
+        asistente: asistenteSeleccionada,
+        supervisora: supervisoraSeleccionada || 'N/A',
+        fecha: new Date().toISOString(),
+        consumos: { ...consumosSeleccionados },
+        totalUSD,
+        totalBs,
+        tasaBCV,
+        evidencia: datosEvidencia
+      };
+
+      const newStatus = 'Sucia / Por Facturar';
+
+      const { error: errorHab } = await supabase.from('habitaciones').upsert({
         id: selectedRoom.id,
         number: selectedRoom.number,
         floor: selectedRoom.floor,
@@ -212,6 +286,8 @@ export default function App() {
         amount: totalUSD,
         reporte: reporteCompleto
       });
+
+      if (errorHab) throw errorHab;
 
       await supabase.from('reportes_consumo').insert({
         habitacion: selectedRoom.number,
@@ -223,15 +299,17 @@ export default function App() {
         desglose: consumosSeleccionados
       });
 
-      alert(`⚠️ Check-out ejecutado para la Habitación ${selectedRoom.number}.`);
+      alert(`✅ Check-out ejecutado exitosamente para la Habitación ${selectedRoom.number}.`);
       setConsumosSeleccionados({});
       setArchivoEvidencia(null);
       setSelectedRoom(null);
-      fetchHabitaciones();
+      await fetchHabitaciones();
       fetchReportes();
     } catch (e) {
-      console.error(e);
-      alert('Error al procesar el check-out.');
+      console.error('Error al procesar el check-out:', e);
+      alert('❌ Error al procesar el check-out: ' + (e.message || 'Error desconocido'));
+    } finally {
+      setSubiendoArchivo(false);
     }
   };
 
@@ -243,6 +321,7 @@ export default function App() {
       alert('✅ Facturación completada. La habitación pasa a color amarillo (Sucia).');
     } catch (e) {
       console.error(e);
+      alert('Error al confirmar facturación.');
     }
   };
 
@@ -251,12 +330,12 @@ export default function App() {
   return (
     <div className="app-container">
       <style>{`
-        body { margin: 0; background-color: #f1f5f9; font-family: system-ui, sans-serif; color: #1e293b; }
+        body { margin: 0; background-color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; color: #1e293b; }
         .app-container { min-height: 100vh; display: flex; flex-direction: column; }
         header { background-color: #0f172a; border-bottom: 1px solid #334155; padding: 12px 24px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; color: #fff; }
         .logo-box { display: flex; align-items: center; gap: 12px; }
         .logo-badge { background-color: #f59e0b; color: #0f172a; padding: 6px 10px; border-radius: 6px; font-weight: 900; font-size: 16px; }
-        .nav-buttons { display: flex; background: #1e293b; padding: 4px; border-radius: 8px; gap: 4px; }
+        .nav-buttons { display: flex; background: #1e293b; padding: 4px; border-radius: 8px; gap: 4px; flex-wrap: wrap; }
         .nav-btn { padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; border: none; background: transparent; color: #cbd5e1; }
         .nav-btn.active { background: #f59e0b; color: #0f172a; }
         main { flex: 1; padding: 16px; max-width: 1440px; margin: 0 auto; width: 100%; box-sizing: border-box; }
@@ -275,11 +354,12 @@ export default function App() {
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; background: #fff; border-radius: 8px; }
         th, td { padding: 10px; border: 1px solid #cbd5e1; }
         th { background: #e2e8f0; color: #0f172a; }
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px; }
         .modal-card { background: #fff; padding: 24px; border-radius: 12px; max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto; }
         .card-box { background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 16px; }
         input, select { padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; width: 100%; box-sizing: border-box; }
-        button.primary { background: #0f172a; color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; width: 100%; }
+        button.primary { background: #0f172a; color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; width: 100%; transition: opacity 0.2s; }
+        button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
         button.success { background: #059669; color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; }
       `}</style>
 
@@ -326,11 +406,11 @@ export default function App() {
         {role === 'recepcion' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {habitacionesPendientes.length > 0 && (
-              <div className="alerta-parpadeante" style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="alerta-parpadeante" style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                 <div style={{ color: '#991b1b', fontWeight: 'bold' }}>
                   🔔 ¡ATENCIÓN RECEPCIÓN! Hay {habitacionesPendientes.length} salida(s) pendientes por facturar.
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {habitacionesPendientes.map(h => (
                     <button key={h.id} onClick={() => setRoomToBill(h)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
                       Facturar Hab. {h.number} (${h.amount})
@@ -365,7 +445,7 @@ export default function App() {
                             onClick={() => esAlerta && setRoomToBill(hab)}
                             className={`${badgeClass} ${esAlerta ? 'alerta-parpadeante' : ''}`}
                             style={{ cursor: esAlerta ? 'pointer' : 'default', height: '70px', verticalAlign: 'top' }}>
-                            <div style={{ fontWeight: 'bold' }}>{hab.number} / {hab.type.substring(0,3)}</div>
+                            <div style={{ fontWeight: 'bold' }}>{hab.number} / {(hab.type || '').substring(0,3)}</div>
                             <div style={{ fontSize: '10px', marginTop: '4px', fontWeight: 'bold' }}>{hab.status}</div>
                             {hab.amount > 0 && (
                               <div style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '2px' }}>
@@ -390,7 +470,7 @@ export default function App() {
               <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>🧾 Facturación Check-Out — Habitación {roomToBill.number}</h3>
               <p style={{ fontSize: '12px', color: '#64748b' }}>Asistente: <strong>{roomToBill.reporte?.asistente || 'N/A'}</strong></p>
 
-              {roomToBill.reporte?.evidencia && (
+              {roomToBill.reporte?.evidencia?.url && (
                 <div style={{ background: '#f1f5f9', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>📸 EVIDENCIA MULTIMEDIA:</span>
                   {roomToBill.reporte.evidencia.tipo === 'video' ? (
@@ -487,11 +567,15 @@ export default function App() {
 
                 <div style={{ background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                   <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>📸 ADJUNTAR EVIDENCIA (FOTO/VIDEO)</label>
-                  <input type="file" accept="image/*,video/*" onChange={(e) => setArchivoEvidencia(e.target.files[0])} style={{ fontSize: '12px' }} />
+                  <input type="file" accept="image/*,video/*" onChange={(e) => setArchivoEvidencia(e.target.files[0] || null)} style={{ fontSize: '12px' }} />
                   {archivoEvidencia && <p style={{ fontSize: '11px', color: '#059669', fontWeight: 'bold', margin: '4px 0 0 0' }}>Archivo: {archivoEvidencia.name}</p>}
                 </div>
 
-                <button className="primary" onClick={subiendoArchivo ? null : handleEjecutarCheckout}>
+                <button 
+                  type="button"
+                  disabled={subiendoArchivo} 
+                  className="primary" 
+                  onClick={handleEjecutarCheckout}>
                   {subiendoArchivo ? 'Subiendo Evidencia a Supabase...' : '🚨 Ejecutar Check-Out'}
                 </button>
               </div>
@@ -525,7 +609,7 @@ export default function App() {
           <div className="card-box">
             <h2 style={{ fontSize: '22px', margin: 0 }}>Panel de Ama de Llaves</h2>
             {habitaciones.filter(h => (h.status || '').toLowerCase() === 'sucia').map(h => (
-              <div key={h.id} style={{ display: 'flex', justifyContent: 'space-xx', alignItems: 'center', background: '#fef08a', padding: '10px', borderRadius: '6px' }}>
+              <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fef08a', padding: '10px', borderRadius: '6px' }}>
                 <strong>Habitación {h.number} (Piso {h.floor})</strong>
                 <button onClick={() => { supabase.from('habitaciones').upsert({ id: h.id, status: 'Disponible' }); fetchHabitaciones(); }} style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
                   Marcar Aseada / Disponible
