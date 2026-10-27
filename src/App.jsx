@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
-// Safe extraction of Supabase environment variables without triggering esbuild import.meta issues
+// Extracción segura de variables de entorno compatibles con Vite y Node
 const getEnvVar = (key) => {
   try {
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+      return import.meta.env[key];
+    }
     if (typeof process !== 'undefined' && process.env && process.env[key]) {
       return process.env[key];
     }
-  } catch (e) {
-    // Ignore error
-  }
+  } catch (e) {}
   return '';
 };
 
@@ -22,6 +23,9 @@ const getSupabaseClient = () => {
     });
   }
   
+  // Advertencia visible si faltan credenciales en Vercel
+  console.warn('⚠️ ADVERTENCIA: No se detectaron las credenciales de Supabase (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY). Asegúrate de agregarlas en la configuración de Vercel.');
+
   const createMockQuery = () => {
     const query = {
       select: () => query,
@@ -123,9 +127,7 @@ export default function App() {
           setTasaBCV(parseFloat(price));
           return;
         }
-      } catch (error) {
-        // Continue fallback
-      }
+      } catch (error) {}
     }
   };
 
@@ -165,30 +167,28 @@ export default function App() {
     try {
       const { data } = await supabase.from('habitaciones').select('*');
       if (data && data.length > 0) setHabitaciones(data);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
   };
 
   const fetchInventario = async () => {
     try {
       const { data, error } = await supabase.from('inventario').select('*');
       if (!error && data && data.length > 0) setInventario(data);
-    } catch (e) { console.error(e); }
+    } catch (e) {}
   };
 
   const fetchPersonal = async () => {
     try {
       const { data, error } = await supabase.from('personal').select('*');
       if (!error && data && data.length > 0) setPersonal(data);
-    } catch (e) { console.error(e); }
+    } catch (e) {}
   };
 
   const fetchReportes = async () => {
     try {
       const { data } = await supabase.from('reportes_consumo').select('*').order('fecha', { ascending: false });
       if (data) setReportesHistorial(data);
-    } catch (e) { console.error(e); }
+    } catch (e) {}
   };
 
   const handleAgregarPersonal = async (e) => {
@@ -197,7 +197,6 @@ export default function App() {
       return alert('⚠️ Ingrese el nombre y el turno del personal.');
     }
     
-    // Objeto limpio sin enviar ID manual para que Supabase autogenere el correlativo
     const nuevoObj = {
       nombre: nuevoPersonal.nombre.trim(),
       rol: nuevoPersonal.rol,
@@ -212,7 +211,6 @@ export default function App() {
       setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
       alert(`✅ Personal (${nuevoObj.nombre}) agregado y guardado en Supabase exitosamente.`);
     } catch (err) {
-      console.error('Error al guardar personal:', err);
       alert('❌ Error al guardar en Supabase: ' + (err.message || 'Verifique conexión o permisos RLS'));
     }
   };
