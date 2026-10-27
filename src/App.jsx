@@ -230,20 +230,32 @@ export default function App() {
     if (!nuevoPersonal.nombre || !nuevoPersonal.turno) {
       return alert('⚠️ Ingrese el nombre y el turno del personal.');
     }
+    
+    // Generamos un ID puramente numérico para coincidir con la columna int8 de Supabase
+    const numericId = Math.floor(Date.now() % 2147483647);
+    
     const nuevoObj = {
-      id: 'p_' + Date.now(),
+      id: numericId,
       nombre: nuevoPersonal.nombre,
       rol: nuevoPersonal.rol,
       turno: nuevoPersonal.turno
     };
 
+    try {
+      const { data, error } = await supabase.from('personal').insert([nuevoObj]);
+      if (error) {
+        console.error('Error insertando en Supabase:', error);
+        alert(`⚠️ Error guardando en Supabase: ${error.message || 'Verifique conexión/políticas'}`);
+      } else {
+        alert(`✅ Personal (${nuevoObj.nombre}) agregado y guardado en base de datos.`);
+      }
+    } catch (err) {
+      console.error('Error de red/servidor:', err);
+      alert('⚠️ Hubo un problema al conectar con la base de datos.');
+    }
+
     setPersonal(prev => [...prev, nuevoObj]);
     setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
-
-    try {
-      await supabase.from('personal').insert([nuevoObj]);
-    } catch (err) {}
-    alert(`✅ Personal (${nuevoObj.nombre}) agregado exitosamente.`);
   };
 
   const handleEliminarPersonal = async (id) => {
