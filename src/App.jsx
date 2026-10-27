@@ -406,31 +406,46 @@ export default function App() {
       return alert('⚠️ Ingrese el nombre y el turno del personal.');
     }
     
+    // Generación de ID numérico único seguro
     const numericId = Math.floor(Date.now() % 2147483647);
     
     const nuevoObj = {
       id: numericId,
-      nombre: String(nuevoPersonal.nombre),
-      rol: String(nuevoPersonal.rol),
-      turno: String(nuevoPersonal.turno)
+      nombre: String(nuevoPersonal.nombre).trim(),
+      rol: String(nuevoPersonal.rol).trim(),
+      turno: String(nuevoPersonal.turno).trim()
     };
 
-    setPersonal(prev => [...prev, nuevoObj]);
-
+    // Actualizamos el estado local inmediatamente
+    const nuevoPersonalLista = [...personal, nuevoObj];
+    setPersonal(nuevoPersonalLista);
     try {
-      const { error } = await supabase.from('personal').insert([nuevoObj]);
-      if (error) {
-        alert(`⚠️ Error al guardar en Supabase: ${error.message}`);
-      } else {
-        alert(`✅ Personal (${nuevoObj.nombre}) guardado con éxito en Supabase.`);
-      }
+      localStorage.setItem('condor_personal', JSON.stringify(nuevoPersonalLista));
     } catch (err) {}
+
+    // Intentamos guardar / upsert en Supabase
+    try {
+      const { data, error } = await supabase.from('personal').upsert([nuevoObj]);
+      if (error) {
+        console.error('Error al insertar en Supabase:', error);
+        alert(`⚠️ Guardado localmente. Nota de Supabase: ${error.message}\n(Asegúrate de revisar las políticas RLS en Supabase si no aparece)`);
+      } else {
+        alert(`✅ Personal (${nuevoObj.nombre}) guardado con éxito en Supabase y localmente.`);
+      }
+    } catch (err) {
+      console.error('Error inesperado:', err);
+    }
 
     setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
   };
 
   const handleEliminarPersonal = async (id) => {
-    setPersonal(prev => prev.filter(p => p.id !== id));
+    const nuevaLista = personal.filter(p => p.id !== id);
+    setPersonal(nuevaLista);
+    try {
+      localStorage.setItem('condor_personal', JSON.stringify(nuevaLista));
+    } catch (e) {}
+
     try {
       await supabase.from('personal').delete().eq('id', id);
     } catch (e) {}
