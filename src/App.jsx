@@ -64,7 +64,6 @@ const safeVal = (val, fallback = '') => {
   if (typeof val === 'string' || typeof val === 'number') return val;
   if (typeof val === 'boolean') return val ? 'Sí' : 'No';
   if (typeof val === 'object') {
-    // Si la BD devuelve un objeto relacional JSON o Supabase wrapper
     if (val.nombre && typeof val.nombre === 'string') return val.nombre;
     if (val.name && typeof val.name === 'string') return val.name;
     if (val.number && typeof val.number === 'string') return val.number;
@@ -136,7 +135,6 @@ export default function App() {
 
   const [asistenteSeleccionada, setAsistenteSeleccionada] = useState('');
   const [supervisoraSeleccionada, setSupervisoraSeleccionada] = useState('');
-  const [equipoNocturnoSeleccionado, setEquipoNocturnoSeleccionado] = useState('');
   const [consumosSeleccionados, setConsumosSeleccionados] = useState({});
   const [archivoEvidencia, setArchivoEvidencia] = useState(null);
 
@@ -155,7 +153,6 @@ export default function App() {
     inicializarApp();
     sincronizarTasaBCVOnline();
 
-    // Sincronización en Tiempo Real de Alta Fidelidad mediante Supabase Channels
     let channel;
     try {
       if (supabase && typeof supabase.channel === 'function') {
@@ -218,7 +215,6 @@ export default function App() {
       }
     } catch (e) {}
 
-    // Poll secundario de respaldo en tiempo real cada 3 segundos
     const interval = setInterval(() => {
       fetchHabitacionesSilencioso();
       fetchInventario();
@@ -319,7 +315,6 @@ export default function App() {
     } catch (e) {}
   };
 
-  // Función para guardar actualizaciones en el Modal de Ama de Llaves
   const handleGuardarAmaDeLlaves = async (e) => {
     e.preventDefault();
     if (!selectedAmaRoom) return;
@@ -367,7 +362,6 @@ export default function App() {
     alert(`✅ Estado de Habitación ${safeVal(selectedAmaRoom.number)} actualizado por Ama de Llaves a: ${newStatus}`);
   };
 
-  // Función para cambiar estatus de habitación en Recepción (Ocupada, Reservada, Disponible, etc.)
   const handleCambiarEstatusRecepcion = async (e) => {
     e.preventDefault();
     if (!roomToChangeStatus) return;
@@ -412,7 +406,6 @@ export default function App() {
       return alert('⚠️ Ingrese el nombre y el turno del personal.');
     }
     
-    // Asignar ID entero
     const numericId = Math.floor(Date.now() % 2147483647);
     
     const nuevoObj = {
@@ -603,13 +596,13 @@ export default function App() {
   };
 
   return (
-    <div style={{ fontFamily: 'sans-serif', minHeight: '100vh', background: '#f1f5f9', color: '#0f172a' }}>
+    <div style={{ fontFamily: 'sans-serif', minHeight: '100vh', background: '#f8fafc', color: '#0f172a' }}>
       <style>{`
         .alerta-parpadeante { animation: parpadeo 1.2s infinite; }
         @keyframes parpadeo { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; font-size: 13px; }
         th, td { padding: 10px; border: 1px solid #e2e8f0; text-align: left; }
-        th { background: #f8fafc; font-weight: bold; color: #475569; }
+        th { background: #f1f5f9; font-weight: bold; color: #334155; }
         .badge-disponible { background: #dcfce7; color: #166534; }
         .badge-ocupada { background: #fee2e2; color: #991b1b; }
         .badge-reservada { background: #f3e8ff; color: #6b21a8; }
@@ -618,26 +611,80 @@ export default function App() {
         .badge-bloqueada { background: #e2e8f0; color: #475569; }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,23,42,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
         .modal-card { background: #fff; padding: 20px; border-radius: 12px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2); }
-        .card-box { background: #fff; padding: 16px; border-radius: 10px; border: 1px solid #cbd5e1; display: flex; flexDirection: column; gap: 12px; }
-        button.primary { background: #0f172a; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .card-box { background: #fff; padding: 16px; border-radius: 10px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; width: 100%; }
+        button.primary { background: #1e40af; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        button.primary:hover { background: #1d4ed8; }
         button.success { background: #16a34a; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; }
         select, input, textarea { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13px; box-sizing: border-box; }
+        .grid-responsive { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        @media (min-width: 640px) {
+          .grid-responsive { grid-template-columns: 1fr 1fr; }
+        }
+        .btn-asistente-banner {
+          background: #3b82f6;
+          color: #ffffff;
+          border: 1px solid #93c5fd;
+          padding: 8px 14px;
+          border-radius: 6px;
+          font-weight: bold;
+          font-size: 13px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.2s ease-in-out;
+          white-space: nowrap;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn-asistente-banner:hover {
+          background: #2563eb;
+          transform: translateY(-1px);
+        }
+        .btn-asistente-banner.active {
+          background: #10b981;
+          border-color: #6ee7b7;
+          color: #ffffff;
+        }
       `}</style>
 
-      {/* HEADER */}
-      <header style={{ background: '#0f172a', color: '#fff', padding: '12px 20px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>🏨 Hotel Condor Suites</h1>
-          <span style={{ fontSize: '12px', color: '#94a3b8' }}>Sistema Integral de Control y Recepción</span>
-        </div>
+      {/* HEADER AMIGABLE CON LOGO Y ACCESO RÁPIDO A ASISTENTE MÓVIL */}
+      <header style={{ background: '#1e3a8a', color: '#fff', padding: '12px 20px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+        {/* LOGO DEL HOTEL CONDOR SUITES */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ background: '#1e293b', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', border: '1px solid #334155' }}>
+          <div style={{ background: '#ffffff', padding: '4px 8px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="130" height="36" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', maxWidth: '100%', height: 'auto' }}>
+              <text x="10" y="70" fontFamily="serif" fontSize="58" fontWeight="bold" fill="#000000" letterSpacing="1">CONDOR</text>
+              <text x="120" y="105" fontFamily="serif" fontSize="26" fontWeight="bold" fill="#000000" letterSpacing="6">SUITES</text>
+              <path d="M 285 30 L 325 100 C 330 108 340 108 345 100 L 360 75 Z" fill="#000000" />
+              <path d="M 295 15 L 340 90 C 345 98 355 98 360 90 L 380 50 Z" fill="#000000" />
+            </svg>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '11px', color: '#bfdbfe', letterSpacing: '0.5px', textTransform: 'uppercase', fontWeight: 'bold' }}>Sistema Integral de Control</span>
+          </div>
+        </div>
+
+        {/* CONTROLES SUPERIORES: TASA BCV, BOTÓN ASISTENTE MÓVIL Y SELECTOR DE VISTA */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {/* TASA BCV */}
+          <div style={{ background: 'rgba(255,255,255,0.15)', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', border: '1px solid rgba(255,255,255,0.25)', color: '#ffffff', flexShrink: 0 }}>
             💵 Tasa BCV: <strong>Bs. {tasaBCV.toFixed(2)}</strong>
           </div>
+
+          {/* BOTÓN DIRECTO DE ASISTENTE MÓVIL */}
+          <button 
+            type="button"
+            className={`btn-asistente-banner ${role === 'asistente' ? 'active' : ''}`}
+            onClick={() => setRole('asistente')}
+            title="Acceso directo rápido para Asistentes Móviles">
+            📱 Asistente Móvil {role === 'asistente' && '✓'}
+          </button>
+
+          {/* SELECTOR DE ROL/VISTA */}
           <select 
             value={role} 
             onChange={e => setRole(e.target.value)}
-            style={{ width: 'auto', background: '#334155', color: '#fff', border: '1px solid #475569', fontWeight: 'bold' }}>
+            style={{ background: '#ffffff', color: '#1e3a8a', border: '1px solid #93c5fd', fontWeight: 'bold', padding: '8px 12px', minWidth: '170px', borderRadius: '6px', cursor: 'pointer' }}>
             <option value="recepcion">🏢 Recepción / Tablero</option>
             <option value="amadeclaves">🔑 Ama de Llaves</option>
             <option value="asistente">📱 Asistente Móvil</option>
@@ -648,12 +695,13 @@ export default function App() {
       </header>
 
       {/* CONTENIDO PRINCIPAL */}
-      <main style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
-        {/* VISTA 1: RECEPCIÓN */}
+      <main style={{ padding: '16px', maxWidth: '1400px', margin: '0 auto' }}>
+        {/* VISTA RECEPCIÓN */}
         {role === 'recepcion' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="card-box">
+            <h2 style={{ fontSize: '18px', margin: 0, color: '#1e3a8a' }}>🏢 Tablero Control de Recepción</h2>
             {habitacionesPendientes.length > 0 && (
-              <div className="alerta-parpadeante" style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+              <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', padding: '12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ color: '#991b1b', fontWeight: 'bold' }}>
                   🔔 ¡ATENCIÓN RECEPCIÓN! Hay {habitacionesPendientes.length} salida(s) pendientes por facturar.
                 </div>
@@ -944,10 +992,10 @@ export default function App() {
 
         {/* VISTA 2: ASISTENTE MÓVIL */}
         {role === 'asistente' && (
-          <div style={{ maxWidth: '650px', margin: '0 auto' }} className="card-box">
-            <h2 style={{ fontSize: '20px', margin: 0 }}>Check-Out e Inspección Móvil</h2>
+          <div style={{ maxWidth: '600px', margin: '0 auto', width: '100%' }} className="card-box">
+            <h2 style={{ fontSize: '18px', margin: 0, color: '#1e3a8a' }}>📱 Check-Out e Inspección Móvil</h2>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="grid-responsive">
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Seleccionar Piso</label>
                 <select 
@@ -973,7 +1021,7 @@ export default function App() {
             </div>
 
             {selectedFloor && (
-              <div className="card-box" style={{ background: '#f8fafc', marginTop: '8px' }}>
+              <div className="card-box" style={{ background: '#f8fafc', marginTop: '4px' }}>
                 <div>
                   <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Habitación del Piso {selectedFloor}</label>
                   <select 
@@ -990,25 +1038,27 @@ export default function App() {
 
                 {selectedRoom && (
                   <>
-                    <div>
-                      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', textTransform: 'uppercase' }}>📦 Consumos Minibar</h4>
-                      {inventario.map(item => (
-                        <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px' }}>
-                          <div>
-                            <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{safeVal(item.name)}</span>
-                            <div style={{ fontSize: '11px', color: '#64748b' }}>${(Number(item.price_usd) || 0).toFixed(2)} USD</div>
+                    <div style={{ marginTop: '8px' }}>
+                      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', textTransform: 'uppercase', color: '#1e3a8a' }}>📦 Consumos Minibar</h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {inventario.map(item => (
+                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                            <div>
+                              <span style={{ fontWeight: 'bold', fontSize: '13px', display: 'block', color: '#1e293b' }}>{safeVal(item.name)}</span>
+                              <div style={{ fontSize: '11px', color: '#64748b' }}>${(Number(item.price_usd) || 0).toFixed(2)} USD</div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>-</button>
+                              <span style={{ width: '20px', textAlign: 'center', fontWeight: 'bold', fontSize: '14px' }}>{consumosSeleccionados[item.id] || 0}</span>
+                              <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '34px', height: '34px', borderRadius: '6px', border: 'none', background: '#1e40af', color: '#fff', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>+</button>
+                            </div>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
-                            <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
-                            <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#0f172a', color: '#fff', fontWeight: 'bold' }}>+</button>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
 
                     <div style={{ background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                      <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>📸 ADJUNTAR EVIDENCIA (FOTO/VIDEO)</label>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '6px', color: '#1e293b' }}>📸 ADJUNTAR EVIDENCIA (FOTO/VIDEO)</label>
                       <input type="file" accept="image/*,video/*" onChange={(e) => setArchivoEvidencia(e.target.files[0] || null)} style={{ fontSize: '12px' }} />
                       {archivoEvidencia && <p style={{ fontSize: '11px', color: '#059669', fontWeight: 'bold', margin: '4px 0 0 0' }}>Archivo: {archivoEvidencia.name}</p>}
                     </div>
@@ -1017,7 +1067,8 @@ export default function App() {
                       type="button"
                       disabled={subiendoArchivo} 
                       className="primary" 
-                      onClick={handleEjecutarCheckout}>
+                      onClick={handleEjecutarCheckout}
+                      style={{ padding: '14px', fontSize: '15px', marginTop: '4px' }}>
                       {subiendoArchivo ? 'Subiendo Evidencia...' : '🚨 Ejecutar Check-Out'}
                     </button>
                   </>
@@ -1256,7 +1307,7 @@ export default function App() {
                         <td><span style={{ background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{safeVal(p.rol)}</span></td>
                         <td>{safeVal(p.turno)}</td>
                         <td style={{ textAlign: 'center' }}>
-                          <button onClick={() => handleEliminarPersonal(p.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'fontSize: 11px' }}>
+                          <button onClick={() => handleEliminarPersonal(p.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
                             Eliminar
                           </button>
                         </td>
