@@ -117,7 +117,6 @@ export default function App() {
         const response = await fetch(url, { method: 'GET' });
         if (!response.ok) continue;
         const data = await response.json();
-        
         const price = data.promedio || data.price;
         if (price && !isNaN(price)) {
           setTasaBCV(parseFloat(price));
@@ -144,15 +143,27 @@ export default function App() {
 
   const fetchHabitaciones = async () => {
     try {
-      const { data, error } = await supabase.from('habitaciones').select('*');
-      if (error || !data || data.length === 0) {
-        const defaultRooms = getDefaultRoomsArray();
-        setHabitaciones(defaultRooms);
-        for (const room of defaultRooms) {
-          await supabase.from('habitaciones').upsert(room);
+      const response = await fetch(`${supabaseUrl}/rest/v1/habitaciones?select=*`, {
+        method: 'GET',
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (!data || data.length === 0) {
+          const defaultRooms = getDefaultRoomsArray();
+          setHabitaciones(defaultRooms);
+          for (const room of defaultRooms) {
+            await fetch(`${supabaseUrl}/rest/v1/habitaciones`, {
+              method: 'POST',
+              headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+              body: JSON.stringify(room)
+            });
+          }
+        } else {
+          setHabitaciones(data);
         }
       } else {
-        setHabitaciones(data);
+        setHabitaciones(getDefaultRoomsArray());
       }
     } catch {
       setHabitaciones(getDefaultRoomsArray());
@@ -161,41 +172,53 @@ export default function App() {
 
   const fetchHabitacionesSilencioso = async () => {
     try {
-      const { data } = await supabase.from('habitaciones').select('*');
-      if (data && data.length > 0) setHabitaciones(data);
+      const response = await fetch(`${supabaseUrl}/rest/v1/habitaciones?select=*`, {
+        method: 'GET',
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.length > 0) setHabitaciones(data);
+      }
     } catch (e) {}
   };
 
   const fetchInventario = async () => {
     try {
-      const { data, error } = await supabase.from('inventario').select('*');
-      if (!error && data && data.length > 0) setInventario(data);
+      const response = await fetch(`${supabaseUrl}/rest/v1/inventario?select=*`, {
+        method: 'GET',
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.length > 0) setInventario(data);
+      }
     } catch (e) {}
   };
 
-  // FETCH PERSONAL CORREGIDO CON PETICIÓN REST DIRECTA
   const fetchPersonal = async () => {
     try {
       const response = await fetch(`${supabaseUrl}/rest/v1/personal?select=*`, {
         method: 'GET',
-        headers: {
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        }
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}` }
       });
       if (response.ok) {
         const data = await response.json();
         setPersonal(data || []);
       }
-    } catch (e) {
-      console.error('Error al obtener personal:', e);
-    }
+    } catch (e) {}
   };
 
   const fetchReportes = async () => {
     try {
-      const { data } = await supabase.from('reportes_consumo').select('*').order('fecha', { ascending: false });
-      if (data) setReportesHistorial(data);
+      const response = await fetch(`${supabaseUrl}/rest/v1/reportes_consumo?select=*&order=fecha.desc`, {
+        method: 'GET',
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data) setReportesHistorial(data);
+      }
     } catch (e) {}
   };
 
@@ -214,26 +237,20 @@ export default function App() {
     try {
       const response = await fetch(`${supabaseUrl}/rest/v1/personal`, {
         method: 'POST',
-        headers: {
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
         body: JSON.stringify(nuevoObj)
       });
 
       if (!response.ok) {
         const errJson = await response.json();
-        throw new Error(errJson.message || errJson.hint || 'Error en Supabase');
+        throw new Error(errJson.message || 'Error en Supabase');
       }
 
       await fetchPersonal();
       setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
-      alert(`✅ Personal (${nuevoObj.nombre}) guardado en Supabase exitosamente.`);
+      alert(`✅ Personal (${nuevoObj.nombre}) guardado con éxito.`);
     } catch (err) {
-      console.error('Error al guardar:', err);
-      alert('❌ Error al guardar en Supabase: ' + err.message);
+      alert('❌ Error al guardar personal: ' + err.message);
     }
   };
 
@@ -242,10 +259,7 @@ export default function App() {
     try {
       await fetch(`${supabaseUrl}/rest/v1/personal?id=eq.${id}`, {
         method: 'DELETE',
-        headers: {
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        }
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}` }
       });
       setPersonal(prev => prev.filter(p => p.id !== id));
       alert('🗑️ Personal eliminado.');
@@ -257,7 +271,10 @@ export default function App() {
   const handleEliminarInventario = async (id) => {
     if (!confirm('¿Desea eliminar este producto del inventario?')) return;
     try {
-      await supabase.from('inventario').delete().eq('id', id);
+      await fetch(`${supabaseUrl}/rest/v1/inventario?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}` }
+      });
       setInventario(prev => prev.filter(i => i.id !== id));
       alert('🗑️ Producto eliminado.');
     } catch (err) {
@@ -267,8 +284,12 @@ export default function App() {
 
   const handleActualizarPrecioInventario = async (item) => {
     try {
-      const { error } = await supabase.from('inventario').upsert(item);
-      if (error) throw error;
+      const response = await fetch(`${supabaseUrl}/rest/v1/inventario`, {
+        method: 'POST',
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify(item)
+      });
+      if (!response.ok) throw new Error('Error al actualizar inventario');
       setInventario(prev => prev.map(i => i.id === item.id ? item : i));
       setEditandoItem(null);
       alert('✅ Producto actualizado exitosamente.');
@@ -321,6 +342,7 @@ export default function App() {
     }
   };
 
+  // CHECK-OUT REST DIRECTO CORREGIDO Y ROBUSTO
   const handleEjecutarCheckout = async () => {
     if (!selectedRoom) {
       alert('⚠️ Por favor seleccione una habitación.');
@@ -357,29 +379,47 @@ export default function App() {
       };
 
       const newStatus = 'Sucia / Por Facturar';
-      const roomTargetId = selectedRoom.id;
+      const roomTargetId = String(selectedRoom.id);
 
-      const { error: errorHab } = await supabase.from('habitaciones').upsert({
-        id: roomTargetId,
-        number: selectedRoom.number,
-        floor: selectedRoom.floor,
-        type: selectedRoom.type,
-        status: newStatus,
-        amount: totalUSD,
-        reporte: reporteCompleto
+      // 1. Actualizar habitación con upsert REST directo
+      const habResponse = await fetch(`${supabaseUrl}/rest/v1/habitaciones`, {
+        method: 'POST',
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({
+          id: roomTargetId,
+          number: selectedRoom.number,
+          floor: selectedRoom.floor,
+          type: selectedRoom.type,
+          status: newStatus,
+          amount: totalUSD,
+          reporte: reporteCompleto
+        })
       });
 
-      if (errorHab) throw errorHab;
+      if (!habResponse.ok) {
+        const errHab = await habResponse.json();
+        throw new Error(errHab.message || 'Error al actualizar habitación');
+      }
 
-      await supabase.from('reportes_consumo').insert({
-        habitacion: selectedRoom.number,
-        asistente: asistenteSeleccionada,
-        supervisora: 'N/A',
-        total_usd: totalUSD,
-        total_bs: totalBs,
-        tasa_bcv: tasaBCV,
-        desglose: consumosSeleccionados
+      // 2. Insertar reporte en reportes_consumo vía REST directo
+      const repResponse = await fetch(`${supabaseUrl}/rest/v1/reportes_consumo`, {
+        method: 'POST',
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          habitacion: selectedRoom.number,
+          asistente: asistenteSeleccionada,
+          supervisora: 'N/A',
+          total_usd: totalUSD,
+          total_bs: totalBs,
+          tasa_bcv: tasaBCV,
+          desglose: consumosSeleccionados
+        })
       });
+
+      if (!repResponse.ok) {
+        const errRep = await repResponse.json();
+        throw new Error(errRep.message || 'Error al registrar reporte de consumo');
+      }
 
       setHabitaciones(prev => prev.map(h => h.id === roomTargetId || h.number === selectedRoom.number ? {
         ...h,
@@ -395,7 +435,7 @@ export default function App() {
       await fetchHabitaciones();
       fetchReportes();
     } catch (e) {
-      alert('❌ Error al procesar el check-out: ' + (e.message || 'Error desconocido'));
+      alert('❌ Error al procesar el check-out: ' + e.message);
     } finally {
       setSubiendoArchivo(false);
     }
@@ -403,8 +443,12 @@ export default function App() {
 
   const handleConfirmarFacturacion = async (roomItem) => {
     try {
-      const targetId = roomItem.id;
-      await supabase.from('habitaciones').update({ status: 'Sucia', amount: 0, reporte: null }).eq('id', targetId);
+      const targetId = String(roomItem.id);
+      await fetch(`${supabaseUrl}/rest/v1/habitaciones?id=eq.${targetId}`, {
+        method: 'PATCH',
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Sucia', amount: 0, reporte: null })
+      });
       
       setHabitaciones(prev => prev.map(h => h.id === targetId || h.number === roomItem.number ? {
         ...h,
@@ -423,8 +467,12 @@ export default function App() {
 
   const handleCambiarEstadoHabitacion = async (roomItem, nuevoEstado) => {
     try {
-      const targetId = roomItem.id;
-      await supabase.from('habitaciones').update({ status: nuevoEstado }).eq('id', targetId);
+      const targetId = String(roomItem.id);
+      await fetch(`${supabaseUrl}/rest/v1/habitaciones?id=eq.${targetId}`, {
+        method: 'PATCH',
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nuevoEstado })
+      });
 
       setHabitaciones(prev => prev.map(h => h.id === targetId || h.number === roomItem.number ? {
         ...h,
