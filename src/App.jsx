@@ -98,10 +98,9 @@ export default function App() {
   const [subiendoArchivo, setSubiendoArchivo] = useState(false);
   const [tasaBCV, setTasaBCV] = useState(65.00);
 
-  // NUEVOS ESTADOS PARA AMA DE LLAVES Y SUPERVISORA
   const [pisoAmaLlaves, setPisoAmaLlaves] = useState(3);
   const [pisoSupervisora, setPisoSupervisora] = useState(3);
-  const [filtroTiempo, setFiltroTiempo] = useState('dia'); // 'dia', 'semana', 'mes'
+  const [filtroTiempo, setFiltroTiempo] = useState('dia');
   const [mostrarReporteFlotante, setMostrarReporteFlotante] = useState(false);
 
   const prevPendientesCount = useRef(0);
@@ -171,7 +170,7 @@ export default function App() {
 
   const inicializarApp = async () => {
     await fetchHabitaciones();
-    fetchInventario();
+    await fetchInventario();
     fetchPersonal();
     fetchReportes();
   };
@@ -262,7 +261,18 @@ export default function App() {
       });
       if (response.ok) {
         const data = await response.json();
-        if (data && data.length > 0) setInventario(data);
+        if (data && data.length > 0) {
+          setInventario(data);
+        } else {
+          // Inicializar por defecto en Supabase si está vacío
+          for (const item of inventario) {
+            await fetch(`${supabaseUrl}/rest/v1/inventario`, {
+              method: 'POST',
+              headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+              body: JSON.stringify(item)
+            });
+          }
+        }
       }
     } catch (e) {}
   };
@@ -291,6 +301,80 @@ export default function App() {
         if (data) setReportesHistorial(data);
       }
     } catch (e) {}
+  };
+
+  // GUARDAR / CREAR PRODUCTO EN INVENTARIO (REST API SUPABASE)
+  const handleGuardarInventario = async (e) => {
+    e.preventDefault();
+    if (!nuevoItem.name.trim() || !nuevoItem.id.trim()) {
+      return alert('⚠️ Complete el ID y el Nombre del producto.');
+    }
+
+    const itemObj = {
+      id: nuevoItem.id.trim().toLowerCase().replace(/\s+/g, '_'),
+      name: nuevoItem.name.trim(),
+      category: nuevoItem.category,
+      price_usd: parseFloat(nuevoItem.price_usd) || 0,
+      stock: parseInt(nuevoItem.stock) || 0
+    };
+
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/inventario`, {
+        method: 'POST',
+        headers: { 
+          'apikey': supabaseAnonKey, 
+          'Authorization': `Bearer ${supabaseAnonKey}`, 
+          'Content-Type': 'application/json', 
+          'Prefer': 'resolution=merge-duplicates' 
+        },
+        body: JSON.stringify(itemObj)
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json();
+        throw new Error(errJson.message || 'Error al guardar en Supabase');
+      }
+
+      setInventario(prev => [...prev.filter(i => i.id !== itemObj.id), itemObj]);
+      setNuevoItem({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
+      alert(`✅ Producto (${itemObj.name}) guardado con éxito.`);
+      await fetchInventario();
+    } catch (err) {
+      alert('❌ Error al guardar producto: ' + err.message);
+    }
+  };
+
+  // ACTUALIZAR PRECIO / PRODUCTO EN INVENTARIO
+  const handleActualizarPrecioInventario = async (item) => {
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/inventario?id=eq.${item.id}`, {
+        method: 'PATCH',
+        headers: { 
+          'apikey': supabaseAnonKey, 
+          'Authorization': `Bearer ${supabaseAnonKey}`, 
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          price_usd: parseFloat(item.price_usd) || 0,
+          stock: parseInt(item.stock) || 0,
+          name: item.name,
+          category: item.category
+        })
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json();
+        throw new Error(errJson.message || 'Error al actualizar inventario');
+      }
+
+      setInventario(prev => prev.map(i => i.id === item.id ? item : i));
+      setEditandoItem(null);
+      alert('✅ Producto y precio actualizados exitosamente.');
+      await fetchInventario();
+    } catch (err) {
+      alert('❌ Error al actualizar producto: ' + err.message);
+    }
   };
 
   const handleAgregarPersonal = async (e) => {
@@ -350,22 +434,6 @@ export default function App() {
       alert('🗑️ Producto eliminado.');
     } catch (err) {
       setInventario(prev => prev.filter(i => i.id !== id));
-    }
-  };
-
-  const handleActualizarPrecioInventario = async (item) => {
-    try {
-      const response = await fetch(`${supabaseUrl}/rest/v1/inventario`, {
-        method: 'POST',
-        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-        body: JSON.stringify(item)
-      });
-      if (!response.ok) throw new Error('Error al actualizar inventario');
-      setInventario(prev => prev.map(i => i.id === item.id ? item : i));
-      setEditandoItem(null);
-      alert('✅ Producto actualizado exitosamente.');
-    } catch (err) {
-      alert('❌ Error al actualizar producto: ' + err.message);
     }
   };
 
@@ -560,16 +628,13 @@ export default function App() {
     return st.includes('por facturar') || st.includes('sucia / por facturar');
   });
 
-  // FILTRAR REPORTES DE SUPERVISORA POR PISO Y TIEMPO
   const obtenerReportesFiltradosSupervisora = () => {
     const ahora = new Date();
     return reportesHistorial.filter(rep => {
-      // Filtrar por piso (verificando si el número de habitación pertenece al piso seleccionado, ej: piso 3 empieza con '3')
       const habStr = String(rep.habitacion || '');
       const pisoHab = habStr.length === 4 ? parseInt(habStr.substring(0, 2)) : parseInt(habStr.substring(0, 1));
       if (pisoHab !== pisoSupervisora) return false;
 
-      // Filtrar por tiempo (día, semana, mes)
       const fechaRep = new Date(rep.fecha);
       if (filtroTiempo === 'dia') {
         return fechaRep.toDateString() === ahora.toDateString();
@@ -584,7 +649,6 @@ export default function App() {
     });
   };
 
-  // CALCULAR LISTADO DE REPOSICIÓN SEGÚN LOS REPORTES FILTRADOS
   const calcularListadoReposicion = () => {
     const filtrados = obtenerReportesFiltradosSupervisora();
     const acumuladoItems = {};
@@ -913,7 +977,6 @@ export default function App() {
             <h3 style={{ margin: 0, fontSize: '18px' }}>📋 Panel de Supervisión</h3>
             <p style={{ fontSize: '12px', color: '#64748b' }}>Monitoreo de habitaciones, reportes de consumo por piso y listados de reposición.</p>
             
-            {/* CONTROLES DE FILTRADO PARA SUPERVISORA */}
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', background: '#f1f5f9', padding: '12px', borderRadius: '8px', alignItems: 'center' }}>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Seleccionar Piso</label>
@@ -1034,7 +1097,7 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 4: AMA DE LLAVES (ORGANIZADA POR PISO) */}
+        {/* VISTA 4: AMA DE LLAVES */}
         {role === 'amadelhaves' && (
           <div className="card-box">
             <h3 style={{ margin: 0, fontSize: '18px' }}>🔑 Gestión de Ama de Llaves por Piso</h3>
@@ -1092,27 +1155,16 @@ export default function App() {
             {/* GESTIÓN DE INVENTARIO */}
             <div className="card-box">
               <h3 style={{ margin: 0, fontSize: '18px' }}>📦 Gestión de Inventario y Precios</h3>
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                if (!nuevoItem.name || !nuevoItem.id) return alert('Complete los datos del producto');
-                try {
-                  await supabase.from('inventario').upsert(nuevoItem);
-                  setInventario(prev => [...prev.filter(i => i.id !== nuevoItem.id), nuevoItem]);
-                  setNuevoItem({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
-                  alert('✅ Producto guardado en inventario.');
-                } catch (err) {
-                  alert('Error al guardar.');
-                }
-              }} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <input placeholder="ID (ej: cerveza)" value={nuevoItem.id} onChange={e => setNuevoItem({...nuevoItem, id: e.target.value})} style={{ width: '120px' }} />
+              <form onSubmit={handleGuardarInventario} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <input placeholder="ID (ej: whisky)" value={nuevoItem.id} onChange={e => setNuevoItem({...nuevoItem, id: e.target.value})} style={{ width: '120px' }} />
                 <input placeholder="Nombre del Producto" value={nuevoItem.name} onChange={e => setNuevoItem({...nuevoItem, name: e.target.value})} style={{ flex: 1, minWidth: '180px' }} />
                 <select value={nuevoItem.category} onChange={e => setNuevoItem({...nuevoItem, category: e.target.value})} style={{ width: '130px' }}>
                   <option value="minibar">Minibar</option>
                   <option value="lenceria">Lencería</option>
                   <option value="amenidad">Amenidad</option>
                 </select>
-                <input type="number" step="0.01" placeholder="Precio ($)" value={nuevoItem.price_usd || ''} onChange={e => setNuevoItem({...nuevoItem, price_usd: parseFloat(e.target.value) || 0})} style={{ width: '100px' }} />
-                <input type="number" placeholder="Stock" value={nuevoItem.stock || ''} onChange={e => setNuevoItem({...nuevoItem, stock: parseInt(e.target.value) || 0})} style={{ width: '80px' }} />
+                <input type="number" step="0.01" placeholder="Precio ($)" value={nuevoItem.price_usd || ''} onChange={e => setNuevoItem({...nuevoItem, price_usd: e.target.value})} style={{ width: '100px' }} />
+                <input type="number" placeholder="Stock" value={nuevoItem.stock || ''} onChange={e => setNuevoItem({...nuevoItem, stock: e.target.value})} style={{ width: '80px' }} />
                 <button type="submit" className="primary" style={{ width: 'auto' }}>+ Guardar</button>
               </form>
 
@@ -1140,11 +1192,11 @@ export default function App() {
                               type="number" 
                               step="0.01" 
                               value={editandoItem.price_usd} 
-                              onChange={e => setEditandoItem({...editandoItem, price_usd: parseFloat(e.target.value) || 0})} 
+                              onChange={e => setEditandoItem({...editandoItem, price_usd: e.target.value})} 
                               style={{ width: '80px', padding: '4px' }} 
                             />
                           ) : (
-                            `$${item.price_usd.toFixed(2)}`
+                            `$${Number(item.price_usd || 0).toFixed(2)}`
                           )}
                         </td>
                         <td>{item.stock} unidades</td>
@@ -1177,7 +1229,7 @@ export default function App() {
                   placeholder="Nombre y Apellido" 
                   value={nuevoPersonal.nombre} 
                   onChange={e => setNuevoPersonal({...nuevoPersonal, nombre: e.target.value})} 
-                  style={{ flex: 1, minWidth: '180px' }} 
+                  style={{ flex: '1', minWidth: '180px' }} 
                 />
                 <select 
                   value={nuevoPersonal.rol} 
@@ -1191,7 +1243,7 @@ export default function App() {
                   placeholder="Turno / Pisos Asignados" 
                   value={nuevoPersonal.turno} 
                   onChange={e => setNuevoPersonal({...nuevoPersonal, turno: e.target.value})} 
-                  style={{ flex: 1, minWidth: '200px' }} 
+                  style={{ flex: '1', minWidth: '200px' }} 
                 />
                 <button type="submit" className="primary" style={{ width: 'auto' }}>+ Agregar Personal</button>
               </form>
