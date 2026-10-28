@@ -99,6 +99,7 @@ export default function App() {
   const [tasaBCV, setTasaBCV] = useState(65.00);
 
   const [pisoAmaLlaves, setPisoAmaLlaves] = useState(3);
+  const [filtroAmaLlaves, setFiltroAmaLlaves] = useState('todas');
   const [pisoSupervisora, setPisoSupervisora] = useState('todos');
   const [filtroTiempo, setFiltroTiempo] = useState('dia');
   const [mostrarReporteFlotante, setMostrarReporteFlotante] = useState(false);
@@ -442,7 +443,7 @@ export default function App() {
     }));
   };
 
-  // ADAPTACIÓN DE COLORES SEGÚN EL SISTEMA DE FACTURACIÓN
+  // CLASES DE COLORES SINCRONIZADAS CON EL SISTEMA DE FACTURACIÓN
   const getStatusClass = (status) => {
     const s = (status || '').toLowerCase();
     if (s.includes('por facturar') || s.includes('sucia / por facturar')) return 'badge-danger';
@@ -690,12 +691,12 @@ export default function App() {
         .btn-update { background: #f59e0b; color: #0f172a; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 12px; }
         
         /* PALETA DE COLORES SINCRONIZADA CON EL SISTEMA DE FACTURACIÓN */
-        .badge-disponible { background: #bbf7d0; color: #065f46; } /* Verde[cite: 17] */
-        .badge-ocupada { background: #7dd3fc; color: #0369a1; } /* Azul celeste[cite: 17] */
-        .badge-sucia { background: #f5ec8a; color: #713f12; } /* Amarilla[cite: 17] */
-        .badge-reservada-no-garantizada { background: #d78bb2; color: #831843; } /* Rosa[cite: 17] */
-        .badge-reservada-garantizada { background: #ea580c; color: #ffffff; } /* Ladrillo[cite: 17] */
-        .badge-danger { background: #c82b2b; color: #ffffff; } /* Alerta check-out */
+        .badge-disponible { background: #bbf7d0; color: #065f46; } /* Verde */
+        .badge-ocupada { background: #7dd3fc; color: #0369a1; } /* Azul celeste */
+        .badge-sucia { background: #fde047; color: #713f12; } /* Amarilla */
+        .badge-reservada-no-garantizada { background: #f472b6; color: #831843; } /* Rosa */
+        .badge-reservada-garantizada { background: #ea580c; color: #ffffff; } /* Ladrillo */
+        .badge-danger { background: #ef4444; color: #ffffff; } /* Alerta check-out */
 
         @keyframes pulseAlert { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.97); } 100% { opacity: 1; transform: scale(1); } }
         .alerta-parpadeante { animation: pulseAlert 1s infinite ease-in-out; }
@@ -840,20 +841,20 @@ export default function App() {
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Estado actual: <strong>{roomToEditStatus.status}</strong></p>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#7fb9d9' }}>
-                  🔵 Marcar como OCUPADA (Celeste)[cite: 17]
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
+                  🔵 Marcar como OCUPADA (Celeste)
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#a86744' }}>
-                  🟧 Marcar como RESERVADA GARANTIZADA (Ladrillo)[cite: 17]
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#ea580c' }}>
+                  🟧 Marcar como RESERVADA GARANTIZADA (Ladrillo)
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#c482a4', color: '#cc3471' }}>
-                  🌸 Marcar como RESERVADA (Rosa)[cite: 17]
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#f472b6', color: '#831843' }}>
+                  🌸 Marcar como RESERVADA (Rosa)
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#ebd38e', color: '#6c4421' }}>
-                  🟡 Marcar como SUCIA (Amarilla)[cite: 17]
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#eab308', color: '#713f12' }}>
+                  🟡 Marcar como SUCIA (Amarilla)
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#589f88' }}>
-                  🟢 Marcar como DISPONIBLE (Verde)[cite: 17]
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#059669' }}>
+                  🟢 Marcar como DISPONIBLE (Verde)
                 </button>
                 <button onClick={() => setRoomToEditStatus(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '8px' }}>
                   Cancelar
@@ -1189,13 +1190,45 @@ export default function App() {
         {role === 'amadelhaves' && (
           <div className="card-box">
             <h3 style={{ margin: 0, fontSize: '18px' }}>🔑 Gestión de Ama de Llaves por Piso</h3>
-            <p style={{ fontSize: '12px', color: '#64748b' }}>Seleccione el piso para ver únicamente las habitaciones sucias o disponibles correspondientes.</p>
+            <p style={{ fontSize: '12px', color: '#64748b' }}>Seleccione el piso y filtre por estado para priorizar la limpieza y el servicio.</p>
 
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: '#f1f5f9', padding: '12px', borderRadius: '8px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Seleccionar Piso a Inspeccionar:</label>
-              <select value={pisoAmaLlaves} onChange={(e) => setPisoAmaLlaves(parseInt(e.target.value))} style={{ width: '180px' }}>
-                {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
-              </select>
+            {/* BANNER CON SELECTOR DE PISO Y ÓVALOS DE FILTRADO A LA DERECHA */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f1f5f9', padding: '12px', borderRadius: '8px', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Piso:</label>
+                <select value={pisoAmaLlaves} onChange={(e) => setPisoAmaLlaves(parseInt(e.target.value))} style={{ width: '150px' }}>
+                  {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
+                </select>
+              </div>
+
+              {/* ÓVALOS DE FILTRADO */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>Filtrar:</span>
+                
+                <button 
+                  onClick={() => setFiltroAmaLlaves('todas')}
+                  style={{ background: filtroAmaLlaves === 'todas' ? '#1e3a8a' : '#e2e8f0', color: filtroAmaLlaves === 'todas' ? '#fff' : '#1e293b', border: 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Todas
+                </button>
+
+                <button 
+                  onClick={() => setFiltroAmaLlaves('sucia')}
+                  style={{ background: '#fde047', color: '#713f12', border: filtroAmaLlaves === 'sucia' ? '2px solid #1e293b' : '1px solid #ca8a04', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  🟡 Sucias
+                </button>
+
+                <button 
+                  onClick={() => setFiltroAmaLlaves('garantizada')}
+                  style={{ background: '#ea580c', color: '#ffffff', border: filtroAmaLlaves === 'garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  🟧 Garantizadas
+                </button>
+
+                <button 
+                  onClick={() => setFiltroAmaLlaves('no_garantizada')}
+                  style={{ background: '#f472b6', color: '#831843', border: filtroAmaLlaves === 'no_garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  🌸 No Garantizadas
+                </button>
+              </div>
             </div>
 
             <div style={{ overflowX: 'auto', marginTop: '12px' }}>
@@ -1205,28 +1238,53 @@ export default function App() {
                     <th>Habitación</th>
                     <th>Tipo</th>
                     <th>Estatus Actual</th>
-                    <th style={{ textAlign: 'center' }}>Acciones de Limpieza</th>
+                    <th style={{ textAlign: 'center' }}>Acciones de Limpieza / Prioridad</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {habitaciones.filter(h => h.floor === pisoAmaLlaves && ((h.status || '').toLowerCase().includes('sucia') || h.status === 'Disponible')).length === 0 ? (
+                  {habitaciones.filter(h => {
+                    if (h.floor !== pisoAmaLlaves) return false;
+                    const st = (h.status || '').toLowerCase();
+                    
+                    if (filtroAmaLlaves === 'sucia') return st.includes('sucia');
+                    if (filtroAmaLlaves === 'garantizada') return st.includes('garantizada') && st.includes('reservada');
+                    if (filtroAmaLlaves === 'no_garantizada') return st.includes('reservada') && !st.includes('garantizada');
+                    
+                    return st.includes('sucia') || st.includes('reservada') || h.status === 'Disponible';
+                  }).length === 0 ? (
                     <tr>
                       <td colSpan="4" style={{ textAlign: 'center', color: '#64748b', padding: '20px' }}>
-                        No hay habitaciones sucias o pendientes en el Piso {pisoAmaLlaves}. ¡Todo al día!
+                        No hay habitaciones que coincidan con este filtro en el Piso {pisoAmaLlaves}.
                       </td>
                     </tr>
                   ) : (
                     habitaciones
-                      .filter(h => h.floor === pisoAmaLlaves && ((h.status || '').toLowerCase().includes('sucia') || h.status === 'Disponible'))
+                      .filter(h => {
+                        if (h.floor !== pisoAmaLlaves) return false;
+                        const st = (h.status || '').toLowerCase();
+                        
+                        if (filtroAmaLlaves === 'sucia') return st.includes('sucia');
+                        if (filtroAmaLlaves === 'garantizada') return st.includes('garantizada') && st.includes('reservada');
+                        if (filtroAmaLlaves === 'no_garantizada') return st.includes('reservada') && !st.includes('garantizada');
+                        
+                        return st.includes('sucia') || st.includes('reservada') || h.status === 'Disponible';
+                      })
                       .map(h => (
                         <tr key={h.id}>
                           <td><strong>Hab. {h.number}</strong></td>
                           <td>{h.type}</td>
                           <td><span className={getStatusClass(h.status)} style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{h.status}</span></td>
                           <td style={{ textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                            <button onClick={() => handleCambiarEstadoHabitacion(h, 'Disponible')} style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
-                              Marcar Limpia (Disponible)
-                            </button>
+                            {((h.status || '').toLowerCase().includes('sucia')) && (
+                              <button onClick={() => handleCambiarEstadoHabitacion(h, 'Disponible')} style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
+                                Marcar Limpia (Disponible)
+                              </button>
+                            )}
+                            {((h.status || '').toLowerCase().includes('reservada')) && (
+                              <span style={{ fontSize: '11px', color: '#b45309', fontWeight: 'bold', alignSelf: 'center' }}>
+                                ⚠️ Habitación Reservada (Prioridad de Servicio)
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))
@@ -1249,7 +1307,7 @@ export default function App() {
                 <select value={nuevoItem.category} onChange={e => setNuevoItem({...nuevoItem, category: e.target.value})} style={{ width: '130px' }}>
                   <option value="minibar">Minibar</option>
                   <option value="lenceria">Lencería</option>
-                  <option value="amenidades">Amenidades</option>
+                  <option value="amenidad">Amenidad</option>
                 </select>
                 <input type="number" step="0.01" placeholder="Precio ($)" value={nuevoItem.price_usd || ''} onChange={e => setNuevoItem({...nuevoItem, price_usd: e.target.value})} style={{ width: '100px' }} />
                 <input type="number" placeholder="Stock" value={nuevoItem.stock || ''} onChange={e => setNuevoItem({...nuevoItem, stock: e.target.value})} style={{ width: '80px' }} />
