@@ -99,7 +99,7 @@ export default function App() {
   const [tasaBCV, setTasaBCV] = useState(65.00);
 
   const [pisoAmaLlaves, setPisoAmaLlaves] = useState(3);
-  const [pisoSupervisores, setPisoSupervisores] = useState(3);
+  const [pisoSupervisora, setPisoSupervisora] = useState('todos'); // 'todos' o número de piso
   const [filtroTiempo, setFiltroTiempo] = useState('dia');
   const [mostrarReporteFlotante, setMostrarReporteFlotante] = useState(false);
 
@@ -107,7 +107,12 @@ export default function App() {
 
   const [inventario, setInventario] = useState([
     { id: 'agua', name: 'Agua Mineral 500ml', category: 'minibar', price_usd: 1.00, stock: 100 },
-
+    { id: 'refresco', name: 'Refresco Lata', category: 'minibar', price_usd: 1.50, stock: 80 },
+    { id: 'cerveza', name: 'Cerveza Nacional', category: 'minibar', price_usd: 2.00, stock: 120 },
+    { id: 'snack', name: 'Snacks / Chocolates', category: 'minibar', price_usd: 1.25, stock: 60 },
+    { id: 'toalla_c', name: 'Toalla de Cuerpo', category: 'lenceria', price_usd: 12.00, stock: 40 },
+    { id: 'toalla_m', name: 'Toalla de Manos', category: 'lenceria', price_usd: 6.00, stock: 50 },
+    { id: 'shampoo', name: 'Kit Shampoo / Jabón', category: 'amenidad', price_usd: 0.80, stock: 200 }
   ]);
 
   const [personal, setPersonal] = useState([]);
@@ -259,7 +264,6 @@ export default function App() {
         if (data && data.length > 0) {
           setInventario(data);
         } else {
-          // Inicializar por defecto en Supabase si está vacío
           for (const item of inventario) {
             await fetch(`${supabaseUrl}/rest/v1/inventario`, {
               method: 'POST',
@@ -298,7 +302,6 @@ export default function App() {
     } catch (e) {}
   };
 
-  // GUARDAR / CREAR PRODUCTO EN INVENTARIO (REST API SUPABASE)
   const handleGuardarInventario = async (e) => {
     e.preventDefault();
     if (!nuevoItem.name.trim() || !nuevoItem.id.trim()) {
@@ -339,7 +342,6 @@ export default function App() {
     }
   };
 
-  // ACTUALIZAR PRECIO / PRODUCTO EN INVENTARIO
   const handleActualizarPrecioInventario = async (item) => {
     try {
       const response = await fetch(`${supabaseUrl}/rest/v1/inventario?id=eq.${item.id}`, {
@@ -502,7 +504,7 @@ export default function App() {
 
       const reporteCompleto = {
         asistente: asistenteSeleccionada,
-        Supervisores: 'N/A',
+        supervisora: 'N/A',
         fecha: new Date().toISOString(),
         consumos: { ...consumosSeleccionados },
         totalUSD,
@@ -539,7 +541,7 @@ export default function App() {
         body: JSON.stringify({
           habitacion: selectedRoom.number,
           asistente: asistenteSeleccionada,
-          Supervisores: 'N/A',
+          supervisora: 'N/A',
           total_usd: totalUSD,
           total_bs: totalBs,
           tasa_bcv: tasaBCV,
@@ -623,12 +625,14 @@ export default function App() {
     return st.includes('por facturar') || st.includes('sucia / por facturar');
   });
 
-  const obtenerReportesFiltradosSupervisores = () => {
+  const obtenerReportesFiltradosSupervisora = () => {
     const ahora = new Date();
     return reportesHistorial.filter(rep => {
-      const habStr = String(rep.habitacion || '');
-      const pisoHab = habStr.length === 4 ? parseInt(habStr.substring(0, 2)) : parseInt(habStr.substring(0, 1));
-      if (pisoHab !== pisoSupervisores) return false;
+      if (pisoSupervisora !== 'todos') {
+        const habStr = String(rep.habitacion || '');
+        const pisoHab = habStr.length === 4 ? parseInt(habStr.substring(0, 2)) : parseInt(habStr.substring(0, 1));
+        if (pisoHab !== parseInt(pisoSupervisora)) return false;
+      }
 
       const fechaRep = new Date(rep.fecha);
       if (filtroTiempo === 'dia') {
@@ -645,7 +649,7 @@ export default function App() {
   };
 
   const calcularListadoReposicion = () => {
-    const filtrados = obtenerReportesFiltradosSupervisores();
+    const filtrados = obtenerReportesFiltradosSupervisora();
     const acumuladoItems = {};
 
     filtrados.forEach(rep => {
@@ -734,7 +738,7 @@ export default function App() {
         <div className="nav-buttons">
           {[
             { id: 'recepcion', label: 'Recepción' },
-            { id: 'Supervisores', label: 'Supervisores' },
+            { id: 'supervisora', label: 'Supervisora' },
             { id: 'amadelhaves', label: 'Ama de Llaves' },
             { id: 'admin', label: 'Administración' }
           ].map(m => (
@@ -966,16 +970,17 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 3: Supervisores */}
-        {role === 'Supervisores' && (
+        {/* VISTA 3: SUPERVISORA */}
+        {role === 'supervisora' && (
           <div className="card-box">
             <h3 style={{ margin: 0, fontSize: '18px' }}>📋 Panel de Supervisión</h3>
-            <p style={{ fontSize: '12px', color: '#64748b' }}>Monitoreo de habitaciones, reportes de consumo por piso y listados de reposición.</p>
+            <p style={{ fontSize: '12px', color: '#64748b' }}>Monitoreo de habitaciones, reportes de consumo y listados de reposición.</p>
             
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', background: '#f1f5f9', padding: '12px', borderRadius: '8px', alignItems: 'center' }}>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Seleccionar Piso</label>
-                <select value={pisoSupervisores} onChange={(e) => setPisoSupervisores(parseInt(e.target.value))} style={{ width: '140px' }}>
+                <select value={pisoSupervisora} onChange={(e) => setPisoSupervisora(e.target.value)} style={{ width: '160px' }}>
+                  <option value="todos">🌐 Todos los Pisos</option>
                   {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
                 </select>
               </div>
@@ -991,7 +996,7 @@ export default function App() {
 
               <div style={{ marginLeft: 'auto', alignSelf: 'flex-end' }}>
                 <button onClick={() => setMostrarReporteFlotante(true)} className="primary" style={{ background: '#059669', padding: '10px 16px' }}>
-                  🖨️ Ver Reporte  & Reposición
+                  🖨️ Ver Reporte Flotante & Reposición
                 </button>
               </div>
             </div>
@@ -1008,33 +1013,37 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {habitaciones.filter(h => h.floor === pisoSupervisores).map(h => (
-                    <tr key={h.id}>
-                      <td><strong>{h.number}</strong></td>
-                      <td>Piso {h.floor}</td>
-                      <td>{h.type}</td>
-                      <td><span className={getStatusClass(h.status)} style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{h.status}</span></td>
-                      <td>${h.amount || 0}</td>
-                    </tr>
-                  ))}
+                  {habitaciones
+                    .filter(h => pisoSupervisora === 'todos' || h.floor === parseInt(pisoSupervisora))
+                    .map(h => (
+                      <tr key={h.id}>
+                        <td><strong>{h.number}</strong></td>
+                        <td>Piso {h.floor}</td>
+                        <td>{h.type}</td>
+                        <td><span className={getStatusClass(h.status)} style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{h.status}</span></td>
+                        <td>${h.amount || 0}</td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {/* REPORTE FLOTANTE DE Supervisores */}
+        {/* REPORTE FLOTANTE DE SUPERVISORA */}
         {mostrarReporteFlotante && (
           <div className="modal-overlay">
             <div className="modal-card" style={{ maxWidth: '700px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>📊 Reporte Flotante de Consumo y Reposición</h3>
-                <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#fef08a', padding: '4px 8px', borderRadius: '4px' }}>Piso {pisoSupervisores} — Período: {filtroTiempo.toUpperCase()}</span>
+                <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#fef08a', padding: '4px 8px', borderRadius: '4px' }}>
+                  {pisoSupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisora}`} — Período: {filtroTiempo.toUpperCase()}
+                </span>
               </div>
 
               <h4 style={{ fontSize: '14px', margin: '0 0 8px 0', textTransform: 'uppercase', color: '#0f172a' }}>📦 Listado de Reposición Sugerida:</h4>
               {calcularListadoReposicion().length === 0 ? (
-                <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', marginBottom: '20px' }}>No hay consumos registrados para este piso en el período seleccionado.</p>
+                <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', marginBottom: '20px' }}>No hay consumos registrados para la selección en el período indicado.</p>
               ) : (
                 <table style={{ marginBottom: '20px' }}>
                   <thead>
@@ -1068,7 +1077,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {obtenerReportesFiltradosSupervisores().map((rep, idx) => (
+                    {obtenerReportesFiltradosSupervisora().map((rep, idx) => (
                       <tr key={idx}>
                         <td><strong>Hab. {rep.habitacion}</strong></td>
                         <td>{rep.asistente}</td>
@@ -1231,7 +1240,7 @@ export default function App() {
                   onChange={e => setNuevoPersonal({...nuevoPersonal, rol: e.target.value})} 
                   style={{ width: '180px' }}>
                   <option value="Asistente">Asistente (Piso)</option>
-                  <option value="Supervisores">Supervisores</option>
+                  <option value="Supervisora">Supervisora</option>
                   <option value="Equipo Nocturno">Equipo Nocturno</option>
                 </select>
                 <input 
