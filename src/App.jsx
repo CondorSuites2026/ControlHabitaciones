@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const getEnvVar = (key) => {
   try {
@@ -58,6 +58,40 @@ const getSupabaseClient = () => {
 
 const supabase = getSupabaseClient();
 
+// FUNCIÓN SINTETIZADORA DE CAMPANAZOS (WEB AUDIO API)
+const reproducirTresCampanazos = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+
+    const sonarCampana = (delay) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime + delay); // Nota D5 (Campana clara)
+
+      gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(0.8, ctx.currentTime + delay + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 1.2);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + 1.2);
+    };
+
+    // Tres campanazos con intervalo de 500ms
+    sonarCampana(0);
+    sonarCampana(0.5);
+    sonarCampana(1.0);
+  } catch (e) {
+    console.error('Error al reproducir audio:', e);
+  }
+};
+
 export default function App() {
   const [role, setRole] = useState('recepcion');
   const [habitaciones, setHabitaciones] = useState([]);
@@ -67,6 +101,8 @@ export default function App() {
   const [selectedFloor, setSelectedFloor] = useState(3);
   const [subiendoArchivo, setSubiendoArchivo] = useState(false);
   const [tasaBCV, setTasaBCV] = useState(65.00);
+
+  const prevPendientesCount = useRef(0);
 
   const [inventario, setInventario] = useState([
     { id: 'agua', name: 'Agua Mineral 500ml', category: 'minibar', price_usd: 1.00, stock: 100 },
@@ -92,12 +128,51 @@ export default function App() {
     inicializarApp();
     sincronizarTasaBCVOnline();
 
+    // Solicitar permiso para notificaciones del sistema
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
+
     const interval = setInterval(() => {
       fetchHabitacionesSilencioso();
     }, 3000);
 
     return () => clearInterval(interval);
   }, []);
+
+  // DETECTOR DE NUEVO CHECK-OUT PARA CAMPANAZOS Y NOTIFICACIÓN
+  useEffect(() => {
+    const pendientesActuales = habitaciones.filter(h => {
+      const st = (h.status || '').toLowerCase();
+      return st.includes('por facturar') || st.includes('sucia / por facturar');
+    });
+
+    if (pendientesActuales.length > prevPendientesCount.current) {
+      // 1. Reproducir los 3 campanazos
+      reproducirTresCampanazos();
+
+      // 2. Notificación nativa si la ventana está minimizada o en segundo plano
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const habAlert = pendientesActuales[pendientesActuales.length - 1];
+        const notif = new Notification('🚨 ¡NUEVO CHECK-OUT PENDIENTE!', {
+          body: `La Habitación ${habAlert?.number || ''} tiene consumos por facturar. Haz clic aquí para ver.`,
+          icon: '/favicon.ico'
+        });
+        notif.onclick = () => {
+          window.focus();
+        };
+      }
+    }
+
+    // Actualizar título de la pestaña del navegador
+    if (pendientesActuales.length > 0) {
+      document.title = `🔔 (${pendientesActuales.length}) CHECK-OUT — Hotel Cóndor Suites`;
+    } else {
+      document.title = `Hotel Cóndor Suites`;
+    }
+
+    prevPendientesCount.current = pendientesActuales.length;
+  }, [habitaciones]);
 
   const inicializarApp = async () => {
     await fetchHabitaciones();
@@ -151,7 +226,6 @@ export default function App() {
         const data = await response.json();
         const defaultRooms = getDefaultRoomsArray();
         
-        // Si faltan habitaciones en Supabase (menos de las 67 totales), las inicializamos todas
         if (!data || data.length < 67) {
           setHabitaciones(defaultRooms);
           for (const room of defaultRooms) {
