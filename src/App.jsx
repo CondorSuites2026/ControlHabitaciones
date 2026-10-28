@@ -206,33 +206,36 @@ export default function App() {
     };
 
     try {
-      // 1. Insertar en Supabase y pedir que retorne el objeto insertado (.select())
-      const { data, error } = await supabase.from('personal').insert([nuevoObj]).select();
-      
-      if (error) {
-        console.error('Error devuelto por Supabase:', error);
-        throw error;
+      // Petición directa REST a Supabase omitiendo intermediarios de la librería
+      const response = await fetch(`${supabaseUrl}/rest/v1/personal`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(nuevoObj)
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json();
+        throw new Error(errJson.message || errJson.hint || 'Error desconocido en Supabase');
       }
 
-      // 2. Si retorna la data insertada con su ID asignado por Supabase
+      const data = await response.json();
+      
       if (data && data.length > 0) {
         setPersonal(prev => [...prev, data[0]]);
       } else {
-        // Fallback: Si no retorna data pero no dio error, agregamos temporalmente al estado local y re-consultamos
-        const tempItem = { id: Date.now(), ...nuevoObj };
-        setPersonal(prev => [...prev, tempItem]);
         await fetchPersonal();
       }
 
       setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
-      alert(`✅ Personal (${nuevoObj.nombre}) agregado y guardado exitosamente.`);
+      alert(`✅ Personal (${nuevoObj.nombre}) agregado y guardado en Supabase exitosamente.`);
     } catch (err) {
-      console.error('Error al guardar en Supabase:', err);
-      // Igualmente actualizamos el estado visual para evitar frustración si la red o Supabase tarda
-      const tempItem = { id: Date.now(), ...nuevoObj };
-      setPersonal(prev => [...prev, tempItem]);
-      setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
-      alert(`⚠️ Nota: Se agregó localmente (${nuevoObj.nombre}). Detalle de Supabase: ` + (err.message || 'Sin respuesta de red'));
+      console.error('Error detallado al guardar:', err);
+      alert('❌ Error al guardar en Supabase: ' + err.message);
     }
   };
 
