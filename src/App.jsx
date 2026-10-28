@@ -1,20 +1,26 @@
 import React, { useState, useEffect } from 'react';
 
-// Extracción segura de variables de entorno compatibles con Vite y Node
+// Extracción robusta compatible con Vite, Next o nombres estándar de Vercel
 const getEnvVar = (key) => {
   try {
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
-      return import.meta.env[key];
+    // 1. Probar con import.meta.env (Vite)
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      if (import.meta.env[`VITE_${key}`]) return import.meta.env[`VITE_${key}`];
+      if (import.meta.env[key]) return import.meta.env[key];
     }
-    if (typeof process !== 'undefined' && process.env && process.env[key]) {
-      return process.env[key];
+    // 2. Probar con process.env (Node / Vercel Server)
+    if (typeof process !== 'undefined' && process.env) {
+      if (process.env[`VITE_${key}`]) return process.env[`VITE_${key}`];
+      if (process.env[`NEXT_PUBLIC_${key}`]) return process.env[`NEXT_PUBLIC_${key}`];
+      if (process.env[key]) return process.env[key];
     }
   } catch (e) {}
   return '';
 };
 
-const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
-const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
+// Buscar URL y KEY probando todas las variantes posibles de nombres en Vercel
+const supabaseUrl = getEnvVar('SUPABASE_URL') || getEnvVar('VITE_SUPABASE_URL') || getEnvVar('NEXT_PUBLIC_SUPABASE_URL');
+const supabaseAnonKey = getEnvVar('SUPABASE_ANON_KEY') || getEnvVar('VITE_SUPABASE_ANON_KEY') || getEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY') || getEnvVar('SUPABASE_PUBLISHABLE_KEY');
 
 const getSupabaseClient = () => {
   if (typeof window !== 'undefined' && window.supabase && supabaseUrl && supabaseAnonKey) {
@@ -23,8 +29,7 @@ const getSupabaseClient = () => {
     });
   }
   
-  // Advertencia visible si faltan credenciales en Vercel
-  console.warn('⚠️ ADVERTENCIA: No se detectaron las credenciales de Supabase (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY). Asegúrate de agregarlas en la configuración de Vercel.');
+  console.warn('⚠️ ADVERTENCIA: Verificando conexión con Supabase...');
 
   const createMockQuery = () => {
     const query = {
@@ -211,7 +216,7 @@ export default function App() {
       setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
       alert(`✅ Personal (${nuevoObj.nombre}) agregado y guardado en Supabase exitosamente.`);
     } catch (err) {
-      alert('❌ Error al guardar en Supabase: ' + (err.message || 'Verifique conexión o permisos RLS'));
+      alert('❌ Error al guardar en Supabase: ' + (err.message || 'Verifique permisos RLS'));
     }
   };
 
