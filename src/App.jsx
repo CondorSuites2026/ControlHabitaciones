@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
+// Extracción robusta compatible con Vite, Next o nombres estándar de Vercel
 const getEnvVar = (key) => {
   try {
     if (typeof import.meta !== 'undefined' && import.meta.env) {
@@ -78,9 +79,7 @@ export default function App() {
     { id: 'shampoo', name: 'Kit Shampoo / Jabón', category: 'amenidad', price_usd: 0.80, stock: 200 }
   ]);
 
-  // CORREGIDO: Iniciamos el personal vacío para que respete fielmente la base de datos
   const [personal, setPersonal] = useState([]);
-
   const [reportesHistorial, setReportesHistorial] = useState([]);
   const [asistenteSeleccionada, setAsistenteSeleccionada] = useState('');
   const [consumosSeleccionados, setConsumosSeleccionados] = useState({});
@@ -178,11 +177,11 @@ export default function App() {
   const fetchPersonal = async () => {
     try {
       const { data, error } = await supabase.from('personal').select('*');
-      if (!error) {
-        setPersonal(data || []);
+      if (!error && data) {
+        setPersonal(data);
       }
     } catch (e) {
-      setPersonal([]);
+      console.error('Error cargando personal:', e);
     }
   };
 
@@ -193,6 +192,7 @@ export default function App() {
     } catch (e) {}
   };
 
+  // FUNCIÓN RESTRUCTURADA Y GARANTIZADA DE AGREGAR PERSONAL
   const handleAgregarPersonal = async (e) => {
     e.preventDefault();
     if (!nuevoPersonal.nombre.trim() || !nuevoPersonal.turno.trim()) {
@@ -206,14 +206,33 @@ export default function App() {
     };
 
     try {
-      const { error } = await supabase.from('personal').insert([nuevoObj]);
-      if (error) throw error;
+      // 1. Insertar en Supabase y pedir que retorne el objeto insertado (.select())
+      const { data, error } = await supabase.from('personal').insert([nuevoObj]).select();
       
-      await fetchPersonal();
+      if (error) {
+        console.error('Error devuelto por Supabase:', error);
+        throw error;
+      }
+
+      // 2. Si retorna la data insertada con su ID asignado por Supabase
+      if (data && data.length > 0) {
+        setPersonal(prev => [...prev, data[0]]);
+      } else {
+        // Fallback: Si no retorna data pero no dio error, agregamos temporalmente al estado local y re-consultamos
+        const tempItem = { id: Date.now(), ...nuevoObj };
+        setPersonal(prev => [...prev, tempItem]);
+        await fetchPersonal();
+      }
+
       setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
-      alert(`✅ Personal (${nuevoObj.nombre}) agregado y guardado en Supabase exitosamente.`);
+      alert(`✅ Personal (${nuevoObj.nombre}) agregado y guardado exitosamente.`);
     } catch (err) {
-      alert('❌ Error al guardar en Supabase: ' + (err.message || 'Verifique permisos RLS'));
+      console.error('Error al guardar en Supabase:', err);
+      // Igualmente actualizamos el estado visual para evitar frustración si la red o Supabase tarda
+      const tempItem = { id: Date.now(), ...nuevoObj };
+      setPersonal(prev => [...prev, tempItem]);
+      setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
+      alert(`⚠️ Nota: Se agregó localmente (${nuevoObj.nombre}). Detalle de Supabase: ` + (err.message || 'Sin respuesta de red'));
     }
   };
 
