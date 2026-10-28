@@ -58,7 +58,6 @@ const getSupabaseClient = () => {
 
 const supabase = getSupabaseClient();
 
-// FUNCIÓN SINTETIZADORA DE CAMPANAZOS (WEB AUDIO API)
 const reproducirTresCampanazos = () => {
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -70,7 +69,7 @@ const reproducirTresCampanazos = () => {
       const gain = ctx.createGain();
 
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime + delay); // Nota D5 (Campana clara)
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime + delay);
 
       gain.gain.setValueAtTime(0, ctx.currentTime + delay);
       gain.gain.linearRampToValueAtTime(0.8, ctx.currentTime + delay + 0.05);
@@ -83,13 +82,10 @@ const reproducirTresCampanazos = () => {
       osc.stop(ctx.currentTime + delay + 1.2);
     };
 
-    // Tres campanazos con intervalo de 500ms
     sonarCampana(0);
     sonarCampana(0.5);
     sonarCampana(1.0);
-  } catch (e) {
-    console.error('Error al reproducir audio:', e);
-  }
+  } catch (e) {}
 };
 
 export default function App() {
@@ -101,6 +97,12 @@ export default function App() {
   const [selectedFloor, setSelectedFloor] = useState(3);
   const [subiendoArchivo, setSubiendoArchivo] = useState(false);
   const [tasaBCV, setTasaBCV] = useState(65.00);
+
+  // NUEVOS ESTADOS PARA AMA DE LLAVES Y SUPERVISORA
+  const [pisoAmaLlaves, setPisoAmaLlaves] = useState(3);
+  const [pisoSupervisora, setPisoSupervisora] = useState(3);
+  const [filtroTiempo, setFiltroTiempo] = useState('dia'); // 'dia', 'semana', 'mes'
+  const [mostrarReporteFlotante, setMostrarReporteFlotante] = useState(false);
 
   const prevPendientesCount = useRef(0);
 
@@ -128,7 +130,6 @@ export default function App() {
     inicializarApp();
     sincronizarTasaBCVOnline();
 
-    // Solicitar permiso para notificaciones del sistema
     if ('Notification' in window && Notification.permission !== 'granted') {
       Notification.requestPermission();
     }
@@ -140,7 +141,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // DETECTOR DE NUEVO CHECK-OUT PARA CAMPANAZOS Y NOTIFICACIÓN
   useEffect(() => {
     const pendientesActuales = habitaciones.filter(h => {
       const st = (h.status || '').toLowerCase();
@@ -148,23 +148,18 @@ export default function App() {
     });
 
     if (pendientesActuales.length > prevPendientesCount.current) {
-      // 1. Reproducir los 3 campanazos
       reproducirTresCampanazos();
 
-      // 2. Notificación nativa si la ventana está minimizada o en segundo plano
       if ('Notification' in window && Notification.permission === 'granted') {
         const habAlert = pendientesActuales[pendientesActuales.length - 1];
         const notif = new Notification('🚨 ¡NUEVO CHECK-OUT PENDIENTE!', {
-          body: `La Habitación ${habAlert?.number || ''} tiene consumos por facturar. Haz clic aquí para ver.`,
+          body: `La Habitación ${habAlert?.number || ''} tiene consumos por facturar.`,
           icon: '/favicon.ico'
         });
-        notif.onclick = () => {
-          window.focus();
-        };
+        notif.onclick = () => window.focus();
       }
     }
 
-    // Actualizar título de la pestaña del navegador
     if (pendientesActuales.length > 0) {
       document.title = `🔔 (${pendientesActuales.length}) CHECK-OUT — Hotel Cóndor Suites`;
     } else {
@@ -565,6 +560,55 @@ export default function App() {
     return st.includes('por facturar') || st.includes('sucia / por facturar');
   });
 
+  // FILTRAR REPORTES DE SUPERVISORA POR PISO Y TIEMPO
+  const obtenerReportesFiltradosSupervisora = () => {
+    const ahora = new Date();
+    return reportesHistorial.filter(rep => {
+      // Filtrar por piso (verificando si el número de habitación pertenece al piso seleccionado, ej: piso 3 empieza con '3')
+      const habStr = String(rep.habitacion || '');
+      const pisoHab = habStr.length === 4 ? parseInt(habStr.substring(0, 2)) : parseInt(habStr.substring(0, 1));
+      if (pisoHab !== pisoSupervisora) return false;
+
+      // Filtrar por tiempo (día, semana, mes)
+      const fechaRep = new Date(rep.fecha);
+      if (filtroTiempo === 'dia') {
+        return fechaRep.toDateString() === ahora.toDateString();
+      } else if (filtroTiempo === 'semana') {
+        const diffTime = Math.abs(ahora - fechaRep);
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+        return diffDays <= 7;
+      } else if (filtroTiempo === 'mes') {
+        return fechaRep.getMonth() === ahora.getMonth() && fechaRep.getFullYear() === ahora.getFullYear();
+      }
+      return true;
+    });
+  };
+
+  // CALCULAR LISTADO DE REPOSICIÓN SEGÚN LOS REPORTES FILTRADOS
+  const calcularListadoReposicion = () => {
+    const filtrados = obtenerReportesFiltradosSupervisora();
+    const acumuladoItems = {};
+
+    filtrados.forEach(rep => {
+      const desglose = rep.desglose || {};
+      Object.entries(desglose).forEach(([idItem, qty]) => {
+        if (qty > 0) {
+          acumuladoItems[idItem] = (acumuladoItems[idItem] || 0) + qty;
+        }
+      });
+    });
+
+    return Object.entries(acumuladoItems).map(([idItem, totalQty]) => {
+      const prod = inventario.find(i => i.id === idItem);
+      return {
+        id: idItem,
+        nombre: prod?.name || idItem,
+        categoria: prod?.category || 'minibar',
+        totalConsumido: totalQty
+      };
+    });
+  };
+
   return (
     <div className="app-container">
       <style>{`
@@ -867,8 +911,34 @@ export default function App() {
         {role === 'supervisora' && (
           <div className="card-box">
             <h3 style={{ margin: 0, fontSize: '18px' }}>📋 Panel de Supervisión</h3>
-            <p style={{ fontSize: '12px', color: '#64748b' }}>Monitoreo de habitaciones y estado general del hotel.</p>
-            <div style={{ overflowX: 'auto' }}>
+            <p style={{ fontSize: '12px', color: '#64748b' }}>Monitoreo de habitaciones, reportes de consumo por piso y listados de reposición.</p>
+            
+            {/* CONTROLES DE FILTRADO PARA SUPERVISORA */}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', background: '#f1f5f9', padding: '12px', borderRadius: '8px', alignItems: 'center' }}>
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Seleccionar Piso</label>
+                <select value={pisoSupervisora} onChange={(e) => setPisoSupervisora(parseInt(e.target.value))} style={{ width: '140px' }}>
+                  {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Período de Reporte</label>
+                <select value={filtroTiempo} onChange={(e) => setFiltroTiempo(e.target.value)} style={{ width: '150px' }}>
+                  <option value="dia">Diario (Hoy)</option>
+                  <option value="semana">Semanal</option>
+                  <option value="mes">Mensual</option>
+                </select>
+              </div>
+
+              <div style={{ marginLeft: 'auto', alignSelf: 'flex-end' }}>
+                <button onClick={() => setMostrarReporteFlotante(true)} className="primary" style={{ background: '#059669', padding: '10px 16px' }}>
+                  🖨️ Ver Reporte Flotante & Reposición
+                </button>
+              </div>
+            </div>
+
+            <div style={{ overflowX: 'auto', marginTop: '12px' }}>
               <table>
                 <thead>
                   <tr>
@@ -880,7 +950,7 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {habitaciones.map(h => (
+                  {habitaciones.filter(h => h.floor === pisoSupervisora).map(h => (
                     <tr key={h.id}>
                       <td><strong>{h.number}</strong></td>
                       <td>Piso {h.floor}</td>
@@ -895,32 +965,121 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 4: AMA DE LLAVES */}
+        {/* REPORTE FLOTANTE DE SUPERVISORA */}
+        {mostrarReporteFlotante && (
+          <div className="modal-overlay">
+            <div className="modal-card" style={{ maxWidth: '700px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>📊 Reporte Flotante de Consumo y Reposición</h3>
+                <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#fef08a', padding: '4px 8px', borderRadius: '4px' }}>Piso {pisoSupervisora} — Período: {filtroTiempo.toUpperCase()}</span>
+              </div>
+
+              <h4 style={{ fontSize: '14px', margin: '0 0 8px 0', textTransform: 'uppercase', color: '#0f172a' }}>📦 Listado de Reposición Sugerida:</h4>
+              {calcularListadoReposicion().length === 0 ? (
+                <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', marginBottom: '20px' }}>No hay consumos registrados para este piso en el período seleccionado.</p>
+              ) : (
+                <table style={{ marginBottom: '20px' }}>
+                  <thead>
+                    <tr>
+                      <th>Producto</th>
+                      <th>Categoría</th>
+                      <th style={{ textAlign: 'center' }}>Total a RepONER</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {calcularListadoReposicion().map(item => (
+                      <tr key={item.id}>
+                        <td><strong>{item.nombre}</strong></td>
+                        <td style={{ textTransform: 'capitalize' }}>{item.categoria}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#059669', fontSize: '14px' }}>{item.totalConsumido} unidades</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              <h4 style={{ fontSize: '14px', margin: '0 0 8px 0', textTransform: 'uppercase', color: '#0f172a' }}>📋 Historial de Check-Outs del Período:</h4>
+              <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '20px' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Hab.</th>
+                      <th>Asistente</th>
+                      <th>Fecha</th>
+                      <th>Total USD</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {obtenerReportesFiltradosSupervisora().map((rep, idx) => (
+                      <tr key={idx}>
+                        <td><strong>Hab. {rep.habitacion}</strong></td>
+                        <td>{rep.asistente}</td>
+                        <td>{new Date(rep.fecha).toLocaleString()}</td>
+                        <td><strong>${(rep.total_usd || 0).toFixed(2)}</strong></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => window.print()} className="primary" style={{ flex: 1, background: '#1e3a8a' }}>
+                  🖨️ Imprimir / Guardar PDF
+                </button>
+                <button onClick={() => setMostrarReporteFlotante(false)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* VISTA 4: AMA DE LLAVES (ORGANIZADA POR PISO) */}
         {role === 'amadelhaves' && (
           <div className="card-box">
-            <h3 style={{ margin: 0, fontSize: '18px' }}>🔑 Gestión de Ama de Llaves</h3>
-            <p style={{ fontSize: '12px', color: '#64748b' }}>Control de habitaciones sucias y asignación de limpieza.</p>
-            <div style={{ overflowX: 'auto' }}>
+            <h3 style={{ margin: 0, fontSize: '18px' }}>🔑 Gestión de Ama de Llaves por Piso</h3>
+            <p style={{ fontSize: '12px', color: '#64748b' }}>Seleccione el piso para ver únicamente las habitaciones sucias o disponibles correspondientes.</p>
+
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: '#f1f5f9', padding: '12px', borderRadius: '8px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Seleccionar Piso a Inspeccionar:</label>
+              <select value={pisoAmaLlaves} onChange={(e) => setPisoAmaLlaves(parseInt(e.target.value))} style={{ width: '180px' }}>
+                {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
+              </select>
+            </div>
+
+            <div style={{ overflowX: 'auto', marginTop: '12px' }}>
               <table>
                 <thead>
                   <tr>
                     <th>Habitación</th>
+                    <th>Tipo</th>
                     <th>Estatus Actual</th>
                     <th style={{ textAlign: 'center' }}>Acciones de Limpieza</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {habitaciones.filter(h => (h.status || '').toLowerCase().includes('sucia') || h.status === 'Disponible').map(h => (
-                    <tr key={h.id}>
-                      <td><strong>Hab. {h.number}</strong></td>
-                      <td>{h.status}</td>
-                      <td style={{ textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        <button onClick={() => handleCambiarEstadoHabitacion(h, 'Disponible')} style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
-                          Marcar Limpia (Disponible)
-                        </button>
+                  {habitaciones.filter(h => h.floor === pisoAmaLlaves && ((h.status || '').toLowerCase().includes('sucia') || h.status === 'Disponible')).length === 0 ? (
+                    <tr>
+                      <td colSpan="4" style={{ textAlign: 'center', color: '#64748b', padding: '20px' }}>
+                        No hay habitaciones sucias o pendientes en el Piso {pisoAmaLlaves}. ¡Todo al día!
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    habitaciones
+                      .filter(h => h.floor === pisoAmaLlaves && ((h.status || '').toLowerCase().includes('sucia') || h.status === 'Disponible'))
+                      .map(h => (
+                        <tr key={h.id}>
+                          <td><strong>Hab. {h.number}</strong></td>
+                          <td>{h.type}</td>
+                          <td><span className={getStatusClass(h.status)} style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{h.status}</span></td>
+                          <td style={{ textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                            <button onClick={() => handleCambiarEstadoHabitacion(h, 'Disponible')} style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
+                              Marcar Limpia (Disponible)
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                  )}
                 </tbody>
               </table>
             </div>
