@@ -692,10 +692,10 @@ export default function App() {
         /* PALETA DE COLORES SINCRONIZADA CON EL SISTEMA DE FACTURACIÓN */
         .badge-disponible { background: #bbf7d0; color: #065f46; } /* Verde[cite: 17] */
         .badge-ocupada { background: #7dd3fc; color: #0369a1; } /* Azul celeste[cite: 17] */
-        .badge-sucia { background: #fde047; color: #713f12; } /* Amarilla[cite: 17] */
-        .badge-reservada-no-garantizada { background: #f472b6; color: #831843; } /* Rosa[cite: 17] */
+        .badge-sucia { background: #f5ec8a; color: #713f12; } /* Amarilla[cite: 17] */
+        .badge-reservada-no-garantizada { background: #d78bb2; color: #831843; } /* Rosa[cite: 17] */
         .badge-reservada-garantizada { background: #ea580c; color: #ffffff; } /* Ladrillo[cite: 17] */
-        .badge-danger { background: #ef4444; color: #ffffff; } /* Alerta check-out */
+        .badge-danger { background: #c82b2b; color: #ffffff; } /* Alerta check-out */
 
         @keyframes pulseAlert { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.97); } 100% { opacity: 1; transform: scale(1); } }
         .alerta-parpadeante { animation: pulseAlert 1s infinite ease-in-out; }
@@ -840,7 +840,7 @@ export default function App() {
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Estado actual: <strong>{roomToEditStatus.status}</strong></p>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#95c3db' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#7fb9d9' }}>
                   🔵 Marcar como OCUPADA (Celeste)[cite: 17]
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#a86744' }}>
