@@ -98,7 +98,7 @@ export default function App() {
   const [subiendoArchivo, setSubiendoArchivo] = useState(false);
   const [tasaBCV, setTasaBCV] = useState(65.00);
 
-  const [pisoAmaLlaves, setPisoAmaLlaves] = useState(3);
+  const [pisoAmaLlaves, setPisoAmaLlaves] = useState('todos');
   const [filtroAmaLlaves, setFiltroAmaLlaves] = useState('todas');
   const [pisoSupervisora, setPisoSupervisora] = useState('todos');
   const [filtroTiempo, setFiltroTiempo] = useState('dia');
@@ -640,7 +640,7 @@ export default function App() {
 
       const fechaRep = new Date(rep.fecha);
       if (filtroTiempo === 'dia') {
-        return fechaRep.toDateString() === ahora.toDateString();
+        return fechaRep.toDateString() === skinToDateString(ahora);
       } else if (filtroTiempo === 'semana') {
         const diffTime = Math.abs(ahora - fechaRep);
         const diffDays = diffTime / (1000 * 60 * 60 * 24);
@@ -651,6 +651,8 @@ export default function App() {
       return true;
     });
   };
+
+  const skinToDateString = (date) => date.toDateString();
 
   const calcularListadoReposicion = () => {
     const filtrados = obtenerReportesFiltradosSupervisora();
@@ -674,6 +676,32 @@ export default function App() {
         totalConsumido: totalQty
       };
     });
+  };
+
+  // LÓGICA DE FILTRADO PARA AMA DE LLAVES
+  const obtenerHabitacionesAmaLlaves = () => {
+    return habitaciones
+      .filter(h => {
+        if (pisoAmaLlaves !== 'todos' && h.floor !== parseInt(pisoAmaLlaves)) {
+          return false;
+        }
+
+        const st = (h.status || '').toLowerCase();
+
+        if (filtroAmaLlaves === 'sucia') {
+          return st.includes('sucia');
+        }
+        if (filtroAmaLlaves === 'garantizada') {
+          return st.includes('garantizada') && st.includes('reservada');
+        }
+        if (filtroAmaLlaves === 'no_garantizada') {
+          return st.includes('reservada') && !st.includes('garantizada');
+        }
+
+        // Por defecto 'todas': Muestra las que requieran gestión (Sucias, Reservadas o Disponibles)
+        return st.includes('sucia') || st.includes('reservada') || h.status === 'Disponible';
+      })
+      .sort((a, b) => parseInt(a.number) - parseInt(b.number));
   };
 
   return (
@@ -1192,11 +1220,12 @@ export default function App() {
             <h3 style={{ margin: 0, fontSize: '18px' }}>🔑 Gestión de Ama de Llaves por Piso</h3>
             <p style={{ fontSize: '12px', color: '#64748b' }}>Seleccione el piso y filtre por estado para priorizar la limpieza y el servicio.</p>
 
-            {/* BANNER CON SELECTOR DE PISO Y ÓVALOS DE FILTRADO A LA DERECHA */}
+            {/* BANNER CON SELECTOR DE PISO (CON TODOS LOS PISOS POR DEFECTO) Y ÓVALOS DE FILTRADO A LA DERECHA */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f1f5f9', padding: '12px', borderRadius: '8px', flexWrap: 'wrap', gap: '12px' }}>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Piso:</label>
-                <select value={pisoAmaLlaves} onChange={(e) => setPisoAmaLlaves(parseInt(e.target.value))} style={{ width: '150px' }}>
+                <select value={pisoAmaLlaves} onChange={(e) => setPisoAmaLlaves(e.target.value)} style={{ width: '180px' }}>
+                  <option value="todos">🌐 Todos los Pisos</option>
                   {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
                 </select>
               </div>
@@ -1236,58 +1265,45 @@ export default function App() {
                 <thead>
                   <tr>
                     <th>Habitación</th>
+                    <th>Piso</th>
                     <th>Tipo</th>
                     <th>Estatus Actual</th>
                     <th style={{ textAlign: 'center' }}>Acciones de Limpieza / Prioridad</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {habitaciones.filter(h => {
-                    if (h.floor !== pisoAmaLlaves) return false;
-                    const st = (h.status || '').toLowerCase();
-                    
-                    if (filtroAmaLlaves === 'sucia') return st.includes('sucia');
-                    if (filtroAmaLlaves === 'garantizada') return st.includes('garantizada') && st.includes('reservada');
-                    if (filtroAmaLlaves === 'no_garantizada') return st.includes('reservada') && !st.includes('garantizada');
-                    
-                    return st.includes('sucia') || st.includes('reservada') || h.status === 'Disponible';
-                  }).length === 0 ? (
+                  {obtenerHabitacionesAmaLlaves().length === 0 ? (
                     <tr>
-                      <td colSpan="4" style={{ textAlign: 'center', color: '#64748b', padding: '20px' }}>
-                        No hay habitaciones que coincidan con este filtro en el Piso {pisoAmaLlaves}.
+                      <td colSpan="5" style={{ textAlign: 'center', color: '#64748b', padding: '20px' }}>
+                        No hay habitaciones que coincidan con este filtro {pisoAmaLlaves === 'todos' ? 'en todo el hotel' : `en el Piso ${pisoAmaLlaves}`}.
                       </td>
                     </tr>
                   ) : (
-                    habitaciones
-                      .filter(h => {
-                        if (h.floor !== pisoAmaLlaves) return false;
-                        const st = (h.status || '').toLowerCase();
-                        
-                        if (filtroAmaLlaves === 'sucia') return st.includes('sucia');
-                        if (filtroAmaLlaves === 'garantizada') return st.includes('garantizada') && st.includes('reservada');
-                        if (filtroAmaLlaves === 'no_garantizada') return st.includes('reservada') && !st.includes('garantizada');
-                        
-                        return st.includes('sucia') || st.includes('reservada') || h.status === 'Disponible';
-                      })
-                      .map(h => (
-                        <tr key={h.id}>
-                          <td><strong>Hab. {h.number}</strong></td>
-                          <td>{h.type}</td>
-                          <td><span className={getStatusClass(h.status)} style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{h.status}</span></td>
-                          <td style={{ textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                            {((h.status || '').toLowerCase().includes('sucia')) && (
-                              <button onClick={() => handleCambiarEstadoHabitacion(h, 'Disponible')} style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
-                                Marcar Limpia (Disponible)
-                              </button>
-                            )}
-                            {((h.status || '').toLowerCase().includes('reservada')) && (
-                              <span style={{ fontSize: '11px', color: '#b45309', fontWeight: 'bold', alignSelf: 'center' }}>
-                                ⚠️ Habitación Reservada (Prioridad de Servicio)
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
+                    obtenerHabitacionesAmaLlaves().map(h => (
+                      <tr key={h.id}>
+                        <td><strong>Hab. {h.number}</strong></td>
+                        <td>Piso {h.floor}</td>
+                        <td>{h.type}</td>
+                        <td><span className={getStatusClass(h.status)} style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{h.status}</span></td>
+                        <td style={{ textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                          {((h.status || '').toLowerCase().includes('sucia')) && (
+                            <button onClick={() => handleCambiarEstadoHabitacion(h, 'Disponible')} style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
+                              Marcar Limpia (Disponible)
+                            </button>
+                          )}
+                          {((h.status || '').toLowerCase().includes('reservada')) && (
+                            <span style={{ fontSize: '11px', color: '#b45309', fontWeight: 'bold', alignSelf: 'center' }}>
+                              ⚠️ Habitación Reservada (Prioridad de Servicio)
+                            </span>
+                          )}
+                          {(h.status === 'Disponible') && (
+                            <span style={{ fontSize: '11px', color: '#059669', fontWeight: 'bold', alignSelf: 'center' }}>
+                              ✅ Lista para Ocupar
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
