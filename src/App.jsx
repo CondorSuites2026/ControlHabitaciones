@@ -706,6 +706,15 @@ export default function App() {
         button.primary { background: #1e3a8a; color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; width: 100%; transition: opacity 0.2s; }
         button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
         button.success { background: #059669; color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; }
+
+        /* REGLA CSS ESTRICTA PARA IMPRESIÓN LIMPIA */
+        @media print {
+          body * { visibility: hidden; }
+          .modal-overlay, .modal-overlay * { visibility: visible; }
+          .modal-overlay { position: absolute; left: 0; top: 0; width: 100%; height: auto; background: transparent; padding: 0; }
+          .modal-card { max-width: 100% !important; width: 100% !important; max-height: none !important; box-shadow: none; overflow: visible !important; position: absolute; left: 0; top: 0; }
+          button { display: none !important; }
+        }
       `}</style>
 
       {/* HEADER */}
@@ -1320,7 +1329,7 @@ export default function App() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Nombre</th>
+                      <th>Modalidad</th>
                       <th>Rol</th>
                       <th>Turno / Asignación</th>
                       <th style={{ width: '80px', textAlign: 'center' }}>Acciones</th>
