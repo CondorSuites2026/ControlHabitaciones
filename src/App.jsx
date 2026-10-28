@@ -840,19 +840,19 @@ export default function App() {
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Estado actual: <strong>{roomToEditStatus.status}</strong></p>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#95c3db' }}>
                   🔵 Marcar como OCUPADA (Celeste)[cite: 17]
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#ea580c' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#a86744' }}>
                   🟧 Marcar como RESERVADA GARANTIZADA (Ladrillo)[cite: 17]
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#f472b6', color: '#831843' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#ed8fbf', color: '#80284b' }}>
                   🌸 Marcar como RESERVADA (Rosa)[cite: 17]
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#eab308', color: '#713f12' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#f1ce63', color: '#713f12' }}>
                   🟡 Marcar como SUCIA (Amarilla)[cite: 17]
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#059669' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#589f88' }}>
                   🟢 Marcar como DISPONIBLE (Verde)[cite: 17]
                 </button>
                 <button onClick={() => setRoomToEditStatus(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '8px' }}>
@@ -1249,7 +1249,7 @@ export default function App() {
                 <select value={nuevoItem.category} onChange={e => setNuevoItem({...nuevoItem, category: e.target.value})} style={{ width: '130px' }}>
                   <option value="minibar">Minibar</option>
                   <option value="lenceria">Lencería</option>
-                  <option value="amenidad">Amenidad</option>
+                  <option value="amenidades">Amenidades</option>
                 </select>
                 <input type="number" step="0.01" placeholder="Precio ($)" value={nuevoItem.price_usd || ''} onChange={e => setNuevoItem({...nuevoItem, price_usd: e.target.value})} style={{ width: '100px' }} />
                 <input type="number" placeholder="Stock" value={nuevoItem.stock || ''} onChange={e => setNuevoItem({...nuevoItem, stock: e.target.value})} style={{ width: '80px' }} />
