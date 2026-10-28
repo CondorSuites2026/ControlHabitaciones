@@ -99,9 +99,10 @@ export default function App() {
   const [tasaBCV, setTasaBCV] = useState(65.00);
 
   const [pisoAmaLlaves, setPisoAmaLlaves] = useState(3);
-  const [pisoSupervisora, setPisoSupervisora] = useState('todos'); // 'todos' o número de piso
+  const [pisoSupervisora, setPisoSupervisora] = useState('todos');
   const [filtroTiempo, setFiltroTiempo] = useState('dia');
   const [mostrarReporteFlotante, setMostrarReporteFlotante] = useState(false);
+  const [mostrarReporteHabitaciones, setMostrarReporteHabitaciones] = useState(false);
 
   const prevPendientesCount = useRef(0);
 
@@ -699,7 +700,7 @@ export default function App() {
         th, td { padding: 10px; border: 1px solid #cbd5e1; }
         th { background: #e2e8f0; color: #0f172a; }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px; }
-        .modal-card { background: #fff; padding: 24px; border-radius: 12px; max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-card { background: #fff; padding: 24px; border-radius: 12px; max-width: 620px; width: 100%; max-height: 90vh; overflow-y: auto; }
         .card-box { background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 16px; }
         input, select { padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; width: 100%; box-sizing: border-box; }
         button.primary { background: #1e3a8a; color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; width: 100%; transition: opacity 0.2s; }
@@ -976,10 +977,10 @@ export default function App() {
             <h3 style={{ margin: 0, fontSize: '18px' }}>📋 Panel de Supervisión</h3>
             <p style={{ fontSize: '12px', color: '#64748b' }}>Monitoreo de habitaciones, reportes de consumo y listados de reposición.</p>
             
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', background: '#f1f5f9', padding: '12px', borderRadius: '8px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', background: '#f1f5f9', padding: '12px', borderRadius: '8px', alignItems: 'center' }}>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Seleccionar Piso</label>
-                <select value={pisoSupervisora} onChange={(e) => setPisoSupervisora(e.target.value)} style={{ width: '160px' }}>
+                <select value={pisoSupervisora} onChange={(e) => setPisoSupervisora(e.target.value)} style={{ width: '150px' }}>
                   <option value="todos">🌐 Todos los Pisos</option>
                   {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
                 </select>
@@ -987,16 +988,19 @@ export default function App() {
 
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Período de Reporte</label>
-                <select value={filtroTiempo} onChange={(e) => setFiltroTiempo(e.target.value)} style={{ width: '150px' }}>
+                <select value={filtroTiempo} onChange={(e) => setFiltroTiempo(e.target.value)} style={{ width: '140px' }}>
                   <option value="dia">Diario (Hoy)</option>
                   <option value="semana">Semanal</option>
                   <option value="mes">Mensual</option>
                 </select>
               </div>
 
-              <div style={{ marginLeft: 'auto', alignSelf: 'flex-end' }}>
-                <button onClick={() => setMostrarReporteFlotante(true)} className="primary" style={{ background: '#059669', padding: '10px 16px' }}>
-                  🖨️ Ver Reporte Flotante & Reposición
+              <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', flexWrap: 'wrap' }}>
+                <button onClick={() => setMostrarReporteFlotante(true)} className="primary" style={{ background: '#059669', padding: '10px 14px', fontSize: '12px' }}>
+                  📊 Reporte General Consolidado
+                </button>
+                <button onClick={() => setMostrarReporteHabitaciones(true)} className="primary" style={{ background: '#1e3a8a', padding: '10px 14px', fontSize: '12px' }}>
+                  🏨 Reposición por Habitación
                 </button>
               </div>
             </div>
@@ -1030,18 +1034,18 @@ export default function App() {
           </div>
         )}
 
-        {/* REPORTE FLOTANTE DE SUPERVISORA */}
+        {/* REPORTE FLOTANTE: GENERAL CONSOLIDADO */}
         {mostrarReporteFlotante && (
           <div className="modal-overlay">
             <div className="modal-card" style={{ maxWidth: '700px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>📊 Reporte Flotante de Consumo y Reposición</h3>
+                <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>📊 Reporte General Consolidado de Consumo</h3>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#fef08a', padding: '4px 8px', borderRadius: '4px' }}>
-                  {pisoSupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisora}`} — Período: {filtroTiempo.toUpperCase()}
+                  {pisoSupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisora}`} — {filtroTiempo.toUpperCase()}
                 </span>
               </div>
 
-              <h4 style={{ fontSize: '14px', margin: '0 0 8px 0', textTransform: 'uppercase', color: '#0f172a' }}>📦 Listado de Reposición Sugerida:</h4>
+              <h4 style={{ fontSize: '14px', margin: '0 0 8px 0', textTransform: 'uppercase', color: '#0f172a' }}>📦 Listado General de Reposición:</h4>
               {calcularListadoReposicion().length === 0 ? (
                 <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', marginBottom: '20px' }}>No hay consumos registrados para la selección en el período indicado.</p>
               ) : (
@@ -1094,6 +1098,66 @@ export default function App() {
                   🖨️ Imprimir / Guardar PDF
                 </button>
                 <button onClick={() => setMostrarReporteFlotante(false)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* REPORTE FLOTANTE: REPOSICIÓN DETALLADA POR HABITACIÓN */}
+        {mostrarReporteHabitaciones && (
+          <div className="modal-overlay">
+            <div className="modal-card" style={{ maxWidth: '750px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Reposición Detallada por Habitación</h3>
+                <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#bbf7d0', color: '#065f46', padding: '4px 8px', borderRadius: '4px' }}>
+                  {pisoSupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisora}`} — {filtroTiempo.toUpperCase()}
+                </span>
+              </div>
+
+              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Desglose de artículos exactos que se consumieron en cada habitación para reabastecer los carritos:</p>
+
+              <div style={{ maxHeight: '350px', overflowY: 'auto', marginBottom: '20px' }}>
+                {obtenerReportesFiltradosSupervisora().length === 0 ? (
+                  <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>No hay registros de consumos por habitación para el filtro seleccionado.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {obtenerReportesFiltradosSupervisora().map((rep, idx) => (
+                      <div key={idx} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
+                          <div>
+                            <strong style={{ fontSize: '14px', color: '#1e3a8a' }}>Habitación {rep.habitacion}</strong>
+                            <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '8px' }}>({new Date(rep.fecha).toLocaleDateString()})</span>
+                          </div>
+                          <span style={{ fontSize: '11px', fontWeight: 'bold', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
+                            Asistente: {rep.asistente}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {Object.entries(rep.desglose || {}).map(([idItem, qty]) => {
+                            if (qty <= 0) return null;
+                            const prod = inventario.find(i => i.id === idItem);
+                            return (
+                              <div key={idItem} style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '4px 10px', borderRadius: '6px', fontSize: '12px' }}>
+                                <span>{prod?.name || idItem}: </span>
+                                <strong style={{ color: '#059669' }}>{qty} unds</strong>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => window.print()} className="primary" style={{ flex: 1, background: '#1e3a8a' }}>
+                  🖨️ Imprimir / Guardar PDF
+                </button>
+                <button onClick={() => setMostrarReporteHabitaciones(false)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
                   Cerrar
                 </button>
               </div>
