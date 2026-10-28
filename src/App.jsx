@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
 
-// Extracción robusta compatible con Vite, Next o nombres estándar de Vercel
 const getEnvVar = (key) => {
   try {
-    // 1. Probar con import.meta.env (Vite)
     if (typeof import.meta !== 'undefined' && import.meta.env) {
       if (import.meta.env[`VITE_${key}`]) return import.meta.env[`VITE_${key}`];
       if (import.meta.env[key]) return import.meta.env[key];
     }
-    // 2. Probar con process.env (Node / Vercel Server)
     if (typeof process !== 'undefined' && process.env) {
       if (process.env[`VITE_${key}`]) return process.env[`VITE_${key}`];
       if (process.env[`NEXT_PUBLIC_${key}`]) return process.env[`NEXT_PUBLIC_${key}`];
@@ -18,7 +15,6 @@ const getEnvVar = (key) => {
   return '';
 };
 
-// Buscar URL y KEY probando todas las variantes posibles de nombres en Vercel
 const supabaseUrl = getEnvVar('SUPABASE_URL') || getEnvVar('VITE_SUPABASE_URL') || getEnvVar('NEXT_PUBLIC_SUPABASE_URL');
 const supabaseAnonKey = getEnvVar('SUPABASE_ANON_KEY') || getEnvVar('VITE_SUPABASE_ANON_KEY') || getEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY') || getEnvVar('SUPABASE_PUBLISHABLE_KEY');
 
@@ -29,8 +25,6 @@ const getSupabaseClient = () => {
     });
   }
   
-  console.warn('⚠️ ADVERTENCIA: Verificando conexión con Supabase...');
-
   const createMockQuery = () => {
     const query = {
       select: () => query,
@@ -84,9 +78,8 @@ export default function App() {
     { id: 'shampoo', name: 'Kit Shampoo / Jabón', category: 'amenidad', price_usd: 0.80, stock: 200 }
   ]);
 
-  const [personal, setPersonal] = useState([
-    { id: 1, nombre: 'María Rodríguez', rol: 'Asistente', turno: 'Mañana (Pisos 3-5)' }
-  ]);
+  // CORREGIDO: Iniciamos el personal vacío para que respete fielmente la base de datos
+  const [personal, setPersonal] = useState([]);
 
   const [reportesHistorial, setReportesHistorial] = useState([]);
   const [asistenteSeleccionada, setAsistenteSeleccionada] = useState('');
@@ -185,8 +178,12 @@ export default function App() {
   const fetchPersonal = async () => {
     try {
       const { data, error } = await supabase.from('personal').select('*');
-      if (!error && data && data.length > 0) setPersonal(data);
-    } catch (e) {}
+      if (!error) {
+        setPersonal(data || []);
+      }
+    } catch (e) {
+      setPersonal([]);
+    }
   };
 
   const fetchReportes = async () => {
@@ -904,18 +901,26 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {personal.map(p => (
-                      <tr key={p.id}>
-                        <td><strong>{p.nombre}</strong></td>
-                        <td>{p.rol}</td>
-                        <td>{p.turno}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <button onClick={() => handleEliminarPersonal(p.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
-                            Eliminar
-                          </button>
+                    {personal.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" style={{ textAlign: 'center', color: '#64748b', padding: '16px' }}>
+                          No hay personal registrado. Agregue uno nuevo arriba.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      personal.map(p => (
+                        <tr key={p.id}>
+                          <td><strong>{p.nombre}</strong></td>
+                          <td>{p.rol}</td>
+                          <td>{p.turno}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            <button onClick={() => handleEliminarPersonal(p.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                              Eliminar
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
