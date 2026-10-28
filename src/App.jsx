@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 
-// Extracción robusta compatible con Vite, Next o nombres estándar de Vercel
 const getEnvVar = (key) => {
   try {
     if (typeof import.meta !== 'undefined' && import.meta.env) {
@@ -174,14 +173,22 @@ export default function App() {
     } catch (e) {}
   };
 
+  // FETCH PERSONAL CORREGIDO CON PETICIÓN REST DIRECTA
   const fetchPersonal = async () => {
     try {
-      const { data, error } = await supabase.from('personal').select('*');
-      if (!error && data) {
-        setPersonal(data);
+      const response = await fetch(`${supabaseUrl}/rest/v1/personal?select=*`, {
+        method: 'GET',
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPersonal(data || []);
       }
     } catch (e) {
-      console.error('Error cargando personal:', e);
+      console.error('Error al obtener personal:', e);
     }
   };
 
@@ -192,7 +199,6 @@ export default function App() {
     } catch (e) {}
   };
 
-  // FUNCIÓN RESTRUCTURADA Y GARANTIZADA DE AGREGAR PERSONAL
   const handleAgregarPersonal = async (e) => {
     e.preventDefault();
     if (!nuevoPersonal.nombre.trim() || !nuevoPersonal.turno.trim()) {
@@ -206,7 +212,6 @@ export default function App() {
     };
 
     try {
-      // Petición directa REST a Supabase omitiendo intermediarios de la librería
       const response = await fetch(`${supabaseUrl}/rest/v1/personal`, {
         method: 'POST',
         headers: {
@@ -220,21 +225,14 @@ export default function App() {
 
       if (!response.ok) {
         const errJson = await response.json();
-        throw new Error(errJson.message || errJson.hint || 'Error desconocido en Supabase');
+        throw new Error(errJson.message || errJson.hint || 'Error en Supabase');
       }
 
-      const data = await response.json();
-      
-      if (data && data.length > 0) {
-        setPersonal(prev => [...prev, data[0]]);
-      } else {
-        await fetchPersonal();
-      }
-
+      await fetchPersonal();
       setNuevoPersonal({ nombre: '', rol: 'Asistente', turno: '' });
-      alert(`✅ Personal (${nuevoObj.nombre}) agregado y guardado en Supabase exitosamente.`);
+      alert(`✅ Personal (${nuevoObj.nombre}) guardado en Supabase exitosamente.`);
     } catch (err) {
-      console.error('Error detallado al guardar:', err);
+      console.error('Error al guardar:', err);
       alert('❌ Error al guardar en Supabase: ' + err.message);
     }
   };
@@ -242,7 +240,13 @@ export default function App() {
   const handleEliminarPersonal = async (id) => {
     if (!confirm('¿Desea eliminar a este integrante del personal?')) return;
     try {
-      await supabase.from('personal').delete().eq('id', id);
+      await fetch(`${supabaseUrl}/rest/v1/personal?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        }
+      });
       setPersonal(prev => prev.filter(p => p.id !== id));
       alert('🗑️ Personal eliminado.');
     } catch (err) {
