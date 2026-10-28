@@ -149,8 +149,10 @@ export default function App() {
       });
       if (response.ok) {
         const data = await response.json();
-        if (!data || data.length === 0) {
-          const defaultRooms = getDefaultRoomsArray();
+        const defaultRooms = getDefaultRoomsArray();
+        
+        // Si faltan habitaciones en Supabase (menos de las 67 totales), las inicializamos todas
+        if (!data || data.length < 67) {
           setHabitaciones(defaultRooms);
           for (const room of defaultRooms) {
             await fetch(`${supabaseUrl}/rest/v1/habitaciones`, {
@@ -342,7 +344,6 @@ export default function App() {
     }
   };
 
-  // CHECK-OUT REST DIRECTO CORREGIDO Y ROBUSTO
   const handleEjecutarCheckout = async () => {
     if (!selectedRoom) {
       alert('⚠️ Por favor seleccione una habitación.');
@@ -381,7 +382,6 @@ export default function App() {
       const newStatus = 'Sucia / Por Facturar';
       const roomTargetId = String(selectedRoom.id);
 
-      // 1. Actualizar habitación con upsert REST directo
       const habResponse = await fetch(`${supabaseUrl}/rest/v1/habitaciones`, {
         method: 'POST',
         headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
@@ -401,7 +401,6 @@ export default function App() {
         throw new Error(errHab.message || 'Error al actualizar habitación');
       }
 
-      // 2. Insertar reporte en reportes_consumo vía REST directo
       const repResponse = await fetch(`${supabaseUrl}/rest/v1/reportes_consumo`, {
         method: 'POST',
         headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
