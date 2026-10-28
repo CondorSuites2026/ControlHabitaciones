@@ -442,13 +442,15 @@ export default function App() {
     }));
   };
 
+  // ADAPTACIÓN DE COLORES SEGÚN EL SISTEMA DE FACTURACIÓN
   const getStatusClass = (status) => {
     const s = (status || '').toLowerCase();
     if (s.includes('por facturar') || s.includes('sucia / por facturar')) return 'badge-danger';
-    if (s.includes('ocupada')) return 'badge-ocupada';
-    if (s.includes('reservada')) return 'badge-reservada';
-    if (s.includes('sucia')) return 'badge-sucia';
-    return 'badge-disponible';
+    if (s.includes('ocupada')) return 'badge-ocupada'; // Azul celeste
+    if (s.includes('garantizada') && s.includes('reservada')) return 'badge-reservada-garantizada'; // Ladrillo
+    if (s.includes('reservada')) return 'badge-reservada-no-garantizada'; // Rosa
+    if (s.includes('sucia')) return 'badge-sucia'; // Amarilla
+    return 'badge-disponible'; // Verde
   };
 
   const subirEvidenciaASupabase = async (file) => {
@@ -687,11 +689,13 @@ export default function App() {
         .bcv-box { display: flex; align-items: center; background: #1d4ed8; padding: 6px 12px; border-radius: 8px; border: 1px solid #3b82f6; gap: 8px; color: #fef08a; font-weight: bold; font-size: 12px; }
         .btn-update { background: #f59e0b; color: #0f172a; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 12px; }
         
-        .badge-disponible { background: #bbf7d0; color: #065f46; }
-        .badge-ocupada { background: #99f6e4; color: #155e75; }
-        .badge-reservada { background: #fed7aa; color: #9a3412; }
-        .badge-sucia { background: #fef08a; color: #854d0e; }
-        .badge-danger { background: #ef4444; color: #ffffff; }
+        /* PALETA DE COLORES SINCRONIZADA CON EL SISTEMA DE FACTURACIÓN */
+        .badge-disponible { background: #bbf7d0; color: #065f46; } /* Verde[cite: 17] */
+        .badge-ocupada { background: #7dd3fc; color: #0369a1; } /* Azul celeste[cite: 17] */
+        .badge-sucia { background: #fde047; color: #713f12; } /* Amarilla[cite: 17] */
+        .badge-reservada-no-garantizada { background: #f472b6; color: #831843; } /* Rosa[cite: 17] */
+        .badge-reservada-garantizada { background: #ea580c; color: #ffffff; } /* Ladrillo[cite: 17] */
+        .badge-danger { background: #ef4444; color: #ffffff; } /* Alerta check-out */
 
         @keyframes pulseAlert { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.97); } 100% { opacity: 1; transform: scale(1); } }
         .alerta-parpadeante { animation: pulseAlert 1s infinite ease-in-out; }
@@ -707,7 +711,7 @@ export default function App() {
         button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
         button.success { background: #059669; color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; }
 
-        /* REGLA DE IMPRESIÓN CORREGIDA Y LIMPIA */
+        /* REGLA DE IMPRESIÓN LIMPIA */
         @media print {
           body * { visibility: hidden; }
           .modal-overlay, .modal-overlay * { visibility: visible; }
@@ -837,13 +841,19 @@ export default function App() {
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
-                  🔴 Marcar como OCUPADA
+                  🔵 Marcar como OCUPADA (Celeste)[cite: 17]
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#d97706' }}>
-                  🟡 Marcar como RESERVADA
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#ea580c' }}>
+                  🟧 Marcar como RESERVADA GARANTIZADA (Ladrillo)[cite: 17]
+                </button>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#f472b6', color: '#831843' }}>
+                  🌸 Marcar como RESERVADA (Rosa)[cite: 17]
+                </button>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#eab308', color: '#713f12' }}>
+                  🟡 Marcar como SUCIA (Amarilla)[cite: 17]
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#059669' }}>
-                  🟢 Marcar como DISPONIBLE
+                  🟢 Marcar como DISPONIBLE (Verde)[cite: 17]
                 </button>
                 <button onClick={() => setRoomToEditStatus(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '8px' }}>
                   Cancelar
