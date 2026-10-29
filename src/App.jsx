@@ -461,24 +461,42 @@ export default function App() {
     if (!file) return null;
     try {
       setSubiendoArchivo(true);
+      
+      // Limpiar el nombre del archivo para evitar caracteres especiales o espacios
       const fileExt = file.name.split('.').pop();
       const fileName = `evidencia_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
-      const filePath = `checkout_evidencias/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage.from('evidencias').upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true
+      // Endpoint directo de Supabase Storage API REST
+      const uploadUrl = `${supabaseUrl}/storage/v1/object/evidencias/${fileName}`;
+
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Content-Type': file.type,
+          'x-upsert': 'true'
+        },
+        body: file
       });
 
-      if (uploadError) return null;
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error en Supabase Storage API:', errorData);
+        throw new Error(errorData.message || 'Error al subir la imagen al Storage');
+      }
 
-      const { data } = supabase.storage.from('evidencias').getPublicUrl(filePath);
+      // Generar URL pública directa del archivo subido
+      const publicUrl = `${supabaseUrl}/storage/v1/object/public/evidencias/${fileName}`;
+
       return {
-        url: data?.publicUrl || '',
+        url: publicUrl,
         tipo: file.type.startsWith('video') ? 'video' : 'imagen',
         nombre: file.name
       };
     } catch (err) {
+      console.error('Error al subir evidencia:', err.message);
+      alert('⚠️ No se pudo subir la foto de evidencia: ' + err.message);
       return null;
     } finally {
       setSubiendoArchivo(false);
