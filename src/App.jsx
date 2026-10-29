@@ -130,18 +130,19 @@ export default function App() {
     }
 
     if (pendientesActuales.length > prevPendientesCount.current) {
-      // Reproducir sonido mediante elemento HTML5 persistente
+      // Reproducir sonido de campana de recepción de alta fidelidad
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(e => console.log('Audio bloqueado por el navegador hasta interacción', e));
+        audioRef.current.play().catch(e => console.log('Audio en segundo plano pendiente de interacción', e));
       }
 
+      // Generar alerta visible en pantalla (Notificación flotante del sistema operativo)
       if ('Notification' in window && Notification.permission === 'granted') {
         const habAlert = pendientesActuales[pendientesActuales.length - 1];
-        const notif = new Notification('🚨 ¡NUEVO CHECK-OUT PENDIENTE!', {
-          body: `La Habitación ${habAlert?.number || ''} tiene consumos por facturar.`,
+        const notif = new Notification('🛎️ ¡CHECK-OUT PENDIENTE EN RECEPCIÓN!', {
+          body: `La Habitación ${habAlert?.number || ''} solicita facturación de minibar.`,
           icon: '/favicon.ico',
-          requireInteraction: true // Mantiene la notificación en pantalla hasta que el recepcionista la vea
+          requireInteraction: true // Mantiene el aviso visible en pantalla hasta que el usuario lo toque
         });
         notif.onclick = () => {
           window.focus();
@@ -759,9 +760,9 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* Elemento de audio HTML5 persistente para saltar las restricciones de background throttling de audio */}
+      {/* Reproductor de audio HTML5 con enlace directo a sonido de campana de recepción */}
       <audio ref={audioRef} preload="auto">
-        <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg" />
+        <source src="https://cdn.freesound.org/previews/536/536108_11861866-lq.mp3" type="audio/mp3" />
         <source src="https://actions.google.com/sounds/v1/ambiences/office_beeps.ogg" type="audio/ogg" />
       </audio>
 
@@ -841,7 +842,6 @@ export default function App() {
               key={m.id} 
               onClick={() => {
                 setRole(m.id);
-                // Activación inicial de audio por interacción del usuario
                 if (audioRef.current) {
                   audioRef.current.play().then(() => audioRef.current.pause()).catch(() => {});
                 }
