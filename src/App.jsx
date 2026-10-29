@@ -58,36 +58,6 @@ const getSupabaseClient = () => {
 
 const supabase = getSupabaseClient();
 
-const reproducirTresCampanazos = () => {
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-
-    const sonarCampana = (delay) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime + delay);
-
-      gain.gain.setValueAtTime(0, ctx.currentTime + delay);
-      gain.gain.linearRampToValueAtTime(0.8, ctx.currentTime + delay + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 1.2);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(ctx.currentTime + delay);
-      osc.stop(ctx.currentTime + delay + 1.2);
-    };
-
-    sonarCampana(0);
-    sonarCampana(0.5);
-    sonarCampana(1.0);
-  } catch (e) {}
-};
-
 export default function App() {
   const [role, setRole] = useState('recepcion');
   const [habitaciones, setHabitaciones] = useState([]);
@@ -107,7 +77,8 @@ export default function App() {
   const [mostrarReporteHabitaciones, setMostrarReporteHabitaciones] = useState(false);
   const [mostrarControlMinibar, setMostrarControlMinibar] = useState(false);
 
-  const prevPendientesCount = useRef(-1); // Inicializado en -1 para detectar el primer render sin falsos positivos
+  const prevPendientesCount = useRef(-1);
+  const audioRef = useRef(null);
 
   const [inventario, setInventario] = useState([
     { id: 'agua', name: 'Agua Mineral 500ml', category: 'minibar', price_usd: 1.00, stock: 100 },
@@ -153,23 +124,29 @@ export default function App() {
       return st.includes('por facturar') || st.includes('sucia / por facturar');
     });
 
-    // Si es la primera carga, inicializamos la referencia sin disparar sonido
     if (prevPendientesCount.current === -1) {
       prevPendientesCount.current = pendientesActuales.length;
       return;
     }
 
-    // Solo suena si el número de pendientes AUMENTA respecto al registro anterior
     if (pendientesActuales.length > prevPendientesCount.current) {
-      reproducirTresCampanazos();
+      // Reproducir sonido mediante elemento HTML5 persistente
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(e => console.log('Audio bloqueado por el navegador hasta interacción', e));
+      }
 
       if ('Notification' in window && Notification.permission === 'granted') {
         const habAlert = pendientesActuales[pendientesActuales.length - 1];
         const notif = new Notification('🚨 ¡NUEVO CHECK-OUT PENDIENTE!', {
           body: `La Habitación ${habAlert?.number || ''} tiene consumos por facturar.`,
-          icon: '/favicon.ico'
+          icon: '/favicon.ico',
+          requireInteraction: true // Mantiene la notificación en pantalla hasta que el recepcionista la vea
         });
-        notif.onclick = () => window.focus();
+        notif.onclick = () => {
+          window.focus();
+          notif.close();
+        };
       }
     }
 
@@ -782,6 +759,12 @@ export default function App() {
 
   return (
     <div className="app-container">
+      {/* Elemento de audio HTML5 persistente para saltar las restricciones de background throttling de audio */}
+      <audio ref={audioRef} preload="auto">
+        <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg" />
+        <source src="https://actions.google.com/sounds/v1/ambiences/office_beeps.ogg" type="audio/ogg" />
+      </audio>
+
       <style>{`
         body { margin: 0; background-color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; color: #1e293b; }
         .app-container { min-height: 100vh; display: flex; flex-direction: column; }
@@ -856,7 +839,13 @@ export default function App() {
           ].map(m => (
             <button 
               key={m.id} 
-              onClick={() => setRole(m.id)}
+              onClick={() => {
+                setRole(m.id);
+                // Activación inicial de audio por interacción del usuario
+                if (audioRef.current) {
+                  audioRef.current.play().then(() => audioRef.current.pause()).catch(() => {});
+                }
+              }}
               className={`nav-btn ${role === m.id ? 'active' : ''}`}>
               {m.label}
             </button>
