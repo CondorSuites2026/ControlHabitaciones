@@ -114,7 +114,7 @@ export default function App() {
     { id: 'snack', name: 'Snacks / Chocolates', category: 'minibar', price_usd: 1.25, stock: 60 },
     { id: 'toalla_c', name: 'Toalla de Cuerpo', category: 'lenceria', price_usd: 12.00, stock: 40 },
     { id: 'toalla_m', name: 'Toalla de Manos', category: 'lenceria', price_usd: 6.00, stock: 50 },
-    { id: 'shampoo', name: 'Kit Shampoo / Jabón', category: 'amenidad', price_usd: 0.80, stock: 200 }
+    { id: 'shampoo', name: 'Kit Shampoo / Jabón', category: 'amenidades', price_usd: 0.80, stock: 200 }
   ]);
 
   const [personal, setPersonal] = useState([]);
@@ -1353,19 +1353,20 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 5: ADMINISTRACIÓN */}
-        {role === 'admin' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {/* GESTIÓN DE INVENTARIO */}
             <div className="card-box">
               <h3 style={{ margin: 0, fontSize: '18px' }}>📦 Gestión de Inventario y Precios</h3>
               <form onSubmit={handleGuardarInventario} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <input placeholder="ID (ej: whisky)" value={nuevoItem.id} onChange={e => setNuevoItem({...nuevoItem, id: e.target.value})} style={{ width: '120px' }} />
+                <input placeholder="ID (ej: abrelatas)" value={nuevoItem.id} onChange={e => setNuevoItem({...nuevoItem, id: e.target.value})} style={{ width: '120px' }} />
                 <input placeholder="Nombre del Producto" value={nuevoItem.name} onChange={e => setNuevoItem({...nuevoItem, name: e.target.value})} style={{ flex: 1, minWidth: '180px' }} />
+                
                 <select value={nuevoItem.category} onChange={e => setNuevoItem({...nuevoItem, category: e.target.value})} style={{ width: '130px' }}>
                   <option value="minibar">Minibar</option>
                   <option value="lenceria">Lencería</option>
                   <option value="amenidad">Amenidad</option>
+                  <option value="utensilios">Utensilios</option>
                 </select>
+
                 <input type="number" step="0.01" placeholder="Precio ($)" value={nuevoItem.price_usd || ''} onChange={e => setNuevoItem({...nuevoItem, price_usd: e.target.value})} style={{ width: '100px' }} />
                 <input type="number" placeholder="Stock" value={nuevoItem.stock || ''} onChange={e => setNuevoItem({...nuevoItem, stock: e.target.value})} style={{ width: '80px' }} />
                 <button type="submit" className="primary" style={{ width: 'auto' }}>+ Guardar</button>
