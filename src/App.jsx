@@ -443,15 +443,14 @@ export default function App() {
     }));
   };
 
-  // CLASES DE COLORES SINCRONIZADAS CON EL SISTEMA DE FACTURACIÓN
   const getStatusClass = (status) => {
     const s = (status || '').toLowerCase();
     if (s.includes('por facturar') || s.includes('sucia / por facturar')) return 'badge-danger';
-    if (s.includes('ocupada')) return 'badge-ocupada'; // Azul celeste
-    if (s.includes('garantizada') && s.includes('reservada')) return 'badge-reservada-garantizada'; // Ladrillo
-    if (s.includes('reservada')) return 'badge-reservada-no-garantizada'; // Rosa
-    if (s.includes('sucia')) return 'badge-sucia'; // Amarilla
-    return 'badge-disponible'; // Verde
+    if (s.includes('ocupada')) return 'badge-ocupada';
+    if (s.includes('garantizada') && s.includes('reservada')) return 'badge-reservada-garantizada';
+    if (s.includes('reservada')) return 'badge-reservada-no-garantizada';
+    if (s.includes('sucia')) return 'badge-sucia';
+    return 'badge-disponible';
   };
 
   const subirEvidenciaASupabase = async (file) => {
@@ -482,6 +481,7 @@ export default function App() {
     }
   };
 
+  // FUNCIÓN OPTIMIZADA DE CHECK-OUT CON BLOQUEO ANTI-DOBLE TOQUE
   const handleEjecutarCheckout = async () => {
     if (!selectedRoom) {
       alert('⚠️ Por favor seleccione una habitación.');
@@ -491,6 +491,8 @@ export default function App() {
       alert('⚠️ Por favor seleccione la Asistente Encargada.');
       return;
     }
+
+    setSubiendoArchivo(true);
 
     try {
       let totalUSD = 0;
@@ -640,7 +642,7 @@ export default function App() {
 
       const fechaRep = new Date(rep.fecha);
       if (filtroTiempo === 'dia') {
-        return fechaRep.toDateString() === skinToDateString(ahora);
+        return fechaRep.toDateString() === ahora.toDateString();
       } else if (filtroTiempo === 'semana') {
         const diffTime = Math.abs(ahora - fechaRep);
         const diffDays = diffTime / (1000 * 60 * 60 * 24);
@@ -651,8 +653,6 @@ export default function App() {
       return true;
     });
   };
-
-  const skinToDateString = (date) => date.toDateString();
 
   const calcularListadoReposicion = () => {
     const filtrados = obtenerReportesFiltradosSupervisora();
@@ -678,27 +678,16 @@ export default function App() {
     });
   };
 
-  // LÓGICA DE FILTRADO PARA AMA DE LLAVES
   const obtenerHabitacionesAmaLlaves = () => {
     return habitaciones
       .filter(h => {
         if (pisoAmaLlaves !== 'todos' && h.floor !== parseInt(pisoAmaLlaves)) {
           return false;
         }
-
         const st = (h.status || '').toLowerCase();
-
-        if (filtroAmaLlaves === 'sucia') {
-          return st.includes('sucia');
-        }
-        if (filtroAmaLlaves === 'garantizada') {
-          return st.includes('garantizada') && st.includes('reservada');
-        }
-        if (filtroAmaLlaves === 'no_garantizada') {
-          return st.includes('reservada') && !st.includes('garantizada');
-        }
-
-        // Por defecto 'todas': Muestra las que requieran gestión (Sucias, Reservadas o Disponibles)
+        if (filtroAmaLlaves === 'sucia') return st.includes('sucia');
+        if (filtroAmaLlaves === 'garantizada') return st.includes('garantizada') && st.includes('reservada');
+        if (filtroAmaLlaves === 'no_garantizada') return st.includes('reservada') && !st.includes('garantizada');
         return st.includes('sucia') || st.includes('reservada') || h.status === 'Disponible';
       })
       .sort((a, b) => parseInt(a.number) - parseInt(b.number));
@@ -718,13 +707,12 @@ export default function App() {
         .bcv-box { display: flex; align-items: center; background: #1d4ed8; padding: 6px 12px; border-radius: 8px; border: 1px solid #3b82f6; gap: 8px; color: #fef08a; font-weight: bold; font-size: 12px; }
         .btn-update { background: #f59e0b; color: #0f172a; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 12px; }
         
-        /* PALETA DE COLORES SINCRONIZADA CON EL SISTEMA DE FACTURACIÓN */
-        .badge-disponible { background: #bbf7d0; color: #065f46; } /* Verde */
-        .badge-ocupada { background: #7dd3fc; color: #0369a1; } /* Azul celeste */
-        .badge-sucia { background: #fde047; color: #713f12; } /* Amarilla */
-        .badge-reservada-no-garantizada { background: #f472b6; color: #831843; } /* Rosa */
-        .badge-reservada-garantizada { background: #ea580c; color: #ffffff; } /* Ladrillo */
-        .badge-danger { background: #ef4444; color: #ffffff; } /* Alerta check-out */
+        .badge-disponible { background: #bbf7d0; color: #065f46; }
+        .badge-ocupada { background: #7dd3fc; color: #0369a1; }
+        .badge-sucia { background: #fde047; color: #713f12; }
+        .badge-reservada-no-garantizada { background: #f472b6; color: #831843; }
+        .badge-reservada-garantizada { background: #ea580c; color: #ffffff; }
+        .badge-danger { background: #ef4444; color: #ffffff; }
 
         @keyframes pulseAlert { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.97); } 100% { opacity: 1; transform: scale(1); } }
         .alerta-parpadeante { animation: pulseAlert 1s infinite ease-in-out; }
@@ -740,7 +728,6 @@ export default function App() {
         button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
         button.success { background: #059669; color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; }
 
-        /* REGLA DE IMPRESIÓN LIMPIA */
         @media print {
           body * { visibility: hidden; }
           .modal-overlay, .modal-overlay * { visibility: visible; }
@@ -861,7 +848,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL CAMBIAR ESTADO / OCUPAR */}
+        {/* MODAL CAMBIAR ESTADO */}
         {roomToEditStatus && (
           <div className="modal-overlay">
             <div className="modal-card">
@@ -945,7 +932,7 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 2: ASISTENTE MÓVIL */}
+        {/* VISTA 2: ASISTENTE MÓVIL (CON SELECTOR SCROLLEABLE Y BOTÓN SEGURO) */}
         {role === 'asistente' && (
           <div style={{ maxWidth: '650px', margin: '0 auto', width: '100%' }} className="card-box">
             <h2 style={{ fontSize: '20px', margin: 0 }}>Check-Out e Inspección Móvil</h2>
@@ -965,7 +952,10 @@ export default function App() {
 
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Asistente Encargada</label>
-                <select value={asistenteSeleccionada} onChange={(e) => setAsistenteSeleccionada(e.target.value)} style={{ width: '100%' }}>
+                <select 
+                  value={asistenteSeleccionada} 
+                  onChange={(e) => setAsistenteSeleccionada(e.target.value)} 
+                  style={{ width: '100%', maxHeight: '220px', overflowY: 'auto', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                   <option value="">Seleccionar Asistente...</option>
                   {personal.filter(p => p.rol === 'Asistente').map(a => <option key={a.id} value={a.nombre}>{a.nombre} ({a.turno})</option>)}
                 </select>
@@ -1011,8 +1001,8 @@ export default function App() {
                     disabled={subiendoArchivo} 
                     className="primary" 
                     onClick={handleEjecutarCheckout}
-                    style={{ width: '100%', padding: '14px', fontSize: '14px' }}>
-                    {subiendoArchivo ? 'Subiendo Evidencia a Supabase...' : '🚨 Ejecutar Check-Out'}
+                    style={{ width: '100%', padding: '14px', fontSize: '14px', opacity: subiendoArchivo ? 0.6 : 1, cursor: subiendoArchivo ? 'not-allowed' : 'pointer' }}>
+                    {subiendoArchivo ? 'Procesando en Supabase...' : '🚨 Ejecutar Check-Out'}
                   </button>
                 </>
               )}
@@ -1220,7 +1210,6 @@ export default function App() {
             <h3 style={{ margin: 0, fontSize: '18px' }}>🔑 Gestión de Ama de Llaves por Piso</h3>
             <p style={{ fontSize: '12px', color: '#64748b' }}>Seleccione el piso y filtre por estado para priorizar la limpieza y el servicio.</p>
 
-            {/* BANNER CON SELECTOR DE PISO (CON TODOS LOS PISOS POR DEFECTO) Y ÓVALOS DE FILTRADO A LA DERECHA */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f1f5f9', padding: '12px', borderRadius: '8px', flexWrap: 'wrap', gap: '12px' }}>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Piso:</label>
@@ -1230,7 +1219,6 @@ export default function App() {
                 </select>
               </div>
 
-              {/* ÓVALOS DE FILTRADO */}
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>Filtrar:</span>
                 
@@ -1242,19 +1230,19 @@ export default function App() {
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('sucia')}
-                  style={{ background: '#fde047', color: '#713f12', border: filtroAmaLlaves === 'sucia' ? '2px solid #1e293b' : '1px solid #ca8a04', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  style={{ background: '#fde047', color: '#713f12', border: filtroAmaLlaves === 'sucia' ? '2px solid #1e293b' : '1px solid #ca8a04', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
                   🟡 Sucias
                 </button>
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('garantizada')}
-                  style={{ background: '#ea580c', color: '#ffffff', border: filtroAmaLlaves === 'garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  style={{ background: '#ea580c', color: '#ffffff', border: filtroAmaLlaves === 'garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
                   🟧 Garantizadas
                 </button>
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('no_garantizada')}
-                  style={{ background: '#f472b6', color: '#831843', border: filtroAmaLlaves === 'no_garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  style={{ background: '#f472b6', color: '#831843', border: filtroAmaLlaves === 'no_garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
                   🌸 No Garantizadas
                 </button>
               </div>
@@ -1314,7 +1302,6 @@ export default function App() {
         {/* VISTA 5: ADMINISTRACIÓN */}
         {role === 'admin' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {/* GESTIÓN DE INVENTARIO */}
             <div className="card-box">
               <h3 style={{ margin: 0, fontSize: '18px' }}>📦 Gestión de Inventario y Precios</h3>
               <form onSubmit={handleGuardarInventario} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -1383,7 +1370,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* GESTIÓN DE PERSONAL */}
             <div className="card-box">
               <h3 style={{ margin: 0, fontSize: '18px' }}>👥 Gestión de Personal</h3>
               <form onSubmit={handleAgregarPersonal} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
