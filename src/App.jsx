@@ -114,13 +114,12 @@ export default function App() {
     { id: 'snack', name: 'Snacks / Chocolates', category: 'minibar', price_usd: 1.25, stock: 60 },
     { id: 'toalla_c', name: 'Toalla de Cuerpo', category: 'lenceria', price_usd: 12.00, stock: 40 },
     { id: 'toalla_m', name: 'Toalla de Manos', category: 'lenceria', price_usd: 6.00, stock: 50 },
-    { id: 'shampoo', name: 'Kit Shampoo / Jabón', category: 'amenidades', price_usd: 0.80, stock: 200 }
+    { id: 'shampoo', name: 'Kit Shampoo / Jabón', category: 'amenidad', price_usd: 0.80, stock: 200 }
   ]);
 
   const [personal, setPersonal] = useState([]);
   const [reportesHistorial, setReportesHistorial] = useState([]);
   
-  // ESTADOS PARA SELECCIÓN DINÁMICA DE DEPARTAMENTO Y ENCARGADO
   const [departamentoSeleccionado, setDepartamentoSeleccionado] = useState('Asistente');
   const [asistenteSeleccionada, setAsistenteSeleccionada] = useState('');
   
@@ -464,7 +463,6 @@ export default function App() {
       const fileExt = file.name.split('.').pop();
       const fileName = `evidencia_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
 
-      // Crear FormData para enviar el archivo correctamente a Supabase Storage
       const formData = new FormData();
       formData.append('file', file);
 
@@ -475,7 +473,6 @@ export default function App() {
         headers: {
           'apikey': supabaseAnonKey,
           'Authorization': `Bearer ${supabaseAnonKey}`
-          // Nota: No se coloca Content-Type manualmente para que el navegador gestione el boundary de FormData
         },
         body: formData
       });
@@ -485,7 +482,6 @@ export default function App() {
         throw new Error(errorData.message || 'Error al subir archivo al servidor');
       }
 
-      // URL pública directa para visualizar la evidencia
       const publicUrl = `${supabaseUrl}/storage/v1/object/public/evidencias/${fileName}`;
 
       return {
@@ -502,7 +498,6 @@ export default function App() {
     }
   };
 
-  // FILTRAR PERSONAL SEGÚN EL DEPARTAMENTO SELECCIONADO
   const obtenerPersonalPorDepartamento = () => {
     return personal.filter(p => {
       const rolStr = (p.rol || '').toLowerCase();
@@ -965,7 +960,7 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 2: ASISTENTE MÓVIL (CON DEPARTAMENTO DINÁMICO) */}
+        {/* VISTA 2: ASISTENTE MÓVIL */}
         {role === 'asistente' && (
           <div style={{ maxWidth: '650px', margin: '0 auto', width: '100%' }} className="card-box">
             <h2 style={{ fontSize: '20px', margin: 0 }}>Check-Out e Inspección Móvil</h2>
@@ -983,14 +978,13 @@ export default function App() {
                 </select>
               </div>
 
-              {/* 1. SELECCIONAR DEPARTAMENTO */}
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Departamento / Rol</label>
                 <select 
                   value={departamentoSeleccionado} 
                   onChange={(e) => {
                     setDepartamentoSeleccionado(e.target.value);
-                    setAsistenteSeleccionada(''); // Reiniciar selección del encargado al cambiar de dpto.
+                    setAsistenteSeleccionada('');
                   }} 
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>
                   <option value="Asistente">🧹 Asistentes (Piso)</option>
@@ -999,7 +993,6 @@ export default function App() {
                 </select>
               </div>
 
-              {/* 2. SELECCIONAR ENCARGADO SEGÚN EL DEPARTAMENTO */}
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Encargado/a de Turno</label>
                 <select 
@@ -1353,7 +1346,9 @@ export default function App() {
           </div>
         )}
 
-        {/* GESTIÓN DE INVENTARIO */}
+        {/* VISTA 5: ADMINISTRACIÓN */}
+        {role === 'admin' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div className="card-box">
               <h3 style={{ margin: 0, fontSize: '18px' }}>📦 Gestión de Inventario y Precios</h3>
               <form onSubmit={handleGuardarInventario} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
