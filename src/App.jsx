@@ -449,6 +449,7 @@ export default function App() {
   const getStatusClass = (status) => {
     const s = (status || '').toLowerCase();
     if (s.includes('por facturar') || s.includes('sucia / por facturar')) return 'badge-danger';
+    if (s.includes('bloqueada') || s.includes('mantenimiento')) return 'badge-mantenimiento';
     if (s.includes('ocupada')) return 'badge-ocupada';
     if (s.includes('garantizada') && s.includes('reservada')) return 'badge-reservada-garantizada';
     if (s.includes('reservada')) return 'badge-reservada-no-garantizada';
@@ -741,6 +742,7 @@ export default function App() {
         .badge-reservada-no-garantizada { background: #f472b6; color: #831843; }
         .badge-reservada-garantizada { background: #ea580c; color: #ffffff; }
         .badge-danger { background: #ef4444; color: #ffffff; }
+        .badge-mantenimiento { background: #dc2626; color: #ffffff; } /* Rojo */
 
         @keyframes pulseAlert { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.97); } 100% { opacity: 1; transform: scale(1); } }
         .alerta-parpadeante { animation: pulseAlert 1s infinite ease-in-out; }
@@ -876,7 +878,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL CAMBIAR ESTADO */}
+        {/* MODAL CAMBIAR ESTADO (CON BLOQUEADA / MANTENIMIENTO) */}
         {roomToEditStatus && (
           <div className="modal-overlay">
             <div className="modal-card">
@@ -887,14 +889,17 @@ export default function App() {
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
                   🔵 Marcar como OCUPADA (Celeste)
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#d4906b' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#ea580c' }}>
                   🟧 Marcar como RESERVADA GARANTIZADA (Ladrillo)
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#f499c8', color: '#831843' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#f472b6', color: '#831843' }}>
                   🌸 Marcar como RESERVADA (Rosa)
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#edd17c', color: '#713f12' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#eab308', color: '#713f12' }}>
                   🟡 Marcar como SUCIA (Amarilla)
+                </button>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada / Mantenimiento')} style={{ background: '#dc2626' }}>
+                  🔴 Marcar como BLOQUEADA / MANTENIMIENTO (Rojo)
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#059669' }}>
                   🟢 Marcar como DISPONIBLE (Verde)
