@@ -101,13 +101,13 @@ export default function App() {
   const [pisoAmaLlaves, setPisoAmaLlaves] = useState('todos');
   const [filtroAmaLlaves, setFiltroAmaLlaves] = useState('todas');
   const [pisoSupervisora, setPisoSupervisora] = useState('todos');
-  const [pisoModalMinibar, setPisoModalMinibar] = useState('3'); // Selector interno para el control de minibar
+  const [pisoModalMinibar, setPisoModalMinibar] = useState('3');
   const [filtroTiempo, setFiltroTiempo] = useState('dia');
   const [mostrarReporteFlotante, setMostrarReporteFlotante] = useState(false);
   const [mostrarReporteHabitaciones, setMostrarReporteHabitaciones] = useState(false);
   const [mostrarControlMinibar, setMostrarControlMinibar] = useState(false);
 
-  const prevPendientesCount = useRef(0);
+  const prevPendientesCount = useRef(-1); // Inicializado en -1 para detectar el primer render sin falsos positivos
 
   const [inventario, setInventario] = useState([
     { id: 'agua', name: 'Agua Mineral 500ml', category: 'minibar', price_usd: 1.00, stock: 100 },
@@ -153,6 +153,13 @@ export default function App() {
       return st.includes('por facturar') || st.includes('sucia / por facturar');
     });
 
+    // Si es la primera carga, inicializamos la referencia sin disparar sonido
+    if (prevPendientesCount.current === -1) {
+      prevPendientesCount.current = pendientesActuales.length;
+      return;
+    }
+
+    // Solo suena si el número de pendientes AUMENTA respecto al registro anterior
     if (pendientesActuales.length > prevPendientesCount.current) {
       reproducirTresCampanazos();
 
@@ -166,13 +173,13 @@ export default function App() {
       }
     }
 
+    prevPendientesCount.current = pendientesActuales.length;
+
     if (pendientesActuales.length > 0) {
       document.title = `🔔 (${pendientesActuales.length}) CHECK-OUT — Hotel Cóndor Suites`;
     } else {
       document.title = `Hotel Cóndor Suites`;
     }
-
-    prevPendientesCount.current = pendientesActuales.length;
   }, [habitaciones]);
 
   const inicializarApp = async () => {
@@ -256,11 +263,9 @@ export default function App() {
       if (response.ok) {
         const data = await response.json();
         if (data && data.length > 0) {
-          // Actualizamos manteniendo los cambios locales que no hayan guardado aún si es necesario
           setHabitaciones(prev => {
             return data.map(serverHab => {
               const localHab = prev.find(p => p.id === serverHab.id);
-              // Si el usuario tiene minibar_stock local cargado, lo respetamos para evitar que parpadee o se borre
               return {
                 ...serverHab,
                 minibar_stock: serverHab.minibar_stock || localHab?.minibar_stock || {}
@@ -394,7 +399,6 @@ export default function App() {
   };
 
   const handleActualizarStockMinibarHabitacion = async (roomItem, minibarActualizado) => {
-    // Actualizamos primero el estado local instantáneamente para que no parpadee ni se borre
     setHabitaciones(prev => prev.map(h => h.id === roomItem.id || h.number === roomItem.number ? {
       ...h,
       minibar_stock: minibarActualizado
@@ -1314,14 +1318,13 @@ export default function App() {
           </div>
         )}
 
-        {/* REPORTE FLOTANTE: CONTROL DE MINIBAR POR PISO Y HABITACIÓN (CON SELECTOR DE PISO INDEPENDIENTE) */}
+        {/* REPORTE FLOTANTE: CONTROL DE MINIBAR POR PISO Y HABITACIÓN */}
         {mostrarControlMinibar && (
           <div className="modal-overlay">
             <div className="modal-card" style={{ maxWidth: '950px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🍾 Control de Minibar por Piso y Habitación (Existencia)</h3>
                 
-                {/* Selector de Piso Independiente para el Modal */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e293b' }}>Piso:</label>
                   <select 
