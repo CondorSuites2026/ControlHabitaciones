@@ -461,32 +461,31 @@ export default function App() {
     if (!file) return null;
     try {
       setSubiendoArchivo(true);
-      
-      // Limpiar el nombre del archivo para evitar caracteres especiales o espacios
       const fileExt = file.name.split('.').pop();
       const fileName = `evidencia_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
 
-      // Endpoint directo de Supabase Storage API REST
+      // Crear FormData para enviar el archivo correctamente a Supabase Storage
+      const formData = new FormData();
+      formData.append('file', file);
+
       const uploadUrl = `${supabaseUrl}/storage/v1/object/evidencias/${fileName}`;
 
       const response = await fetch(uploadUrl, {
         method: 'POST',
         headers: {
           'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'Content-Type': file.type,
-          'x-upsert': 'true'
+          'Authorization': `Bearer ${supabaseAnonKey}`
+          // Nota: No se coloca Content-Type manualmente para que el navegador gestione el boundary de FormData
         },
-        body: file
+        body: formData
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Error en Supabase Storage API:', errorData);
-        throw new Error(errorData.message || 'Error al subir la imagen al Storage');
+        throw new Error(errorData.message || 'Error al subir archivo al servidor');
       }
 
-      // Generar URL pública directa del archivo subido
+      // URL pública directa para visualizar la evidencia
       const publicUrl = `${supabaseUrl}/storage/v1/object/public/evidencias/${fileName}`;
 
       return {
@@ -495,8 +494,8 @@ export default function App() {
         nombre: file.name
       };
     } catch (err) {
-      console.error('Error al subir evidencia:', err.message);
-      alert('⚠️ No se pudo subir la foto de evidencia: ' + err.message);
+      console.error('Error detallado al subir evidencia:', err.message);
+      alert('⚠️ No se pudo subir la evidencia: ' + err.message);
       return null;
     } finally {
       setSubiendoArchivo(false);
