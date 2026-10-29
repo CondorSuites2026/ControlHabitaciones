@@ -100,7 +100,7 @@ export default function App() {
 
   const [pisoAmaLlaves, setPisoAmaLlaves] = useState('todos');
   const [filtroAmaLlaves, setFiltroAmaLlaves] = useState('todas');
-  const [pisoSupervisora, setPisoSupervisora] = useState('todos');
+  const [pisoSupervisores, setPisoSupervisores] = useState('todos');
   const [filtroTiempo, setFiltroTiempo] = useState('dia');
   const [mostrarReporteFlotante, setMostrarReporteFlotante] = useState(false);
   const [mostrarReporteHabitaciones, setMostrarReporteHabitaciones] = useState(false);
@@ -510,7 +510,7 @@ export default function App() {
 
       const reporteCompleto = {
         asistente: asistenteSeleccionada,
-        supervisora: 'N/A',
+        Supervisores: 'N/A',
         fecha: new Date().toISOString(),
         consumos: { ...consumosSeleccionados },
         totalUSD,
@@ -547,7 +547,7 @@ export default function App() {
         body: JSON.stringify({
           habitacion: selectedRoom.number,
           asistente: asistenteSeleccionada,
-          supervisora: 'N/A',
+          Supervisores: 'N/A',
           total_usd: totalUSD,
           total_bs: totalBs,
           tasa_bcv: tasaBCV,
@@ -631,13 +631,13 @@ export default function App() {
     return st.includes('por facturar') || st.includes('sucia / por facturar');
   });
 
-  const obtenerReportesFiltradosSupervisora = () => {
+  const obtenerReportesFiltradosSupervisores = () => {
     const ahora = new Date();
     return reportesHistorial.filter(rep => {
-      if (pisoSupervisora !== 'todos') {
+      if (pisoSupervisores !== 'todos') {
         const habStr = String(rep.habitacion || '');
         const pisoHab = habStr.length === 4 ? parseInt(habStr.substring(0, 2)) : parseInt(habStr.substring(0, 1));
-        if (pisoHab !== parseInt(pisoSupervisora)) return false;
+        if (pisoHab !== parseInt(pisoSupervisores)) return false;
       }
 
       const fechaRep = new Date(rep.fecha);
@@ -655,7 +655,7 @@ export default function App() {
   };
 
   const calcularListadoReposicion = () => {
-    const filtrados = obtenerReportesFiltradosSupervisora();
+    const filtrados = obtenerReportesFiltradosSupervisores();
     const acumuladoItems = {};
 
     filtrados.forEach(rep => {
@@ -769,7 +769,7 @@ export default function App() {
         <div className="nav-buttons">
           {[
             { id: 'recepcion', label: 'Recepción' },
-            { id: 'supervisora', label: 'Supervisora' },
+            { id: 'Supervisores', label: 'Supervisores' },
             { id: 'amadelhaves', label: 'Ama de Llaves' },
             { id: 'admin', label: 'Administración' }
           ].map(m => (
@@ -957,10 +957,19 @@ export default function App() {
                   onChange={(e) => setAsistenteSeleccionada(e.target.value)} 
                   style={{ width: '100%', maxHeight: '220px', overflowY: 'auto', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                   <option value="">Seleccionar Asistente...</option>
-                  {personal.filter(p => p.rol === 'Asistente').map(a => <option key={a.id} value={a.nombre}>{a.nombre} ({a.turno})</option>)}
+                  {personal
+                    .filter(p => {
+                      const rol = (p.rol || '').toLowerCase();
+                      return rol.includes('asistente') || rol.includes('supervis') || rol.includes('nocturn');
+                    })
+                    .map(a => (
+                      <option key={a.id} value={a.nombre}>
+                        {a.nombre} ({a.rol} - {a.turno})
+                      </option>
+                    ))
+                  }
                 </select>
               </div>
-            </div>
 
             <div className="card-box" style={{ background: '#f8fafc', width: '100%', boxSizing: 'border-box' }}>
               <div>
@@ -1010,8 +1019,8 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 3: SUPERVISORA */}
-        {role === 'supervisora' && (
+        {/* VISTA 3: Supervisores */}
+        {role === 'Supervisores' && (
           <div className="card-box">
             <h3 style={{ margin: 0, fontSize: '18px' }}>📋 Panel de Supervisión</h3>
             <p style={{ fontSize: '12px', color: '#64748b' }}>Monitoreo de habitaciones, reportes de consumo y listados de reposición.</p>
@@ -1019,7 +1028,7 @@ export default function App() {
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', background: '#f1f5f9', padding: '12px', borderRadius: '8px', alignItems: 'center' }}>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Seleccionar Piso</label>
-                <select value={pisoSupervisora} onChange={(e) => setPisoSupervisora(e.target.value)} style={{ width: '150px' }}>
+                <select value={pisoSupervisores} onChange={(e) => setPisoSupervisores(e.target.value)} style={{ width: '150px' }}>
                   <option value="todos">🌐 Todos los Pisos</option>
                   {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
                 </select>
@@ -1057,7 +1066,7 @@ export default function App() {
                 </thead>
                 <tbody>
                   {habitaciones
-                    .filter(h => pisoSupervisora === 'todos' || h.floor === parseInt(pisoSupervisora))
+                    .filter(h => pisoSupervisores === 'todos' || h.floor === parseInt(pisoSupervisores))
                     .map(h => (
                       <tr key={h.id}>
                         <td><strong>{h.number}</strong></td>
@@ -1080,7 +1089,7 @@ export default function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>📊 Reporte General Consolidado de Consumo</h3>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#fef08a', padding: '4px 8px', borderRadius: '4px' }}>
-                  {pisoSupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisora}`} — {filtroTiempo.toUpperCase()}
+                  {pisoSupervisores === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisores}`} — {filtroTiempo.toUpperCase()}
                 </span>
               </div>
 
@@ -1120,7 +1129,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {obtenerReportesFiltradosSupervisora().map((rep, idx) => (
+                    {obtenerReportesFiltradosSupervisores().map((rep, idx) => (
                       <tr key={idx}>
                         <td><strong>Hab. {rep.habitacion}</strong></td>
                         <td>{rep.asistente}</td>
@@ -1151,18 +1160,18 @@ export default function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Reposición Detallada por Habitación</h3>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#bbf7d0', color: '#065f46', padding: '4px 8px', borderRadius: '4px' }}>
-                  {pisoSupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisora}`} — {filtroTiempo.toUpperCase()}
+                  {pisoSupervisores === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisores}`} — {filtroTiempo.toUpperCase()}
                 </span>
               </div>
 
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Desglose de artículos exactos que se consumieron en cada habitación para reabastecer los carritos:</p>
 
               <div style={{ maxHeight: '350px', overflowY: 'auto', marginBottom: '20px' }}>
-                {obtenerReportesFiltradosSupervisora().length === 0 ? (
+                {obtenerReportesFiltradosSupervisores().length === 0 ? (
                   <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>No hay registros de consumos por habitación para el filtro seleccionado.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {obtenerReportesFiltradosSupervisora().map((rep, idx) => (
+                    {obtenerReportesFiltradosSupervisores().map((rep, idx) => (
                       <div key={idx} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
                           <div>
@@ -1384,7 +1393,7 @@ export default function App() {
                   onChange={e => setNuevoPersonal({...nuevoPersonal, rol: e.target.value})} 
                   style={{ width: '180px' }}>
                   <option value="Asistente">Asistente (Piso)</option>
-                  <option value="Supervisora">Supervisora</option>
+                  <option value="supervisores">Supervisores</option>
                   <option value="Equipo Nocturno">Equipo Nocturno</option>
                 </select>
                 <input 
