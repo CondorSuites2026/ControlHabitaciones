@@ -735,7 +735,9 @@ export default function App() {
         if (filtroAmaLlaves === 'sucia') return st.includes('sucia');
         if (filtroAmaLlaves === 'garantizada') return st.includes('garantizada') && st.includes('reservada');
         if (filtroAmaLlaves === 'no_garantizada') return st.includes('reservada') && !st.includes('garantizada');
-        return st.includes('sucia') || st.includes('reservada') || h.status === 'Disponible';
+        if (filtroAmaLlaves === 'ocupada') return st.includes('ocupada');
+        // Si el filtro es 'todas', mostramos todas las habitaciones del piso (Disponibles, Sucias, Ocupadas, Reservadas, Bloqueadas, etc.)
+        return true;
       })
       .sort((a, b) => parseInt(a.number) - parseInt(b.number));
   };
@@ -1355,6 +1357,16 @@ export default function App() {
                               ⚠️ Habitación Reservada (Prioridad de Servicio)
                             </span>
                           )}
+                          {((h.status || '').toLowerCase().includes('ocupada')) && (
+                            <span style={{ fontSize: '11px', color: '#0369a1', fontWeight: 'bold', alignSelf: 'center' }}>
+                              🔵 Habitación Ocupada (En Estancia)
+                            </span>
+                          )}
+                          {((h.status || '').toLowerCase().includes('bloqueada') || (h.status || '').toLowerCase().includes('mantenimiento')) && (
+                            <span style={{ fontSize: '11px', color: '#dc2626', fontWeight: 'bold', alignSelf: 'center' }}>
+                              🔴 Habitación en Mantenimiento / Bloqueada
+                            </span>
+                          )}
                           {(h.status === 'Disponible') && (
                             <span style={{ fontSize: '11px', color: '#059669', fontWeight: 'bold', alignSelf: 'center' }}>
                               ✅ Lista para Ocupar
@@ -1474,7 +1486,7 @@ export default function App() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Nombre</th>
+                      <th>Name</th>
                       <th>Rol</th>
                       <th>Turno / Asignación</th>
                       <th style={{ width: '80px', textAlign: 'center' }}>Acciones</th>
