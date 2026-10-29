@@ -104,6 +104,7 @@ export default function App() {
   const [filtroTiempo, setFiltroTiempo] = useState('dia');
   const [mostrarReporteFlotante, setMostrarReporteFlotante] = useState(false);
   const [mostrarReporteHabitaciones, setMostrarReporteHabitaciones] = useState(false);
+  const [mostrarControlMinibar, setMostrarControlMinibar] = useState(false);
 
   const prevPendientesCount = useRef(0);
 
@@ -376,6 +377,24 @@ export default function App() {
       await fetchInventario();
     } catch (err) {
       alert('❌ Error al actualizar producto: ' + err.message);
+    }
+  };
+
+  const handleActualizarStockMinibarHabitacion = async (roomItem, minibarActualizado) => {
+    try {
+      const targetId = String(roomItem.id);
+      await fetch(`${supabaseUrl}/rest/v1/habitaciones?id=eq.${targetId}`, {
+        method: 'PATCH',
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ minibar_stock: minibarActualizado })
+      });
+
+      setHabitaciones(prev => prev.map(h => h.id === targetId || h.number === roomItem.number ? {
+        ...h,
+        minibar_stock: minibarActualizado
+      } : h));
+    } catch (e) {
+      console.error('Error al actualizar stock de minibar en habitación');
     }
   };
 
@@ -736,11 +755,12 @@ export default function App() {
         if (filtroAmaLlaves === 'garantizada') return st.includes('garantizada') && st.includes('reservada');
         if (filtroAmaLlaves === 'no_garantizada') return st.includes('reservada') && !st.includes('garantizada');
         if (filtroAmaLlaves === 'ocupada') return st.includes('ocupada');
-        // Si el filtro es 'todas', mostramos todas las habitaciones del piso (Disponibles, Sucias, Ocupadas, Reservadas, Bloqueadas, etc.)
         return true;
       })
       .sort((a, b) => parseInt(a.number) - parseInt(b.number));
   };
+
+  const productosMinibar = inventario.filter(i => (i.category || '').toLowerCase() === 'minibar');
 
   return (
     <div className="app-container">
@@ -772,7 +792,7 @@ export default function App() {
         th, td { padding: 10px; border: 1px solid #cbd5e1; }
         th { background: #e2e8f0; color: #0f172a; }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px; }
-        .modal-card { background: #fff; padding: 24px; border-radius: 12px; max-width: 620px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-card { background: #fff; padding: 24px; border-radius: 12px; max-width: 900px; width: 100%; max-height: 90vh; overflow-y: auto; }
         .card-box { background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 16px; }
         input, select { padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; width: 100%; box-sizing: border-box; }
         button.primary { background: #1e3a8a; color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; width: 100%; transition: opacity 0.2s; }
@@ -1106,6 +1126,9 @@ export default function App() {
                 <button onClick={() => setMostrarReporteHabitaciones(true)} className="primary" style={{ background: '#1e3a8a', padding: '10px 14px', fontSize: '12px' }}>
                   🏨 Reposición por Habitación
                 </button>
+                <button onClick={() => setMostrarControlMinibar(true)} className="primary" style={{ background: '#d97706', padding: '10px 14px', fontSize: '12px' }}>
+                  🍾 Control Minibar por Habitación
+                </button>
               </div>
             </div>
 
@@ -1270,6 +1293,77 @@ export default function App() {
                   🖨️ Imprimir / Guardar PDF
                 </button>
                 <button onClick={() => setMostrarReporteHabitaciones(false)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* REPORTE FLOTANTE: CONTROL DE MINIBAR POR PISO Y HABITACIÓN (INVENTARIO EXISTENTE) */}
+        {mostrarControlMinibar && (
+          <div className="modal-overlay">
+            <div className="modal-card" style={{ maxWidth: '950px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🍾 Control de Minibar por Piso y Habitación (Existencia)</h3>
+                <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#fef08a', color: '#713f12', padding: '4px 8px', borderRadius: '4px' }}>
+                  {pisoSupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisora}`}
+                </span>
+              </div>
+
+              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Verifique y edite el stock existente de minibar en cada habitación para el control de inventario de la supervisora:</p>
+
+              <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '20px' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '90px' }}>Habitación</th>
+                      <th style={{ width: '70px' }}>Piso</th>
+                      {productosMinibar.map(prod => (
+                        <th key={prod.id} style={{ textAlign: 'center', minWidth: '100px' }}>{prod.name}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {habitaciones
+                      .filter(h => pisoSupervisora === 'todos' || h.floor === parseInt(pisoSupervisora))
+                      .sort((a, b) => parseInt(a.number) - parseInt(b.number))
+                      .map(hab => {
+                        const stockHab = hab.minibar_stock || {};
+                        return (
+                          <tr key={hab.id}>
+                            <td><strong>Hab. {hab.number}</strong></td>
+                            <td>Piso {hab.floor}</td>
+                            {productosMinibar.map(prod => {
+                              const qtyActual = stockHab[prod.id] !== undefined ? stockHab[prod.id] : 0;
+                              return (
+                                <td key={prod.id} style={{ textAlign: 'center' }}>
+                                  <input 
+                                    type="number" 
+                                    min="0" 
+                                    value={qtyActual} 
+                                    onChange={(e) => {
+                                      const nuevoVal = parseInt(e.target.value) || 0;
+                                      const minibarActualizado = { ...stockHab, [prod.id]: nuevoVal };
+                                      handleActualizarStockMinibarHabitacion(hab, minibarActualizado);
+                                    }}
+                                    style={{ width: '60px', textAlign: 'center', padding: '4px', fontWeight: 'bold' }} 
+                                  />
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => window.print()} className="primary" style={{ flex: 1, background: '#1e3a8a' }}>
+                  🖨️ Imprimir / Guardar PDF para Control
+                </button>
+                <button onClick={() => setMostrarControlMinibar(false)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
                   Cerrar
                 </button>
               </div>
@@ -1486,7 +1580,7 @@ export default function App() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Name</th>
+                      <th>Nombre</th>
                       <th>Rol</th>
                       <th>Turno / Asignación</th>
                       <th style={{ width: '80px', textAlign: 'center' }}>Acciones</th>
