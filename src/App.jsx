@@ -439,6 +439,24 @@ export default function App() {
     }
   };
 
+  const handleCompletarReposicion = async (rep) => {
+    if (!confirm(`¿Confirmar que la reposición de la Habitación ${rep.habitacion} fue abastecida exitosamente?`)) return;
+    
+    try {
+      if (rep.id) {
+        await fetch(`${supabaseUrl}/rest/v1/reportes_consumo?id=eq.${rep.id}`, {
+          method: 'DELETE',
+          headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}` }
+        });
+      }
+
+      setReportesHistorial(prev => prev.filter(r => r !== rep));
+      alert(`✅ Reposición de la Habitación ${rep.habitacion} marcada como completada.`);
+    } catch (err) {
+      alert('❌ Error al actualizar la reposición: ' + err.message);
+    }
+  };
+
   const handleQtyChange = (id, delta) => {
     setConsumosSeleccionados(prev => ({
       ...prev,
@@ -742,7 +760,7 @@ export default function App() {
         .badge-reservada-no-garantizada { background: #f472b6; color: #831843; }
         .badge-reservada-garantizada { background: #ea580c; color: #ffffff; }
         .badge-danger { background: #ef4444; color: #ffffff; }
-        .badge-mantenimiento { background: #dc2626; color: #ffffff; } /* Rojo */
+        .badge-mantenimiento { background: #dc2626; color: #ffffff; }
 
         @keyframes pulseAlert { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.97); } 100% { opacity: 1; transform: scale(1); } }
         .alerta-parpadeante { animation: pulseAlert 1s infinite ease-in-out; }
@@ -878,7 +896,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL CAMBIAR ESTADO (CON BLOQUEADA / MANTENIMIENTO) */}
+        {/* MODAL CAMBIAR ESTADO */}
         {roomToEditStatus && (
           <div className="modal-overlay">
             <div className="modal-card">
@@ -1216,14 +1234,22 @@ export default function App() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {obtenerReportesFiltradosSupervisora().map((rep, idx) => (
                       <div key={idx} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
                           <div>
                             <strong style={{ fontSize: '14px', color: '#1e3a8a' }}>Habitación {rep.habitacion}</strong>
                             <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '8px' }}>({new Date(rep.fecha).toLocaleDateString()})</span>
                           </div>
-                          <span style={{ fontSize: '11px', fontWeight: 'bold', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
-                            Encargado/a: {rep.asistente}
-                          </span>
+                          
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 'bold', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
+                              Encargado/a: {rep.asistente}
+                            </span>
+                            <button 
+                              onClick={() => handleCompletarReposicion(rep)} 
+                              style={{ background: '#059669', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
+                              ✅ OK Reposición
+                            </button>
+                          </div>
                         </div>
 
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
