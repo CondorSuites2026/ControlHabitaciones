@@ -746,7 +746,8 @@ export default function App() {
         body { margin: 0; background-color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; color: #1e293b; }
         .app-container { min-height: 100vh; display: flex; flex-direction: column; }
         header { background-color: #1e3a8a; border-bottom: 1px solid #3b82f6; padding: 12px 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; color: #fff; }
-        .logo-box { display: flex; align-items: center; gap: 10px; background: #ffffff; padding: 4px 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .logo-box { display: flex; align-items: center; background: #ffffff; padding: 4px 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .logo-box img { height: 38px; width: auto; display: block; object-fit: contain; }
         .nav-buttons { display: flex; background: #1d4ed8; padding: 4px; border-radius: 8px; gap: 4px; flex-wrap: wrap; }
         .nav-btn { padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; border: none; background: transparent; color: #e2e8f0; }
         .nav-btn.active { background: #f59e0b; color: #0f172a; }
@@ -789,15 +790,7 @@ export default function App() {
       {/* HEADER */}
       <header>
         <div className="logo-box">
-          <svg width="150" height="42" viewBox="0 0 500 180" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', maxWidth: '100%', height: 'auto' }}>
-            <text x="110" y="45" fontFamily="'Times New Roman', Times, serif" fontSize="48" fontWeight="bold" fill="#000000" letterSpacing="2">HOTEL</text>
-            <text x="15" y="115" fontFamily="'Times New Roman', Times, serif" fontSize="82" fontWeight="bold" fill="#000000" letterSpacing="1">CONDOR</text>
-            <text x="215" y="155" fontFamily="'Times New Roman', Times, serif" fontSize="38" fontWeight="bold" fill="#000000" letterSpacing="8">SUITES</text>
-            <g transform="translate(385, 10)">
-              <path d="M 0 0 L 80 120 C 90 135 105 125 95 105 L 15 0 Z" fill="#000000" />
-              <path d="M 25 25 L 95 130 C 105 145 120 135 110 115 L 40 25 Z" fill="#000000" />
-            </g>
-          </svg>
+          <img src="/logo_condor.png" alt="Hotel Cóndor Suites" />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
