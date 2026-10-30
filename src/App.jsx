@@ -112,7 +112,7 @@ export default function App() {
 
   const [pisoAmaLlaves, setPisoAmaLlaves] = useState('todos');
   const [filtroAmaLlaves, setFiltroAmaLlaves] = useState('todas');
-  const [pisoSupervisora, setPisoSupervisora] = useState('todos');
+  const [pisosupervisores, setPisosupervisores] = useState('todos');
   const [pisoModalMinibar, setPisoModalMinibar] = useState('3');
   const [filtroTiempo, setFiltroTiempo] = useState('dia');
   const [mostrarReporteFlotante, setMostrarReporteFlotante] = useState(false);
@@ -124,13 +124,21 @@ export default function App() {
   const prevPendientesCount = useRef(-1);
 
   const [inventario, setInventario] = useState([
-    { id: 'agua', name: 'Agua Mineral 500ml', category: 'minibar', price_usd: 1.00, stock: 100 },
-    { id: 'refresco', name: 'Refresco Lata', category: 'minibar', price_usd: 1.50, stock: 80 },
-    { id: 'cerveza', name: 'Cerveza Nacional', category: 'minibar', price_usd: 2.00, stock: 120 },
-    { id: 'snack', name: 'Snacks / Chocolates', category: 'minibar', price_usd: 1.25, stock: 60 },
-    { id: 'toalla_c', name: 'Toalla de Cuerpo', category: 'lenceria', price_usd: 12.00, stock: 40 },
-    { id: 'toalla_m', name: 'Toalla de Manos', category: 'lenceria', price_usd: 6.00, stock: 50 },
-    { id: 'shampoo', name: 'Kit Shampoo / Jabón', category: 'amenidad', price_usd: 0.80, stock: 200 }
+    { id: 'milkyway', name: 'MILKYWAY', category: 'minibar', price_usd: 3.00, stock: 100 },
+    { id: 'snickers', name: 'SNICKERS', category: 'minibar', price_usd: 3.00, stock: 100 },
+    { id: 'mm', name: 'M&M', category: 'minibar', price_usd: 3.00, stock: 100 },
+    { id: 'chiclets', name: 'CHICLETS EXTRA', category: 'minibar', price_usd: 3.00, stock: 100 },
+    { id: 'pringles', name: 'PRINGLES', category: 'minibar', price_usd: 3.00, stock: 100 },
+    { id: 'nutella', name: 'NUTELLA MINI', category: 'minibar', price_usd: 3.00, stock: 100 },
+    { id: 'gatorade', name: 'GATORADE', category: 'bebida', price_usd: 4.00, stock: 100 },
+    { id: 'polar', name: 'POLAR', category: 'bebida', price_usd: 3.00, stock: 100 },
+    { id: 'redbull', name: 'REDBULL', category: 'bebida', price_usd: 4.00, stock: 100 },
+    { id: 'solera', name: 'SOLERA VERDE', category: 'bebida', price_usd: 3.00, stock: 100 },
+    { id: 'pepsi', name: 'PEPSI', category: 'bebida', price_usd: 2.50, stock: 100 },
+    { id: 'pepsilight', name: 'PEPSI LIGHT', category: 'bebida', price_usd: 2.50, stock: 100 },
+    { id: 'golden', name: 'GOLDEN KOLITA', category: 'bebida', price_usd: 2.50, stock: 100 },
+    { id: 'aguas', name: 'AGUAS', category: 'bebida', price_usd: 1.50, stock: 100 },
+    { id: 'sparkling', name: 'AGUA SPARKLING', category: 'bebida', price_usd: 2.00, stock: 100 }
   ]);
 
   const [personal, setPersonal] = useState([]);
@@ -307,7 +315,11 @@ export default function App() {
             });
           }
         } else {
-          setHabitaciones(data);
+          setHabitaciones(data.map(h => ({
+            ...h,
+            minibar_stock: h.minibar_stock || {},
+            servicio_solicitado: h.servicio_solicitado || false
+          })));
         }
       } else {
         setHabitaciones(getDefaultRoomsArray());
@@ -482,6 +494,12 @@ export default function App() {
 
   const handleToggleServicioHabitacion = async (roomItem) => {
     const nuevoEstadoServicio = !roomItem.servicio_solicitado;
+    setHabitaciones(prev => prev.map(h => h.id === roomItem.id || h.number === roomItem.number ? {
+      ...h,
+      servicio_solicitado: nuevoEstadoServicio
+    } : h));
+    setRoomToEditStatus(null);
+
     try {
       const targetId = String(roomItem.id);
       await fetch(`${supabaseUrl}/rest/v1/habitaciones?id=eq.${targetId}`, {
@@ -489,18 +507,7 @@ export default function App() {
         headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ servicio_solicitado: nuevoEstadoServicio })
       });
-
-      setHabitaciones(prev => prev.map(h => h.id === targetId || h.number === roomItem.number ? {
-        ...h,
-        servicio_solicitado: nuevoEstadoServicio
-      } : h));
-
-      setRoomToEditStatus(null);
-      await fetchHabitacionesSilencioso();
-      alert(nuevoEstadoServicio ? `🔔 Solicitud de Servicio enviada a Ama de Llaves para Hab. ${roomItem.number} (Marca 'S' visible).` : `✅ Solicitud de Servicio desactivada para Hab. ${roomItem.number}.`);
-    } catch (e) {
-      alert('Error al actualizar la solicitud de servicio.');
-    }
+    } catch (e) {}
   };
 
   const handleAgregarPersonal = async (e) => {
@@ -680,7 +687,7 @@ export default function App() {
       const reporteCompleto = {
         asistente: asistenteSeleccionada,
         departamento: departamentoSeleccionado,
-        supervisora: 'N/A',
+        supervisores: 'N/A',
         fecha: new Date().toISOString(),
         consumos: { ...consumosSeleccionados },
         totalUSD,
@@ -702,8 +709,7 @@ export default function App() {
           type: selectedRoom.type,
           status: newStatus,
           amount: totalUSD,
-          reporte: reporteCompleto,
-          servicio_solicitado: false
+          reporte: reporteCompleto
         })
       });
 
@@ -718,7 +724,7 @@ export default function App() {
         body: JSON.stringify({
           habitacion: selectedRoom.number,
           asistente: asistenteSeleccionada,
-          supervisora: 'N/A',
+          supervisores: 'N/A',
           total_usd: totalUSD,
           total_bs: totalBs,
           tasa_bcv: tasaBCV,
@@ -759,7 +765,7 @@ export default function App() {
       await fetch(`${supabaseUrl}/rest/v1/habitaciones?id=eq.${targetId}`, {
         method: 'PATCH',
         headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'Sucia', amount: 0, reporte: null, servicio_solicitado: false })
+        body: JSON.stringify({ status: 'Sucia', amount: 0, reporte: null })
       });
       
       setHabitaciones(prev => prev.map(h => h.id === targetId || h.number === roomItem.number ? {
@@ -785,8 +791,7 @@ export default function App() {
         method: 'PATCH',
         headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          status: nuevoEstado,
-          servicio_solicitado: nuevoEstado === 'Disponible' || nuevoEstado === 'Sucia' ? false : roomItem.servicio_solicitado
+          status: nuevoEstado
         })
       });
 
@@ -809,13 +814,13 @@ export default function App() {
     return st.includes('por facturar') || st.includes('sucia / por facturar');
   });
 
-  const obtenerReportesFiltradosSupervisora = () => {
+  const obtenerReportesFiltradossupervisores = () => {
     const ahora = new Date();
     return reportesHistorial.filter(rep => {
-      if (pisoSupervisora !== 'todos') {
+      if (pisosupervisores !== 'todos') {
         const habStr = String(rep.habitacion || '');
         const pisoHab = habStr.length === 4 ? parseInt(habStr.substring(0, 2)) : parseInt(habStr.substring(0, 1));
-        if (pisoHab !== parseInt(pisoSupervisora)) return false;
+        if (pisoHab !== parseInt(pisosupervisores)) return false;
       }
 
       const fechaRep = new Date(rep.fecha);
@@ -833,7 +838,7 @@ export default function App() {
   };
 
   const calcularListadoReposicion = () => {
-    const filtrados = obtenerReportesFiltradosSupervisora();
+    const filtrados = obtenerReportesFiltradossupervisores();
     const acumuladoItems = {};
 
     filtrados.forEach(rep => {
@@ -873,7 +878,8 @@ export default function App() {
       .sort((a, b) => parseInt(a.number) - parseInt(b.number));
   };
 
-  const productosMinibar = inventario.filter(i => (i.category || '').toLowerCase() === 'minibar');
+  const articulosMinibarLista = inventario.filter(i => (i.category || '').toLowerCase() === 'minibar');
+  const bebidasLista = inventario.filter(i => (i.category || '').toLowerCase() === 'bebida');
 
   return (
     <div className="app-container">
@@ -902,12 +908,12 @@ export default function App() {
         .alerta-parpadeante { animation: pulseAlert 1s infinite ease-in-out; }
 
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; background: #fff; border-radius: 8px; }
-        th, td { padding: 10px; border: 1px solid #cbd5e1; }
+        th, td { padding: 8px; border: 1px solid #94a3b8; }
         th { background: #e2e8f0; color: #0f172a; }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px; }
-        .modal-card { background: #fff; padding: 24px; border-radius: 12px; max-width: 950px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-card { background: #fff; padding: 24px; border-radius: 12px; max-width: 1200px; width: 100%; max-height: 90vh; overflow-y: auto; }
         .card-box { background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 16px; }
-        input, select { padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; width: 100%; box-sizing: border-box; }
+        input, select { padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; box-sizing: border-box; }
         button.primary { background: #1e3a8a; color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; width: 100%; transition: opacity 0.2s; }
         button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
         button.success { background: #059669; color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; }
@@ -953,7 +959,7 @@ export default function App() {
         <div className="nav-buttons">
           {[
             { id: 'recepcion', label: 'Recepción' },
-            { id: 'supervisora', label: 'Supervisora' },
+            { id: 'supervisores', label: 'supervisores' },
             { id: 'amadelhaves', label: 'Ama de Llaves' },
             { id: 'admin', label: 'Administración' }
           ].map(m => (
@@ -1018,7 +1024,6 @@ export default function App() {
                             className={`${badgeClass} ${esAlerta ? 'alerta-parpadeante' : ''}`}
                             style={{ cursor: 'pointer', height: '70px', verticalAlign: 'top', position: 'relative' }}>
                             
-                            {/* INDICADOR VISUAL "S" DE SOLICITUD DE SERVICIO */}
                             {hab.servicio_solicitado && (
                               <span 
                                 title="Solicitud de Servicio Activa"
@@ -1066,7 +1071,6 @@ export default function App() {
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Estado actual: <strong>{roomToEditStatus.status}</strong></p>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {/* BOTÓN EXCLUSIVO DE SOLICITUD DE SERVICIO PARA HABITACIONES OCUPADAS */}
                 {((roomToEditStatus.status || '').toLowerCase().includes('ocupada')) && (
                   <button 
                     onClick={() => handleToggleServicioHabitacion(roomToEditStatus)} 
@@ -1262,8 +1266,8 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 3: SUPERVISORA */}
-        {role === 'supervisora' && (
+        {/* VISTA 3: SUPERVISORES */}
+        {role === 'supervisores' && (
           <div className="card-box">
             <h3 style={{ margin: 0, fontSize: '18px' }}>📋 Panel de Supervisión</h3>
             <p style={{ fontSize: '12px', color: '#64748b' }}>Monitoreo de habitaciones, reportes de consumo y listados de reposición.</p>
@@ -1271,7 +1275,7 @@ export default function App() {
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', background: '#f1f5f9', padding: '12px', borderRadius: '8px', alignItems: 'center' }}>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Seleccionar Piso</label>
-                <select value={pisoSupervisora} onChange={(e) => setPisoSupervisora(e.target.value)} style={{ width: '150px' }}>
+                <select value={pisosupervisores} onChange={(e) => setPisosupervisores(e.target.value)} style={{ width: '150px' }}>
                   <option value="todos">🌐 Todos los Pisos</option>
                   {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
                 </select>
@@ -1312,7 +1316,7 @@ export default function App() {
                 </thead>
                 <tbody>
                   {habitaciones
-                    .filter(h => pisoSupervisora === 'todos' || h.floor === parseInt(pisoSupervisora))
+                    .filter(h => pisosupervisores === 'todos' || h.floor === parseInt(pisosupervisores))
                     .map(h => (
                       <tr key={h.id}>
                         <td><strong>{h.number}</strong></td>
@@ -1338,7 +1342,7 @@ export default function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>📊 Reporte General Consolidado de Consumo</h3>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#fef08a', padding: '4px 8px', borderRadius: '4px' }}>
-                  {pisoSupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisora}`} — {filtroTiempo.toUpperCase()}
+                  {pisosupervisores === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisosupervisores}`} — {filtroTiempo.toUpperCase()}
                 </span>
               </div>
 
@@ -1378,7 +1382,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {obtenerReportesFiltradosSupervisora().map((rep, idx) => (
+                    {obtenerReportesFiltradossupervisores().map((rep, idx) => (
                       <tr key={idx}>
                         <td><strong>Hab. {rep.habitacion}</strong></td>
                         <td>{rep.asistente}</td>
@@ -1409,18 +1413,18 @@ export default function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Reposición Detallada por Habitación</h3>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#bbf7d0', color: '#065f46', padding: '4px 8px', borderRadius: '4px' }}>
-                  {pisoSupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisora}`} — {filtroTiempo.toUpperCase()}
+                  {pisosupervisores === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisosupervisores}`} — {filtroTiempo.toUpperCase()}
                 </span>
               </div>
 
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Desglose de artículos exactos que se consumieron en cada habitación para reabastecer los carritos:</p>
 
               <div style={{ maxHeight: '350px', overflowY: 'auto', marginBottom: '20px' }}>
-                {obtenerReportesFiltradosSupervisora().length === 0 ? (
+                {obtenerReportesFiltradossupervisores().length === 0 ? (
                   <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>No hay registros de consumos por habitación para el filtro seleccionado.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {obtenerReportesFiltradosSupervisora().map((rep, idx) => (
+                    {obtenerReportesFiltradossupervisores().map((rep, idx) => (
                       <div key={idx} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
                           <div>
@@ -1470,75 +1474,130 @@ export default function App() {
           </div>
         )}
 
-        {/* REPORTE FLOTANTE: CONTROL DE MINIBAR POR PISO Y HABITACIÓN */}
+        {/* REPORTE FLOTANTE: CONTROL DE MINIBAR ESTILO PLANILLA FÍSICA */}
         {mostrarControlMinibar && (
           <div className="modal-overlay">
-            <div className="modal-card" style={{ maxWidth: '950px' }}>
+            <div className="modal-card" style={{ maxWidth: '1250px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🍾 Control de Minibar por Piso y Habitación (Existencia)</h3>
+                <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a', textAlign: 'center', flex: 1 }}>CONTROL DE MINIBAR — PISO {pisoModalMinibar}</h3>
                 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e293b' }}>Piso:</label>
                   <select 
                     value={pisoModalMinibar} 
                     onChange={(e) => setPisoModalMinibar(e.target.value)} 
-                    style={{ width: '140px', padding: '6px', fontSize: '12px', fontWeight: 'bold', background: '#f8fafc' }}>
-                    {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={String(p)}>Piso {p}</option>)}
+                    style={{ width: '130px', padding: '6px', fontSize: '12px', fontWeight: 'bold', background: '#f8fafc' }}>
+                    {[3, 4, 5, 6, 7, 8, 9].map(p => <option key={p} value={String(p)}>Piso {p}</option>)}
                   </select>
                 </div>
               </div>
 
-              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Verifique y edite el stock existente de minibar en cada habitación del piso seleccionado:</p>
-
-              <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '20px' }}>
+              <div style={{ maxHeight: '480px', overflowY: 'auto', marginBottom: '20px' }}>
                 <table>
                   <thead>
                     <tr>
-                      <th style={{ width: '90px' }}>Habitación</th>
-                      <th style={{ width: '70px' }}>Piso</th>
-                      {productosMinibar.map(prod => (
-                        <th key={prod.id} style={{ textAlign: 'center', minWidth: '100px' }}>{prod.name}</th>
+                      <th style={{ width: '180px', background: '#e2e8f0', textAlign: 'center' }}>ARTICULOS</th>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                        <th key={n} style={{ textAlign: 'center', width: '70px', background: '#e2e8f0' }}>{pisoModalMinibar}0{n}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {habitaciones
-                      .filter(h => h.floor === parseInt(pisoModalMinibar))
-                      .sort((a, b) => parseInt(a.number) - parseInt(b.number))
-                      .map(hab => {
-                        const stockHab = hab.minibar_stock || {};
+                    {/* FILA STATUS */}
+                    <tr style={{ background: '#f8fafc' }}>
+                      <td style={{ fontWeight: 'bold', textAlign: 'center', background: '#cbd5e1' }}>STATUS</td>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
+                        const hab = habitaciones.find(h => h.number === `${pisoModalMinibar}0${n}`);
                         return (
-                          <tr key={hab.id}>
-                            <td><strong>Hab. {hab.number}</strong></td>
-                            <td>Piso {hab.floor}</td>
-                            {productosMinibar.map(prod => {
-                              const qtyActual = stockHab[prod.id] !== undefined ? stockHab[prod.id] : 0;
-                              return (
-                                <td key={prod.id} style={{ textAlign: 'center' }}>
-                                  <input 
-                                    type="number" 
-                                    min="0" 
-                                    value={qtyActual} 
-                                    onChange={(e) => {
-                                      const nuevoVal = parseInt(e.target.value) || 0;
-                                      const minibarActualizado = { ...stockHab, [prod.id]: nuevoVal };
-                                      handleActualizarStockMinibarHabitacion(hab, minibarActualizado);
-                                    }}
-                                    style={{ width: '60px', textAlign: 'center', padding: '4px', fontWeight: 'bold' }} 
-                                  />
-                                </td>
-                              );
-                            })}
-                          </tr>
+                          <td key={n} style={{ textAlign: 'center', fontSize: '10px', fontWeight: 'bold' }}>
+                            {hab ? (hab.status.includes('Ocupada') ? 'OCUP.' : hab.status.includes('Sucia') ? 'SUC.' : hab.status.includes('Disponible') ? 'DISP.' : hab.status.substring(0,6)) : ''}
+                          </td>
                         );
                       })}
+                    </tr>
+
+                    {/* SECCIÓN ARTÍCULOS (MINIBAR) */}
+                    {articulosMinibarLista.map(prod => (
+                      <tr key={prod.id}>
+                        <td style={{ fontWeight: 'bold', fontSize: '11px' }}>{prod.name}</td>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
+                          const hab = habitaciones.find(h => h.number === `${pisoModalMinibar}0${n}`);
+                          const stockHab = hab?.minibar_stock || {};
+                          const qty = stockHab[prod.id] !== undefined ? stockHab[prod.id] : 0;
+                          return (
+                            <td key={n} style={{ textAlign: 'center', padding: '2px' }}>
+                              <input 
+                                type="number" 
+                                min="0" 
+                                value={qty} 
+                                onChange={(e) => {
+                                  if (!hab) return;
+                                  const nuevoVal = parseInt(e.target.value) || 0;
+                                  const minibarActualizado = { ...stockHab, [prod.id]: nuevoVal };
+                                  handleActualizarStockMinibarHabitacion(hab, minibarActualizado);
+                                }}
+                                style={{ width: '45px', textAlign: 'center', padding: '2px', fontSize: '11px', fontWeight: 'bold', border: 'none', background: 'transparent' }} 
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+
+                    {/* FILA SEPARADORA CANTIDAD */}
+                    <tr style={{ background: '#cbd5e1' }}>
+                      <td colSpan="10" style={{ fontWeight: 'bold', textAlign: 'center', fontSize: '12px' }}>BEBIDAS / CANTIDAD</td>
+                    </tr>
+
+                    {/* SECCIÓN BEBIDAS */}
+                    {bebidasLista.map(prod => (
+                      <tr key={prod.id}>
+                        <td style={{ fontWeight: 'bold', fontSize: '11px' }}>{prod.name}</td>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
+                          const hab = habitaciones.find(h => h.number === `${pisoModalMinibar}0${n}`);
+                          const stockHab = hab?.minibar_stock || {};
+                          const qty = stockHab[prod.id] !== undefined ? stockHab[prod.id] : 0;
+                          return (
+                            <td key={n} style={{ textAlign: 'center', padding: '2px' }}>
+                              <input 
+                                type="number" 
+                                min="0" 
+                                value={qty} 
+                                onChange={(e) => {
+                                  if (!hab) return;
+                                  const nuevoVal = parseInt(e.target.value) || 0;
+                                  const minibarActualizado = { ...stockHab, [prod.id]: nuevoVal };
+                                  handleActualizarStockMinibarHabitacion(hab, minibarActualizado);
+                                }}
+                                style={{ width: '45px', textAlign: 'center', padding: '2px', fontSize: '11px', fontWeight: 'bold', border: 'none', background: 'transparent' }} 
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+
+                    {/* FILA TOTAL CANTIDAD DE ARTÍCULOS */}
+                    <tr style={{ background: '#e2e8f0', fontWeight: 'bold' }}>
+                      <td style={{ textAlign: 'center' }}>CANTIDAD DE ARTICULOS</td>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
+                        const hab = habitaciones.find(h => h.number === `${pisoModalMinibar}0${n}`);
+                        const stockHab = hab?.minibar_stock || {};
+                        const totalHab = Object.values(stockHab).reduce((a, b) => a + (parseInt(b) || 0), 0);
+                        return (
+                          <td key={n} style={{ textAlign: 'center', color: '#1e3a8a', fontSize: '12px' }}>
+                            {totalHab}
+                          </td>
+                        );
+                      })}
+                    </tr>
                   </tbody>
                 </table>
               </div>
 
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => window.print()} className="primary" style={{ flex: 1, background: '#1e3a8a' }}>
-                  🖨️ Imprimir / Guardar PDF para Control (Piso {pisoModalMinibar})
+                  🖨️ Imprimir / Guardar Formato Físico (Piso {pisoModalMinibar})
                 </button>
                 <button onClick={() => setMostrarControlMinibar(false)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
                   Cerrar
@@ -1580,7 +1639,7 @@ export default function App() {
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('sucia')}
-                  style={{ background: '#fde047', color: '#713f12', border: filtroAmaLlaves === 'sucia' ? '2px solid #1e293b' : '1px solid #ca8a04', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  style={{ background: '#e3d279', color: '#713f12', border: filtroAmaLlaves === 'sucia' ? '2px solid #1e293b' : '1px solid #ca8a04', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
                   🟡 Sucias
                 </button>
 
@@ -1682,9 +1741,9 @@ export default function App() {
                 
                 <select value={nuevoItem.category} onChange={e => setNuevoItem({...nuevoItem, category: e.target.value})} style={{ width: '130px' }}>
                   <option value="minibar">Minibar</option>
+                  <option value="bebida">Bebida</option>
                   <option value="lenceria">Lencería</option>
-                  <option value="amenidad">Amenidad</option>
-                  <option value="utensilios">Utensilios</option>
+                  <option value="amenidades">Amenidades</option>
                 </select>
 
                 <input type="number" step="0.01" placeholder="Precio ($)" value={nuevoItem.price_usd || ''} onChange={e => setNuevoItem({...nuevoItem, price_usd: e.target.value})} style={{ width: '100px' }} />
