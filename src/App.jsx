@@ -112,7 +112,7 @@ export default function App() {
 
   const [pisoAmaLlaves, setPisoAmaLlaves] = useState('todos');
   const [filtroAmaLlaves, setFiltroAmaLlaves] = useState('todas');
-  const [pisosupervisores, setPisosupervisores] = useState('todos');
+  const [pisoSupervisora, setPisoSupervisora] = useState('todos');
   const [pisoModalMinibar, setPisoModalMinibar] = useState('3');
   const [filtroTiempo, setFiltroTiempo] = useState('dia');
   const [mostrarReporteFlotante, setMostrarReporteFlotante] = useState(false);
@@ -282,7 +282,7 @@ export default function App() {
 
   const getDefaultRoomsArray = () => {
     const rooms = [];
-    for (let f = 3; f <= 9; f++) {
+    for (let f = 1; f <= 9; f++) {
       for (let n = 1; n <= 9; n++) {
         rooms.push({ id: `${f}0${n}`, number: `${f}0${n}`, floor: f, type: n <= 4 ? 'MASTER' : n <= 7 ? 'JUNIOR' : 'SENCILLA', status: 'Disponible', amount: 0, reporte: null, minibar_stock: {}, servicio_solicitado: false });
       }
@@ -687,7 +687,7 @@ export default function App() {
       const reporteCompleto = {
         asistente: asistenteSeleccionada,
         departamento: departamentoSeleccionado,
-        supervisores: 'N/A',
+        supervisora: 'N/A',
         fecha: new Date().toISOString(),
         consumos: { ...consumosSeleccionados },
         totalUSD,
@@ -724,7 +724,7 @@ export default function App() {
         body: JSON.stringify({
           habitacion: selectedRoom.number,
           asistente: asistenteSeleccionada,
-          supervisores: 'N/A',
+          supervisora: 'N/A',
           total_usd: totalUSD,
           total_bs: totalBs,
           tasa_bcv: tasaBCV,
@@ -814,13 +814,13 @@ export default function App() {
     return st.includes('por facturar') || st.includes('sucia / por facturar');
   });
 
-  const obtenerReportesFiltradossupervisores = () => {
+  const obtenerReportesFiltradosSupervisora = () => {
     const ahora = new Date();
     return reportesHistorial.filter(rep => {
-      if (pisosupervisores !== 'todos') {
+      if (pisoSupervisora !== 'todos') {
         const habStr = String(rep.habitacion || '');
         const pisoHab = habStr.length === 4 ? parseInt(habStr.substring(0, 2)) : parseInt(habStr.substring(0, 1));
-        if (pisoHab !== parseInt(pisosupervisores)) return false;
+        if (pisoHab !== parseInt(pisoSupervisora)) return false;
       }
 
       const fechaRep = new Date(rep.fecha);
@@ -838,7 +838,7 @@ export default function App() {
   };
 
   const calcularListadoReposicion = () => {
-    const filtrados = obtenerReportesFiltradossupervisores();
+    const filtrados = obtenerReportesFiltradosSupervisora();
     const acumuladoItems = {};
 
     filtrados.forEach(rep => {
@@ -959,7 +959,7 @@ export default function App() {
         <div className="nav-buttons">
           {[
             { id: 'recepcion', label: 'Recepción' },
-            { id: 'supervisores', label: 'supervisores' },
+            { id: 'supervisora', label: 'Supervisora' },
             { id: 'amadelhaves', label: 'Ama de Llaves' },
             { id: 'admin', label: 'Administración' }
           ].map(m => (
@@ -1004,7 +1004,7 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[3, 4, 5, 6, 7, 8, 9, 10].map(piso => (
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(piso => (
                     <tr key={piso}>
                       <td style={{ fontWeight: 'bold', background: '#f1f5f9' }}>PISO {piso}</td>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(numCol => {
@@ -1091,22 +1091,22 @@ export default function App() {
                 )}
 
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
-                   Marcar como OCUPADA
+                  🔵 Marcar como OCUPADA (Celeste)
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#ea580c' }}>
-                   Marcar como RESERVADA GARANTIZADA
+                  🟧 Marcar como RESERVADA GARANTIZADA (Ladrillo)
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#f472b6', color: '#831843' }}>
-                   Marcar como RESERVADA
+                  🌸 Marcar como RESERVADA (Rosa)
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#eab308', color: '#713f12' }}>
-                   Marcar como SUCIA
+                  🟡 Marcar como SUCIA (Amarilla)
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada / Mantenimiento')} style={{ background: '#dc2626' }}>
-                   Marcar como BLOQUEADA / MANTENIMIENTO
+                  🔴 Marcar como BLOQUEADA / MANTENIMIENTO (Rojo)
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#059669' }}>
-                   Marcar como DISPONIBLE
+                  🟢 Marcar como DISPONIBLE (Verde)
                 </button>
                 <button onClick={() => setRoomToEditStatus(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '8px' }}>
                   Cancelar
@@ -1183,7 +1183,7 @@ export default function App() {
                   const habsPiso = habitaciones.filter(h => h.floor === pisoNum);
                   setSelectedRoom(habsPiso[0] || null);
                 }} style={{ width: '100%' }}>
-                  {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
                 </select>
               </div>
 
@@ -1266,8 +1266,8 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 3: SUPERVISORES */}
-        {role === 'supervisores' && (
+        {/* VISTA 3: SUPERVISORA */}
+        {role === 'supervisora' && (
           <div className="card-box">
             <h3 style={{ margin: 0, fontSize: '18px' }}>📋 Panel de Supervisión</h3>
             <p style={{ fontSize: '12px', color: '#64748b' }}>Monitoreo de habitaciones, reportes de consumo y listados de reposición.</p>
@@ -1275,9 +1275,9 @@ export default function App() {
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', background: '#f1f5f9', padding: '12px', borderRadius: '8px', alignItems: 'center' }}>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Seleccionar Piso</label>
-                <select value={pisosupervisores} onChange={(e) => setPisosupervisores(e.target.value)} style={{ width: '150px' }}>
+                <select value={pisoSupervisora} onChange={(e) => setPisoSupervisora(e.target.value)} style={{ width: '150px' }}>
                   <option value="todos">🌐 Todos los Pisos</option>
-                  {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
                 </select>
               </div>
 
@@ -1316,7 +1316,7 @@ export default function App() {
                 </thead>
                 <tbody>
                   {habitaciones
-                    .filter(h => pisosupervisores === 'todos' || h.floor === parseInt(pisosupervisores))
+                    .filter(h => pisoSupervisora === 'todos' || h.floor === parseInt(pisoSupervisora))
                     .map(h => (
                       <tr key={h.id}>
                         <td><strong>{h.number}</strong></td>
@@ -1342,7 +1342,7 @@ export default function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>📊 Reporte General Consolidado de Consumo</h3>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#fef08a', padding: '4px 8px', borderRadius: '4px' }}>
-                  {pisosupervisores === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisosupervisores}`} — {filtroTiempo.toUpperCase()}
+                  {pisoSupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisora}`} — {filtroTiempo.toUpperCase()}
                 </span>
               </div>
 
@@ -1382,7 +1382,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {obtenerReportesFiltradossupervisores().map((rep, idx) => (
+                    {obtenerReportesFiltradosSupervisora().map((rep, idx) => (
                       <tr key={idx}>
                         <td><strong>Hab. {rep.habitacion}</strong></td>
                         <td>{rep.asistente}</td>
@@ -1413,18 +1413,18 @@ export default function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Reposición Detallada por Habitación</h3>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#bbf7d0', color: '#065f46', padding: '4px 8px', borderRadius: '4px' }}>
-                  {pisosupervisores === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisosupervisores}`} — {filtroTiempo.toUpperCase()}
+                  {pisoSupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisora}`} — {filtroTiempo.toUpperCase()}
                 </span>
               </div>
 
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Desglose de artículos exactos que se consumieron en cada habitación para reabastecer los carritos:</p>
 
               <div style={{ maxHeight: '350px', overflowY: 'auto', marginBottom: '20px' }}>
-                {obtenerReportesFiltradossupervisores().length === 0 ? (
+                {obtenerReportesFiltradosSupervisora().length === 0 ? (
                   <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>No hay registros de consumos por habitación para el filtro seleccionado.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {obtenerReportesFiltradossupervisores().map((rep, idx) => (
+                    {obtenerReportesFiltradosSupervisora().map((rep, idx) => (
                       <div key={idx} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
                           <div>
@@ -1487,7 +1487,7 @@ export default function App() {
                     value={pisoModalMinibar} 
                     onChange={(e) => setPisoModalMinibar(e.target.value)} 
                     style={{ width: '130px', padding: '6px', fontSize: '12px', fontWeight: 'bold', background: '#f8fafc' }}>
-                    {[3, 4, 5, 6, 7, 8, 9].map(p => <option key={p} value={String(p)}>Piso {p}</option>)}
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={String(p)}>Piso {p}</option>)}
                   </select>
                 </div>
               </div>
@@ -1618,7 +1618,7 @@ export default function App() {
                 <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Piso:</label>
                 <select value={pisoAmaLlaves} onChange={(e) => setPisoAmaLlaves(e.target.value)} style={{ width: '180px' }}>
                   <option value="todos">🌐 Todos los Pisos</option>
-                  {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
                 </select>
               </div>
 
@@ -1634,12 +1634,12 @@ export default function App() {
                 <button 
                   onClick={() => setFiltroAmaLlaves('servicio')}
                   style={{ background: '#dc2626', color: '#ffffff', border: filtroAmaLlaves === 'servicio' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  🔔 Con Servicios (S)
+                  🔔 Con Solicitud (S)
                 </button>
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('sucia')}
-                  style={{ background: '#e3d279', color: '#713f12', border: filtroAmaLlaves === 'sucia' ? '2px solid #1e293b' : '1px solid #ca8a04', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  style={{ background: '#fde047', color: '#713f12', border: filtroAmaLlaves === 'sucia' ? '2px solid #1e293b' : '1px solid #ca8a04', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
                   🟡 Sucias
                 </button>
 
@@ -1743,7 +1743,7 @@ export default function App() {
                   <option value="minibar">Minibar</option>
                   <option value="bebida">Bebida</option>
                   <option value="lenceria">Lencería</option>
-                  <option value="amenidades">Amenidades</option>
+                  <option value="amenidad">Amenidad</option>
                 </select>
 
                 <input type="number" step="0.01" placeholder="Precio ($)" value={nuevoItem.price_usd || ''} onChange={e => setNuevoItem({...nuevoItem, price_usd: e.target.value})} style={{ width: '100px' }} />
