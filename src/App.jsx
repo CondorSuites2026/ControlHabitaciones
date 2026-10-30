@@ -58,6 +58,49 @@ const getSupabaseClient = () => {
 
 const supabase = getSupabaseClient();
 
+// Sintetizador de campana metálica de recepción de alta intensidad
+const reproducirCampanaRecepcion = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    const sonarUnCampanazo = (delay) => {
+      const startTime = ctx.currentTime + delay;
+      const frecuencias = [1046.50, 2093.00, 3139.50];
+      const ganancias = [0.8, 0.4, 0.2];
+
+      frecuencias.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startTime);
+
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(ganancias[idx], startTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 1.2);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(startTime);
+        osc.stop(startTime + 1.2);
+      });
+    };
+
+    sonarUnCampanazo(0);
+    sonarUnCampanazo(0.4);
+    sonarUnCampanazo(0.8);
+  } catch (e) {
+    console.error('Error al reproducir sintetizador de campana:', e);
+  }
+};
+
 export default function App() {
   const [role, setRole] = useState('recepcion');
   const [habitaciones, setHabitaciones] = useState([]);
@@ -77,8 +120,9 @@ export default function App() {
   const [mostrarReporteHabitaciones, setMostrarReporteHabitaciones] = useState(false);
   const [mostrarControlMinibar, setMostrarControlMinibar] = useState(false);
 
+  const [notificacionesPermitidas, setNotificacionesPermitidas] = useState(false);
+
   const prevPendientesCount = useRef(-1);
-  const audioRef = useRef(null);
 
   const [inventario, setInventario] = useState([
     { id: 'agua', name: 'Agua Mineral 500ml', category: 'minibar', price_usd: 1.00, stock: 100 },
@@ -106,17 +150,67 @@ export default function App() {
   useEffect(() => {
     inicializarApp();
     sincronizarTasaBCVOnline();
+    verificarPermisoNotificaciones();
 
-    if ('Notification' in window && Notification.permission !== 'granted') {
-      Notification.requestPermission();
+    // ⚡ CANAL REALTIME EN SUPABASE (Instantáneo sin F5)
+    let canalRealtime = null;
+    if (typeof window !== 'undefined' && window.supabase && supabaseUrl && supabaseAnonKey) {
+      canalRealtime = supabase
+        .channel('public:habitaciones')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'habitaciones' }, payload => {
+          fetchHabitacionesSilencioso();
+        })
+        .subscribe();
     }
 
+    // Backup polling cada 2.5 segundos
     const interval = setInterval(() => {
       fetchHabitacionesSilencioso();
-    }, 3000);
+    }, 2500);
 
-    return () => clearInterval(interval);
+    // Resincronización inmediata al volver a enfocar la ventana
+    const handleFocus = () => {
+      fetchHabitacionesSilencioso();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      if (canalRealtime && supabase.removeChannel) {
+        supabase.removeChannel(canalRealtime);
+      }
+    };
   }, []);
+
+  const verificarPermisoNotificaciones = () => {
+    if ('Notification' in window) {
+      if (Notification.permission === 'granted') {
+        setNotificacionesPermitidas(true);
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') setNotificacionesPermitidas(true);
+        });
+      }
+    }
+  };
+
+  const solicitarPermisoNotificacionesManual = () => {
+    if ('Notification' in window) {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          setNotificacionesPermitidas(true);
+          reproducirCampanaRecepcion();
+          new Notification('🛎️ Notificaciones Activadas', {
+            body: 'A partir de ahora recibirás alertas flotantes de check-out en segundo plano.',
+            icon: '/favicon.ico'
+          });
+        } else {
+          alert('⚠️ Debe permitir las notificaciones en el navegador para ver los avisos con la ventana minimizada.');
+        }
+      });
+    }
+  };
 
   useEffect(() => {
     const pendientesActuales = habitaciones.filter(h => {
@@ -130,19 +224,14 @@ export default function App() {
     }
 
     if (pendientesActuales.length > prevPendientesCount.current) {
-      // Reproducir sonido de campana de recepción de alta fidelidad
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(e => console.log('Audio en segundo plano pendiente de interacción', e));
-      }
+      reproducirCampanaRecepcion();
 
-      // Generar alerta visible en pantalla (Notificación flotante del sistema operativo)
       if ('Notification' in window && Notification.permission === 'granted') {
         const habAlert = pendientesActuales[pendientesActuales.length - 1];
         const notif = new Notification('🛎️ ¡CHECK-OUT PENDIENTE EN RECEPCIÓN!', {
-          body: `La Habitación ${habAlert?.number || ''} solicita facturación de minibar.`,
+          body: `La Habitación ${habAlert?.number || ''} tiene consumos pendientes por facturar.`,
           icon: '/favicon.ico',
-          requireInteraction: true // Mantiene el aviso visible en pantalla hasta que el usuario lo toque
+          requireInteraction: true
         });
         notif.onclick = () => {
           window.focus();
@@ -154,7 +243,7 @@ export default function App() {
     prevPendientesCount.current = pendientesActuales.length;
 
     if (pendientesActuales.length > 0) {
-      document.title = `🔔 (${pendientesActuales.length}) CHECK-OUT — Hotel Cóndor Suites`;
+      document.title = `🛎️ (${pendientesActuales.length}) CHECK-OUT — Hotel Cóndor Suites`;
     } else {
       document.title = `Hotel Cóndor Suites`;
     }
@@ -633,7 +722,7 @@ export default function App() {
       setArchivoEvidencia(null);
       setSelectedRoom(null);
       setAsistenteSeleccionada('');
-      await fetchHabitaciones();
+      await fetchHabitacionesSilencioso();
       fetchReportes();
     } catch (e) {
       alert('❌ Error al procesar el check-out: ' + e.message);
@@ -659,7 +748,7 @@ export default function App() {
       } : h));
 
       setRoomToBill(null);
-      await fetchHabitaciones();
+      await fetchHabitacionesSilencioso();
       alert('✅ Facturación completada. La habitación pasa a Sucia.');
     } catch (e) {
       alert('Error al confirmar facturación.');
@@ -681,7 +770,7 @@ export default function App() {
       } : h));
 
       setRoomToEditStatus(null);
-      await fetchHabitaciones();
+      await fetchHabitacionesSilencioso();
       alert(`✅ Habitación ${roomItem.number} actualizada a: ${nuevoEstado}`);
     } catch (e) {
       alert('Error al actualizar estado.');
@@ -760,12 +849,6 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* Reproductor de audio HTML5 con enlace directo a sonido de campana de recepción */}
-      <audio ref={audioRef} preload="auto">
-        <source src="https://cdn.freesound.org/previews/536/536108_11861866-lq.mp3" type="audio/mp3" />
-        <source src="https://actions.google.com/sounds/v1/ambiences/office_beeps.ogg" type="audio/ogg" />
-      </audio>
-
       <style>{`
         body { margin: 0; background-color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; color: #1e293b; }
         .app-container { min-height: 100vh; display: flex; flex-direction: column; }
@@ -818,6 +901,14 @@ export default function App() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {!notificacionesPermitidas && (
+            <button 
+              onClick={solicitarPermisoNotificacionesManual}
+              style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '11px', cursor: 'pointer' }}>
+              🔔 Activar Alarma Minimizada
+            </button>
+          )}
+
           <div className="bcv-box">
             <span>💵 BCV:</span>
             <span style={{ color: '#fff' }}>Bs. {tasaBCV.toFixed(2)}</span>
@@ -842,9 +933,7 @@ export default function App() {
               key={m.id} 
               onClick={() => {
                 setRole(m.id);
-                if (audioRef.current) {
-                  audioRef.current.play().then(() => audioRef.current.pause()).catch(() => {});
-                }
+                reproducirCampanaRecepcion();
               }}
               className={`nav-btn ${role === m.id ? 'active' : ''}`}>
               {m.label}
