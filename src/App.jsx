@@ -1087,22 +1087,22 @@ export default function App() {
                 )}
 
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
-                  🔵 Marcar como OCUPADA (Celeste)
+                   Marcar como OCUPADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#ea580c' }}>
-                  🟧 Marcar como RESERVADA GARANTIZADA (Ladrillo)
+                   Marcar como RESERVADA GARANTIZADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#f472b6', color: '#831843' }}>
-                  🌸 Marcar como RESERVADA (Rosa)
+                   Marcar como RESERVADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#eab308', color: '#713f12' }}>
-                  🟡 Marcar como SUCIA (Amarilla)
+                   Marcar como SUCIA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada / Mantenimiento')} style={{ background: '#dc2626' }}>
-                  🔴 Marcar como BLOQUEADA / MANTENIMIENTO (Rojo)
+                   Marcar como BLOQUEADA / MANTENIMIENTO
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#059669' }}>
-                  🟢 Marcar como DISPONIBLE (Verde)
+                   Marcar como DISPONIBLE
                 </button>
                 <button onClick={() => setRoomToEditStatus(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '8px' }}>
                   Cancelar
@@ -1575,7 +1575,7 @@ export default function App() {
                 <button 
                   onClick={() => setFiltroAmaLlaves('servicio')}
                   style={{ background: '#dc2626', color: '#ffffff', border: filtroAmaLlaves === 'servicio' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  🔔 Con Solicitud (S)
+                  🔔 Con Servicios (S)
                 </button>
 
                 <button 
