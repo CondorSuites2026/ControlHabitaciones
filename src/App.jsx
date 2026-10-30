@@ -58,7 +58,6 @@ const getSupabaseClient = () => {
 
 const supabase = getSupabaseClient();
 
-// Sintetizador de campana metálica de recepción de alta intensidad
 const reproducirCampanaRecepcion = () => {
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -152,7 +151,6 @@ export default function App() {
     sincronizarTasaBCVOnline();
     verificarPermisoNotificaciones();
 
-    // ⚡ CANAL REALTIME EN SUPABASE (Instantáneo sin F5)
     let canalRealtime = null;
     if (typeof window !== 'undefined' && window.supabase && supabaseUrl && supabaseAnonKey) {
       canalRealtime = supabase
@@ -163,12 +161,10 @@ export default function App() {
         .subscribe();
     }
 
-    // Backup polling cada 2.5 segundos
     const interval = setInterval(() => {
       fetchHabitacionesSilencioso();
     }, 2500);
 
-    // Resincronización inmediata al volver a enfocar la ventana
     const handleFocus = () => {
       fetchHabitacionesSilencioso();
     };
@@ -280,14 +276,14 @@ export default function App() {
     const rooms = [];
     for (let f = 3; f <= 9; f++) {
       for (let n = 1; n <= 9; n++) {
-        rooms.push({ id: `${f}0${n}`, number: `${f}0${n}`, floor: f, type: n <= 4 ? 'MASTER' : n <= 7 ? 'JUNIOR' : 'SENCILLA', status: 'Disponible', amount: 0, reporte: null, minibar_stock: {} });
+        rooms.push({ id: `${f}0${n}`, number: `${f}0${n}`, floor: f, type: n <= 4 ? 'MASTER' : n <= 7 ? 'JUNIOR' : 'SENCILLA', status: 'Disponible', amount: 0, reporte: null, minibar_stock: {}, servicio_solicitado: false });
       }
     }
     const p10 = [
       { num: '1001', type: 'EJECUTIVA' }, { num: '1002', type: 'EJECUTIVA' },
       { num: '1003', type: 'PRESIDENCIAL' }, { num: '1004', type: 'PRESIDENCIAL' }
     ];
-    p10.forEach(r => rooms.push({ id: r.num, number: r.num, floor: 10, type: r.type, status: 'Disponible', amount: 0, reporte: null, minibar_stock: {} }));
+    p10.forEach(r => rooms.push({ id: r.num, number: r.num, floor: 10, type: r.type, status: 'Disponible', amount: 0, reporte: null, minibar_stock: {}, servicio_solicitado: false }));
     return rooms;
   };
 
@@ -335,7 +331,8 @@ export default function App() {
               const localHab = prev.find(p => p.id === serverHab.id);
               return {
                 ...serverHab,
-                minibar_stock: serverHab.minibar_stock || localHab?.minibar_stock || {}
+                minibar_stock: serverHab.minibar_stock || localHab?.minibar_stock || {},
+                servicio_solicitado: serverHab.servicio_solicitado ?? localHab?.servicio_solicitado ?? false
               };
             });
           });
@@ -480,6 +477,29 @@ export default function App() {
       });
     } catch (e) {
       console.error('Error al sincronizar stock de minibar con Supabase');
+    }
+  };
+
+  const handleToggleServicioHabitacion = async (roomItem) => {
+    const nuevoEstadoServicio = !roomItem.servicio_solicitado;
+    try {
+      const targetId = String(roomItem.id);
+      await fetch(`${supabaseUrl}/rest/v1/habitaciones?id=eq.${targetId}`, {
+        method: 'PATCH',
+        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ servicio_solicitado: nuevoEstadoServicio })
+      });
+
+      setHabitaciones(prev => prev.map(h => h.id === targetId || h.number === roomItem.number ? {
+        ...h,
+        servicio_solicitado: nuevoEstadoServicio
+      } : h));
+
+      setRoomToEditStatus(null);
+      await fetchHabitacionesSilencioso();
+      alert(nuevoEstadoServicio ? `🔔 Solicitud de Servicio enviada a Ama de Llaves para Hab. ${roomItem.number} (Marca 'S' visible).` : `✅ Solicitud de Servicio desactivada para Hab. ${roomItem.number}.`);
+    } catch (e) {
+      alert('Error al actualizar la solicitud de servicio.');
     }
   };
 
@@ -682,7 +702,8 @@ export default function App() {
           type: selectedRoom.type,
           status: newStatus,
           amount: totalUSD,
-          reporte: reporteCompleto
+          reporte: reporteCompleto,
+          servicio_solicitado: false
         })
       });
 
@@ -714,7 +735,8 @@ export default function App() {
         ...h,
         status: newStatus,
         amount: totalUSD,
-        reporte: reporteCompleto
+        reporte: reporteCompleto,
+        servicio_solicitado: false
       } : h));
 
       alert(`✅ Check-out ejecutado exitosamente para la Habitación ${selectedRoom.number}.`);
@@ -737,14 +759,15 @@ export default function App() {
       await fetch(`${supabaseUrl}/rest/v1/habitaciones?id=eq.${targetId}`, {
         method: 'PATCH',
         headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'Sucia', amount: 0, reporte: null })
+        body: JSON.stringify({ status: 'Sucia', amount: 0, reporte: null, servicio_solicitado: false })
       });
       
       setHabitaciones(prev => prev.map(h => h.id === targetId || h.number === roomItem.number ? {
         ...h,
         status: 'Sucia',
         amount: 0,
-        reporte: null
+        reporte: null,
+        servicio_solicitado: false
       } : h));
 
       setRoomToBill(null);
@@ -761,12 +784,16 @@ export default function App() {
       await fetch(`${supabaseUrl}/rest/v1/habitaciones?id=eq.${targetId}`, {
         method: 'PATCH',
         headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: nuevoEstado })
+        body: JSON.stringify({ 
+          status: nuevoEstado,
+          servicio_solicitado: nuevoEstado === 'Disponible' || nuevoEstado === 'Sucia' ? false : roomItem.servicio_solicitado
+        })
       });
 
       setHabitaciones(prev => prev.map(h => h.id === targetId || h.number === roomItem.number ? {
         ...h,
-        status: nuevoEstado
+        status: nuevoEstado,
+        servicio_solicitado: nuevoEstado === 'Disponible' || nuevoEstado === 'Sucia' ? false : h.servicio_solicitado
       } : h));
 
       setRoomToEditStatus(null);
@@ -836,6 +863,7 @@ export default function App() {
           return false;
         }
         const st = (h.status || '').toLowerCase();
+        if (filtroAmaLlaves === 'servicio') return h.servicio_solicitado;
         if (filtroAmaLlaves === 'sucia') return st.includes('sucia');
         if (filtroAmaLlaves === 'garantizada') return st.includes('garantizada') && st.includes('reservada');
         if (filtroAmaLlaves === 'no_garantizada') return st.includes('reservada') && !st.includes('garantizada');
@@ -988,7 +1016,30 @@ export default function App() {
                               else setRoomToEditStatus(hab);
                             }}
                             className={`${badgeClass} ${esAlerta ? 'alerta-parpadeante' : ''}`}
-                            style={{ cursor: 'pointer', height: '70px', verticalAlign: 'top' }}>
+                            style={{ cursor: 'pointer', height: '70px', verticalAlign: 'top', position: 'relative' }}>
+                            
+                            {/* INDICADOR VISUAL "S" DE SOLICITUD DE SERVICIO */}
+                            {hab.servicio_solicitado && (
+                              <span 
+                                title="Solicitud de Servicio Activa"
+                                style={{ 
+                                  position: 'absolute', 
+                                  top: '4px', 
+                                  right: '6px', 
+                                  background: '#fef08a', 
+                                  color: '#dc2626', 
+                                  fontWeight: '900', 
+                                  fontSize: '14px', 
+                                  lineHeight: '1',
+                                  padding: '2px 5px', 
+                                  borderRadius: '4px',
+                                  border: '1px solid #dc2626',
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                                }}>
+                                S
+                              </span>
+                            )}
+
                             <div style={{ fontWeight: 'bold' }}>{hab.number} / {(hab.type || '').substring(0,3)}</div>
                             <div style={{ fontSize: '10px', marginTop: '4px', fontWeight: 'bold' }}>{hab.status}</div>
                             {hab.amount > 0 && (
@@ -1007,7 +1058,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL CAMBIAR ESTADO */}
+        {/* MODAL CAMBIAR ESTADO / SOLICITAR SERVICIO */}
         {roomToEditStatus && (
           <div className="modal-overlay">
             <div className="modal-card">
@@ -1015,6 +1066,26 @@ export default function App() {
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Estado actual: <strong>{roomToEditStatus.status}</strong></p>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* BOTÓN EXCLUSIVO DE SOLICITUD DE SERVICIO PARA HABITACIONES OCUPADAS */}
+                {((roomToEditStatus.status || '').toLowerCase().includes('ocupada')) && (
+                  <button 
+                    onClick={() => handleToggleServicioHabitacion(roomToEditStatus)} 
+                    style={{ 
+                      background: roomToEditStatus.servicio_solicitado ? '#dc2626' : '#f59e0b', 
+                      color: '#fff', 
+                      padding: '12px', 
+                      borderRadius: '8px', 
+                      fontWeight: 'bold', 
+                      border: 'none', 
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      marginBottom: '8px',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}>
+                    {roomToEditStatus.servicio_solicitado ? '❌ Cancelar Solicitud de Servicio (Quitar S)' : '🧹 / 🛎️ Solicitar Servicio a Habitación Ocupada (Marcar S)'}
+                  </button>
+                )}
+
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
                   🔵 Marcar como OCUPADA (Celeste)
                 </button>
@@ -1247,7 +1318,10 @@ export default function App() {
                         <td><strong>{h.number}</strong></td>
                         <td>Piso {h.floor}</td>
                         <td>{h.type}</td>
-                        <td><span className={getStatusClass(h.status)} style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{h.status}</span></td>
+                        <td>
+                          <span className={getStatusClass(h.status)} style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{h.status}</span>
+                          {h.servicio_solicitado && <span style={{ marginLeft: '6px', color: '#dc2626', fontWeight: 'bold' }}>(S)</span>}
+                        </td>
                         <td>${h.amount || 0}</td>
                       </tr>
                     ))}
@@ -1499,6 +1573,12 @@ export default function App() {
                 </button>
 
                 <button 
+                  onClick={() => setFiltroAmaLlaves('servicio')}
+                  style={{ background: '#dc2626', color: '#ffffff', border: filtroAmaLlaves === 'servicio' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  🔔 Con Solicitud (S)
+                </button>
+
+                <button 
                   onClick={() => setFiltroAmaLlaves('sucia')}
                   style={{ background: '#fde047', color: '#713f12', border: filtroAmaLlaves === 'sucia' ? '2px solid #1e293b' : '1px solid #ca8a04', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
                   🟡 Sucias
@@ -1542,8 +1622,20 @@ export default function App() {
                         <td><strong>Hab. {h.number}</strong></td>
                         <td>Piso {h.floor}</td>
                         <td>{h.type}</td>
-                        <td><span className={getStatusClass(h.status)} style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{h.status}</span></td>
+                        <td>
+                          <span className={getStatusClass(h.status)} style={{ padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{h.status}</span>
+                          {h.servicio_solicitado && (
+                            <span style={{ marginLeft: '8px', background: '#fef08a', color: '#dc2626', fontWeight: '900', padding: '2px 6px', borderRadius: '4px', border: '1px solid #dc2626', fontSize: '11px' }}>
+                              S - Servicio Solicitado
+                            </span>
+                          )}
+                        </td>
                         <td style={{ textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                          {h.servicio_solicitado && (
+                            <button onClick={() => handleToggleServicioHabitacion(h)} style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
+                              ✅ Atender Servicio (Quitar S)
+                            </button>
+                          )}
                           {((h.status || '').toLowerCase().includes('sucia')) && (
                             <button onClick={() => handleCambiarEstadoHabitacion(h, 'Disponible')} style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
                               Marcar Limpia (Disponible)
@@ -1554,7 +1646,7 @@ export default function App() {
                               ⚠️ Habitación Reservada (Prioridad de Servicio)
                             </span>
                           )}
-                          {((h.status || '').toLowerCase().includes('ocupada')) && (
+                          {((h.status || '').toLowerCase().includes('ocupada')) && !h.servicio_solicitado && (
                             <span style={{ fontSize: '11px', color: '#0369a1', fontWeight: 'bold', alignSelf: 'center' }}>
                               🔵 Habitación Ocupada (En Estancia)
                             </span>
