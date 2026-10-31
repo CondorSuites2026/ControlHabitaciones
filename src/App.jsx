@@ -917,24 +917,34 @@ export default function App() {
     return st.includes('por facturar') || st.includes('sucia / por facturar');
   });
 
-  const obtenerReportesFiltradosSupervisora = () => {
+const obtenerReportesFiltradosSupervisora = () => {
     const ahora = new Date();
+    
+    // Obtenemos el inicio y fin del día de hoy en hora local
+    const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 0, 0, 0);
+    const finHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 23, 59, 59);
+
     return reportesHistorial.filter(rep => {
+      // 1. Filtro por piso
       if (pisoSupervisora !== 'todos') {
         const habStr = String(rep.habitacion || '');
         const pisoHab = habStr.length === 4 ? parseInt(habStr.substring(0, 2)) : parseInt(habStr.substring(0, 1));
         if (pisoHab !== parseInt(pisoSupervisora)) return false;
       }
 
+      // 2. Filtro por período de tiempo (usando hora local)
+      if (!rep.fecha) return true;
       const fechaRep = new Date(rep.fecha);
+
       if (filtroTiempo === 'dia') {
-        return fechaRep.toDateString() === ahora.toDateString();
+        return fechaRep >= inicioHoy && fechaRep <= finHoy;
       } else if (filtroTiempo === 'semana') {
-        const diffTime = Math.abs(ahora - fechaRep);
-        const diffDays = diffTime / (1000 * 60 * 60 * 24);
-        return diffDays <= 7;
+        const hace7Dias = new Date(ahora.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return fechaRep >= hace7Dias;
       } else if (filtroTiempo === 'mes') {
         return fechaRep.getMonth() === ahora.getMonth() && fechaRep.getFullYear() === ahora.getFullYear();
+      } else if (filtroTiempo === 'todos_historico') {
+        return true; // Muestra todo el historial guardado
       }
       return true;
     });
@@ -1408,14 +1418,15 @@ export default function App() {
                 </select>
               </div>
 
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Período de Reporte</label>
-                <select value={filtroTiempo} onChange={(e) => setFiltroTiempo(e.target.value)} style={{ width: '140px' }}>
-                  <option value="dia">Diario (Hoy)</option>
-                  <option value="semana">Semanal</option>
-                  <option value="mes">Mensual</option>
-                </select>
-              </div>
+             <div>
+  <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Período de Reporte</label>
+  <select value={filtroTiempo} onChange={(e) => setFiltroTiempo(e.target.value)} style={{ width: '160px' }}>
+    <option value="dia">Diario (Hoy)</option>
+    <option value="semana">Semanal</option>
+    <option value="mes">Mensual</option>
+    <option value="todos_historico">🗓️ Histórico Completo</option>
+  </select>
+</div>
 
               <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', flexWrap: 'wrap' }}>
                 <button onClick={() => setMostrarReporteFlotante(true)} className="primary" style={{ background: '#059669', padding: '10px 14px', fontSize: '12px' }}>
