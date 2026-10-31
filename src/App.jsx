@@ -478,22 +478,41 @@ export default function App() {
   };
 
   const handleActualizarStockMinibarHabitacion = async (roomItem, minibarActualizado) => {
-    setHabitaciones(prev => prev.map(h => h.id === roomItem.id || h.number === roomItem.number ? {
-      ...h,
-      minibar_stock: minibarActualizado
-    } : h));
+  if (!roomItem || (!roomItem.id && !roomItem.number)) return;
 
-    try {
-      const targetId = String(roomItem.id);
-      await fetch(`${supabaseUrl}/rest/v1/habitaciones?id=eq.${targetId}`, {
-        method: 'PATCH',
-        headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ minibar_stock: minibarActualizado })
-      });
-    } catch (e) {
-      console.error('Error al sincronizar stock de minibar con Supabase');
+  // 1. Actualización rápida en el estado local de la interfaz
+  setHabitaciones(prev => prev.map(h => 
+    String(h.id) === String(roomItem.id) || String(h.number) === String(roomItem.number) 
+      ? { ...h, minibar_stock: minibarActualizado } 
+      : h
+  ));
+
+  // 2. Persistencia en Supabase
+  try {
+    // Usamos 'number' o 'id' asegurando que no envíe undefined
+    const queryParam = roomItem.id ? `id=eq.${encodeURIComponent(roomItem.id)}` : `number=eq.${encodeURIComponent(roomItem.number)}`;
+
+    const response = await fetch(`${supabaseUrl}/rest/v1/habitaciones?${queryParam}`, {
+      method: 'PATCH',
+      headers: { 
+        'apikey': supabaseAnonKey, 
+        'Authorization': `Bearer ${supabaseAnonKey}`, 
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal' // 👈 Encabezado requerido por Supabase para peticiones PATCH
+      },
+      body: JSON.stringify({ 
+        minibar_stock: minibarActualizado 
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Error Supabase PATCH 400:', errText);
     }
-  };
+  } catch (e) {
+    console.error('Error al sincronizar stock de minibar con Supabase:', e);
+  }
+};
 
   const handleToggleServicioHabitacion = async (roomItem) => {
     const nuevoEstadoServicio = !roomItem.servicio_solicitado;
