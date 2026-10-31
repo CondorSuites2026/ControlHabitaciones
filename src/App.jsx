@@ -100,14 +100,11 @@ const reproducirCampanaRecepcion = () => {
   }
 };
 
-// FUNCIÓN DE CÁLCULO AUTOMÁTICO DE TURNO
 const obtenerTurnoActual = () => {
   const horaActual = new Date().getHours();
-  // De 7:00 AM (7) a 2:59 PM (14) -> Turno Diurno
   if (horaActual >= 7 && horaActual < 15) {
     return 'Diurno (7:00 am - 3:00 pm)';
   }
-  // De 3:00 PM (15) en adelante o antes de las 7:00 AM -> Turno Mixto
   return 'Mixto (3:00 pm - 11:00 pm)';
 };
 
@@ -123,13 +120,14 @@ export default function App() {
 
   const [pisoAmaLlaves, setPisoAmaLlaves] = useState('todos');
   const [filtroAmaLlaves, setFiltroAmaLlaves] = useState('todas');
-  const [pisoSupervisora, setPisoSupervisora] = useState('todos');
+  const [pisoSupervisores, setPisoSupervisores] = useState('todos');
   const [pisoModalMinibar, setPisoModalMinibar] = useState('3');
   const [filtroTiempo, setFiltroTiempo] = useState('dia');
   const [mostrarReporteFlotante, setMostrarReporteFlotante] = useState(false);
   const [mostrarReporteHabitaciones, setMostrarReporteHabitaciones] = useState(false);
   const [mostrarControlMinibar, setMostrarControlMinibar] = useState(false);
   const [mostrarReporteAlmacenFaltantes, setMostrarReporteAlmacenFaltantes] = useState(false);
+  const [mostrarReporteRecepcion, setMostrarReporteRecepcion] = useState(false);
 
   const [notificacionesPermitidas, setNotificacionesPermitidas] = useState(false);
   const prevPendientesCount = useRef(-1);
@@ -757,7 +755,6 @@ export default function App() {
     setSubiendoArchivo(true);
 
     try {
-      // 💡 CÁLCULO AUTOMÁTICO DEL TURNO
       const turnoCalculado = obtenerTurnoActual();
 
       let totalUSD = 0;
@@ -776,8 +773,8 @@ export default function App() {
       const reporteCompleto = {
         asistente: asistenteSeleccionada,
         departamento: departamentoSeleccionado,
-        turno: turnoCalculado, // 👈 Turno asignado automáticamente
-        supervisora: 'N/A',
+        turno: turnoCalculado,
+        Supervisores: 'N/A',
         fecha: new Date().toISOString(),
         consumos: { ...consumosSeleccionados },
         totalUSD,
@@ -825,8 +822,8 @@ export default function App() {
         body: JSON.stringify({
           habitacion: selectedRoom.number,
           asistente: asistenteSeleccionada,
-          turno: turnoCalculado, // 👈 Se registra en Supabase para filtros
-          supervisora: 'N/A',
+          turno: turnoCalculado,
+          Supervisores: 'N/A',
           total_usd: totalUSD,
           total_bs: totalBs,
           tasa_bcv: tasaBCV,
@@ -917,22 +914,18 @@ export default function App() {
     return st.includes('por facturar') || st.includes('sucia / por facturar');
   });
 
-const obtenerReportesFiltradosSupervisora = () => {
+  const obtenerReportesFiltradosSupervisores = () => {
     const ahora = new Date();
-    
-    // Obtenemos el inicio y fin del día de hoy en hora local
     const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 0, 0, 0);
     const finHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 23, 59, 59);
 
     return reportesHistorial.filter(rep => {
-      // 1. Filtro por piso
-      if (pisoSupervisora !== 'todos') {
+      if (pisoSupervisores !== 'todos') {
         const habStr = String(rep.habitacion || '');
         const pisoHab = habStr.length === 4 ? parseInt(habStr.substring(0, 2)) : parseInt(habStr.substring(0, 1));
-        if (pisoHab !== parseInt(pisoSupervisora)) return false;
+        if (pisoHab !== parseInt(pisoSupervisores)) return false;
       }
 
-      // 2. Filtro por período de tiempo (usando hora local)
       if (!rep.fecha) return true;
       const fechaRep = new Date(rep.fecha);
 
@@ -944,14 +937,14 @@ const obtenerReportesFiltradosSupervisora = () => {
       } else if (filtroTiempo === 'mes') {
         return fechaRep.getMonth() === ahora.getMonth() && fechaRep.getFullYear() === ahora.getFullYear();
       } else if (filtroTiempo === 'todos_historico') {
-        return true; // Muestra todo el historial guardado
+        return true;
       }
       return true;
     });
   };
 
   const calcularListadoReposicion = () => {
-    const filtrados = obtenerReportesFiltradosSupervisora();
+    const filtrados = obtenerReportesFiltradosSupervisores();
     const acumuladoItems = {};
 
     filtrados.forEach(rep => {
@@ -1072,7 +1065,7 @@ const obtenerReportesFiltradosSupervisora = () => {
         <div className="nav-buttons">
           {[
             { id: 'recepcion', label: 'Recepción' },
-            { id: 'supervisora', label: 'Supervisora' },
+            { id: 'Supervisores', label: 'Supervisores' },
             { id: 'amadelhaves', label: 'Ama de Llaves' },
             { id: 'admin', label: 'Administración' }
           ].map(m => (
@@ -1093,6 +1086,16 @@ const obtenerReportesFiltradosSupervisora = () => {
         {/* VISTA 1: RECEPCIÓN */}
         {role === 'recepcion' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
+              <button 
+                onClick={() => setMostrarReporteRecepcion(true)}
+                className="primary" 
+                style={{ background: '#059669', width: 'auto', padding: '10px 16px', fontSize: '13px' }}>
+                📊 Reporte de Consumos Facturados (Cierre de Turno)
+              </button>
+            </div>
+
             {habitacionesPendientes.length > 0 && (
               <div className="alerta-parpadeante" style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                 <div style={{ color: '#991b1b', fontWeight: 'bold' }}>
@@ -1176,6 +1179,79 @@ const obtenerReportesFiltradosSupervisora = () => {
           </div>
         )}
 
+        {/* MODAL REPORTE DE CONSUMOS FACTURADOS PARA RECEPCIÓN */}
+        {mostrarReporteRecepcion && (
+          <div className="modal-overlay">
+            <div className="modal-card" style={{ maxWidth: '800px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>📊 Relación de Consumos Facturados — Cierre de Turno</h3>
+                <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#fef08a', padding: '4px 8px', borderRadius: '4px' }}>
+                  Fecha: {new Date().toLocaleDateString()}
+                </span>
+              </div>
+
+              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
+                Resumen de habitaciones con consumos registrados y pendientes o facturados en el turno actual para el arqueo de caja:
+              </p>
+
+              <div style={{ maxHeight: '380px', overflowY: 'auto', marginBottom: '20px' }}>
+                {habitaciones.filter(h => h.reporte && h.reporte.consumos && Object.values(h.reporte.consumos).some(q => q > 0)).length === 0 ? (
+                  <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '30px' }}>
+                    No hay habitaciones con consumos registrados en este momento.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {habitaciones
+                      .filter(h => h.reporte && h.reporte.consumos && Object.values(h.reporte.consumos).some(q => q > 0))
+                      .map(h => (
+                        <div key={h.id} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '8px' }}>
+                            <div>
+                              <strong style={{ fontSize: '14px', color: '#1e3a8a' }}>Habitación {h.number}</strong>
+                              <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '8px' }}>({h.type})</span>
+                            </div>
+                            <div style={{ fontSize: '11px', fontWeight: 'bold', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
+                              Asistente: {h.reporte.asistente || 'N/A'} ({h.reporte.turno || 'N/A'})
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
+                            {Object.entries(h.reporte.consumos || {}).map(([idItem, qty]) => {
+                              if (qty <= 0) return null;
+                              const prod = inventario.find(i => i.id === idItem);
+                              const precioUnitario = prod?.price_usd || 0;
+                              const subtotal = qty * precioUnitario;
+                              return (
+                                <div key={idItem} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                                  <span>{qty}x {prod?.name || idItem} (${precioUnitario.toFixed(2)} c/u)</span>
+                                  <strong>${subtotal.toFixed(2)} USD</strong>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px dashed #cbd5e1', paddingTop: '6px', fontSize: '13px', fontWeight: 'bold' }}>
+                            <span>Total USD: ${h.reporte.totalUSD.toFixed(2)}</span>
+                            <span style={{ color: '#059669' }}>Total Bs: Bs. {h.reporte.totalBs.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => window.print()} className="primary" style={{ flex: 1, background: '#1e3a8a' }}>
+                  🖨️ Imprimir / Guardar Relación de Turno
+                </button>
+                <button onClick={() => setMostrarReporteRecepcion(false)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* MODAL CAMBIAR ESTADO / SOLICITAR SERVICIO */}
         {roomToEditStatus && (
           <div className="modal-overlay">
@@ -1204,22 +1280,22 @@ const obtenerReportesFiltradosSupervisora = () => {
                 )}
 
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
-                  🔵 Marcar como OCUPADA (Celeste)
+                   Marcar como OCUPADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#ea580c' }}>
-                  🟧 Marcar como RESERVADA GARANTIZADA (Ladrillo)
+                   Marcar como RESERVADA GARANTIZADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#f472b6', color: '#831843' }}>
-                  🌸 Marcar como RESERVADA (Rosa)
+                   Marcar como RESERVADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#eab308', color: '#713f12' }}>
-                  🟡 Marcar como SUCIA (Amarilla)
+                   Marcar como SUCIA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada / Mantenimiento')} style={{ background: '#dc2626' }}>
-                  🔴 Marcar como BLOQUEADA / MANTENIMIENTO (Rojo)
+                   Marcar como BLOQUEADA / MANTENIMIENTO
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#059669' }}>
-                  🟢 Marcar como DISPONIBLE (Verde)
+                   Marcar como DISPONIBLE
                 </button>
                 <button onClick={() => setRoomToEditStatus(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '8px' }}>
                   Cancelar
@@ -1403,8 +1479,8 @@ const obtenerReportesFiltradosSupervisora = () => {
           </div>
         )}
 
-        {/* VISTA 3: SUPERVISORA */}
-        {role === 'supervisora' && (
+        {/* VISTA 3: SUPERVISORES */}
+        {role === 'Supervisores' && (
           <div className="card-box">
             <h3 style={{ margin: 0, fontSize: '18px' }}>📋 Panel de Supervisión</h3>
             <p style={{ fontSize: '12px', color: '#64748b' }}>Monitoreo de habitaciones, reportes de consumo y listados de reposición.</p>
@@ -1412,21 +1488,21 @@ const obtenerReportesFiltradosSupervisora = () => {
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', background: '#f1f5f9', padding: '12px', borderRadius: '8px', alignItems: 'center' }}>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Seleccionar Piso</label>
-                <select value={pisoSupervisora} onChange={(e) => setPisoSupervisora(e.target.value)} style={{ width: '150px' }}>
+                <select value={pisoSupervisores} onChange={(e) => setPisoSupervisores(e.target.value)} style={{ width: '150px' }}>
                   <option value="todos">🌐 Todos los Pisos</option>
                   {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
                 </select>
               </div>
 
-             <div>
-  <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Período de Reporte</label>
-  <select value={filtroTiempo} onChange={(e) => setFiltroTiempo(e.target.value)} style={{ width: '160px' }}>
-    <option value="dia">Diario (Hoy)</option>
-    <option value="semana">Semanal</option>
-    <option value="mes">Mensual</option>
-    <option value="todos_historico">🗓️ Histórico Completo</option>
-  </select>
-</div>
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Período de Reporte</label>
+                <select value={filtroTiempo} onChange={(e) => setFiltroTiempo(e.target.value)} style={{ width: '160px' }}>
+                  <option value="dia">Diario (Hoy)</option>
+                  <option value="semana">Semanal</option>
+                  <option value="mes">Mensual</option>
+                  <option value="todos_historico">🗓️ Histórico Completo</option>
+                </select>
+              </div>
 
               <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', flexWrap: 'wrap' }}>
                 <button onClick={() => setMostrarReporteFlotante(true)} className="primary" style={{ background: '#059669', padding: '10px 14px', fontSize: '12px' }}>
@@ -1457,7 +1533,7 @@ const obtenerReportesFiltradosSupervisora = () => {
                 </thead>
                 <tbody>
                   {habitaciones
-                    .filter(h => pisoSupervisora === 'todos' || h.floor === parseInt(pisoSupervisora))
+                    .filter(h => pisoSupervisores === 'todos' || h.floor === parseInt(pisoSupervisores))
                     .map(h => (
                       <tr key={h.id}>
                         <td><strong>{h.number}</strong></td>
@@ -1483,7 +1559,7 @@ const obtenerReportesFiltradosSupervisora = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>📊 Reporte General Consolidado de Consumo</h3>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#fef08a', padding: '4px 8px', borderRadius: '4px' }}>
-                  {pisoSupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisora}`} — {filtroTiempo.toUpperCase()}
+                  {pisoSupervisores === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisores}`} — {filtroTiempo.toUpperCase()}
                 </span>
               </div>
 
@@ -1524,7 +1600,7 @@ const obtenerReportesFiltradosSupervisora = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {obtenerReportesFiltradosSupervisora().map((rep, idx) => (
+                    {obtenerReportesFiltradosSupervisores().map((rep, idx) => (
                       <tr key={idx}>
                         <td><strong>Hab. {rep.habitacion}</strong></td>
                         <td>{rep.asistente}</td>
@@ -1556,7 +1632,7 @@ const obtenerReportesFiltradosSupervisora = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #7c3aed', paddingBottom: '10px', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#7c3aed' }}>📦 Solicitud de Compra / Surtido a Almacén</h3>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#ede9fe', color: '#6d28d9', padding: '4px 8px', borderRadius: '4px' }}>
-                  {pisoSupervisora === 'todos' ? '🌐 Todo el Hotel' : `Piso ${pisoSupervisora}`} — Faltantes Pendientes
+                  {pisoSupervisores === 'todos' ? '🌐 Todo el Hotel' : `Piso ${pisoSupervisores}`} — Faltantes Pendientes
                 </span>
               </div>
 
@@ -1612,18 +1688,18 @@ const obtenerReportesFiltradosSupervisora = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Reposición Detallada por Habitación</h3>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#bbf7d0', color: '#065f46', padding: '4px 8px', borderRadius: '4px' }}>
-                  {pisoSupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisora}`} — {filtroTiempo.toUpperCase()}
+                  {pisoSupervisores === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisoSupervisores}`} — {filtroTiempo.toUpperCase()}
                 </span>
               </div>
 
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Desglose de artículos faltantes por reponer. Indique la cantidad que físicamente va a ingresar:</p>
 
               <div style={{ maxHeight: '350px', overflowY: 'auto', marginBottom: '20px' }}>
-                {obtenerReportesFiltradosSupervisora().length === 0 ? (
+                {obtenerReportesFiltradosSupervisores().length === 0 ? (
                   <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>No hay registros de consumos por habitación para el filtro seleccionado.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {obtenerReportesFiltradosSupervisora().map((rep, idx) => (
+                    {obtenerReportesFiltradosSupervisores().map((rep, idx) => (
                       <div key={idx} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
                           <div>
