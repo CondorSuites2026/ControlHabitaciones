@@ -118,10 +118,15 @@ export default function App() {
   const [mostrarReporteFlotante, setMostrarReporteFlotante] = useState(false);
   const [mostrarReporteHabitaciones, setMostrarReporteHabitaciones] = useState(false);
   const [mostrarControlMinibar, setMostrarControlMinibar] = useState(false);
+  
+  // Estado para el nuevo reporte de almacén
+  const [mostrarReporteAlmacenFaltantes, setMostrarReporteAlmacenFaltantes] = useState(false);
 
   const [notificacionesPermitidas, setNotificacionesPermitidas] = useState(false);
-
   const prevPendientesCount = useRef(-1);
+
+  const [modalReposicionItem, setModalReposicionItem] = useState(null);
+  const [cantidadesRepuestas, setCantidadesRepuestas] = useState({});
 
   const [inventario, setInventario] = useState([
     { id: 'milkyway', name: 'MILKYWAY', category: 'minibar', price_usd: 3.00, stock: 100 },
@@ -143,10 +148,8 @@ export default function App() {
 
   const [personal, setPersonal] = useState([]);
   const [reportesHistorial, setReportesHistorial] = useState([]);
-  
   const [departamentoSeleccionado, setDepartamentoSeleccionado] = useState('Asistente');
   const [asistenteSeleccionada, setAsistenteSeleccionada] = useState('');
-  
   const [consumosSeleccionados, setConsumosSeleccionados] = useState({});
   const [archivoEvidencia, setArchivoEvidencia] = useState(null);
 
@@ -570,19 +573,77 @@ export default function App() {
     }
   };
 
-  const handleCompletarReposicion = async (rep) => {
-    if (!confirm(`¿Confirmar que la reposición de la Habitación ${rep.habitacion} fue abastecida exitosamente?`)) return;
-    
-    try {
-      if (rep.id) {
-        await fetch(`${supabaseUrl}/rest/v1/reportes_consumo?id=eq.${rep.id}`, {
-          method: 'DELETE',
-          headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}` }
-        });
+  const abrirModalReposicion = (rep) => {
+    setModalReposicionItem(rep);
+    const iniciales = {};
+    Object.entries(rep.desglose || {}).forEach(([idItem, qtyConsumida]) => {
+      iniciales[idItem] = qtyConsumida;
+    });
+    setCantidadesRepuestas(iniciales);
+  };
+
+  const handleConfirmarReposicionParcial = async () => {
+    if (!modalReposicionItem) return;
+
+    const rep = modalReposicionItem;
+    const habTarget = habitaciones.find(h => String(h.number) === String(rep.habitacion));
+    const stockPrevio = habTarget?.minibar_stock || {};
+    const nuevoStockMinibar = { ...stockPrevio };
+
+    const faltantesTotales = {};
+    let hayFaltantes = false;
+
+    Object.entries(rep.desglose || {}).forEach(([idItem, qtyRequerida]) => {
+      const qtyIngresada = parseInt(cantidadesRepuestas[idItem]) || 0;
+      const diferencia = qtyRequerida - qtyIngresada;
+
+      if (diferencia > 0) {
+        faltantesTotales[idItem] = diferencia;
+        hayFaltantes = true;
       }
 
-      setReportesHistorial(prev => prev.filter(r => r !== rep));
-      alert(`✅ Reposición de la Habitación ${rep.habitacion} marcada como completada.`);
+      nuevoStockMinibar[idItem] = (nuevoStockMinibar[idItem] || 0) + qtyIngresada;
+    });
+
+    try {
+      if (habTarget) {
+        const targetId = String(habTarget.id);
+        await fetch(`${supabaseUrl}/rest/v1/habitaciones?id=eq.${targetId}`, {
+          method: 'PATCH',
+          headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ minibar_stock: nuevoStockMinibar })
+        });
+
+        setHabitaciones(prev => prev.map(h => h.id === targetId || h.number === rep.habitacion ? {
+          ...h,
+          minibar_stock: nuevoStockMinibar
+        } : h));
+      }
+
+      if (hayFaltantes) {
+        if (rep.id) {
+          await fetch(`${supabaseUrl}/rest/v1/reportes_consumo?id=eq.${rep.id}`, {
+            method: 'PATCH',
+            headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ desglose: faltantesTotales })
+          });
+        }
+        setReportesHistorial(prev => prev.map(r => r === rep ? { ...r, desglose: faltantesTotales } : r));
+        alert(`⚠️ Reposición parcial registrada. Quedan faltantes pendientes en la Habitación ${rep.habitacion}.`);
+      } else {
+        if (rep.id) {
+          await fetch(`${supabaseUrl}/rest/v1/reportes_consumo?id=eq.${rep.id}`, {
+            method: 'DELETE',
+            headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}` }
+          });
+        }
+        setReportesHistorial(prev => prev.filter(r => r !== rep));
+        alert(`✅ Reposición de la Habitación ${rep.habitacion} completada al 100%.`);
+      }
+
+      setModalReposicionItem(null);
+      setCantidadesRepuestas({});
+      fetchReportes();
     } catch (err) {
       alert('❌ Error al actualizar la reposición: ' + err.message);
     }
@@ -696,6 +757,16 @@ export default function App() {
         evidencia: datosEvidencia
       };
 
+      const stockActual = selectedRoom.minibar_stock || {};
+      const stockDescontado = { ...stockActual };
+
+      Object.entries(consumosSeleccionados).forEach(([idItem, qtyConsumida]) => {
+        if (qtyConsumida > 0) {
+          const stockPrev = stockDescontado[idItem] !== undefined ? stockDescontado[idItem] : 0;
+          stockDescontado[idItem] = Math.max(0, stockPrev - qtyConsumida);
+        }
+      });
+
       const newStatus = 'Sucia / Por Facturar';
       const roomTargetId = String(selectedRoom.id);
 
@@ -709,7 +780,8 @@ export default function App() {
           type: selectedRoom.type,
           status: newStatus,
           amount: totalUSD,
-          reporte: reporteCompleto
+          reporte: reporteCompleto,
+          minibar_stock: stockDescontado
         })
       });
 
@@ -742,10 +814,11 @@ export default function App() {
         status: newStatus,
         amount: totalUSD,
         reporte: reporteCompleto,
-        servicio_solicitado: false
+        servicio_solicitado: false,
+        minibar_stock: stockDescontado
       } : h));
 
-      alert(`✅ Check-out ejecutado exitosamente para la Habitación ${selectedRoom.number}.`);
+      alert(`✅ Check-out ejecutado exitosamente. Consumos descontados automáticamente de la Hab. ${selectedRoom.number}.`);
       setConsumosSeleccionados({});
       setArchivoEvidencia(null);
       setSelectedRoom(null);
@@ -856,7 +929,7 @@ export default function App() {
         id: idItem,
         nombre: prod?.name || idItem,
         categoria: prod?.category || 'minibar',
-        totalConsumido: totalQty
+        totalFaltante: totalQty
       };
     });
   };
@@ -1091,22 +1164,22 @@ export default function App() {
                 )}
 
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
-                  🔵 Marcar como OCUPADA (Celeste)
+                   Marcar como OCUPADA 
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#ea580c' }}>
-                  🟧 Marcar como RESERVADA GARANTIZADA (Ladrillo)
+                   Marcar como RESERVADA GARANTIZADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#f472b6', color: '#831843' }}>
-                  🌸 Marcar como RESERVADA (Rosa)
+                   Marcar como RESERVADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#eab308', color: '#713f12' }}>
-                  🟡 Marcar como SUCIA (Amarilla)
+                   Marcar como SUCIA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada / Mantenimiento')} style={{ background: '#dc2626' }}>
-                  🔴 Marcar como BLOQUEADA / MANTENIMIENTO (Rojo)
+                   Marcar como BLOQUEADA / MANTENIMIENTO
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#059669' }}>
-                  🟢 Marcar como DISPONIBLE (Verde)
+                   Marcar como DISPONIBLE
                 </button>
                 <button onClick={() => setRoomToEditStatus(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '8px' }}>
                   Cancelar
@@ -1300,6 +1373,9 @@ export default function App() {
                 <button onClick={() => setMostrarControlMinibar(true)} className="primary" style={{ background: '#d97706', padding: '10px 14px', fontSize: '12px' }}>
                   🍾 Control Minibar por Habitación
                 </button>
+                <button onClick={() => setMostrarReporteAlmacenFaltantes(true)} className="primary" style={{ background: '#7c3aed', padding: '10px 14px', fontSize: '12px' }}>
+                  📦 Reporte de Mercancía Faltante (Almacén)
+                </button>
               </div>
             </div>
 
@@ -1363,7 +1439,7 @@ export default function App() {
                       <tr key={item.id}>
                         <td><strong>{item.nombre}</strong></td>
                         <td style={{ textTransform: 'capitalize' }}>{item.categoria}</td>
-                        <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#059669', fontSize: '14px' }}>{item.totalConsumido} unidades</td>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#059669', fontSize: '14px' }}>{item.totalFaltante} unidades</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1406,6 +1482,62 @@ export default function App() {
           </div>
         )}
 
+        {/* NUEVO REPORTE FLOTANTE: MERCANCÍA FALTANTE PARA ALMACÉN */}
+        {mostrarReporteAlmacenFaltantes && (
+          <div className="modal-overlay">
+            <div className="modal-card" style={{ maxWidth: '650px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #7c3aed', paddingBottom: '10px', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', color: '#7c3aed' }}>📦 Solicitud de Compra / Surtido a Almacén</h3>
+                <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#ede9fe', color: '#6d28d9', padding: '4px 8px', borderRadius: '4px' }}>
+                  {pisoSupervisora === 'todos' ? '🌐 Todo el Hotel' : `Piso ${pisoSupervisora}`} — Faltantes Pendientes
+                </span>
+              </div>
+
+              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
+                Listado consolidado de artículos que no pudieron ser repuestos en las habitaciones por falta de stock y que deben ser solicitados al almacén principal:
+              </p>
+
+              {calcularListadoReposicion().length === 0 ? (
+                <p style={{ fontSize: '13px', color: '#059669', fontStyle: 'italic', textAlign: 'center', padding: '30px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', marginBottom: '20px' }}>
+                  ✅ ¡Excelente! No hay mercancía faltante pendiente de surtir en este momento.
+                </p>
+              ) : (
+                <div style={{ maxHeight: '350px', overflowY: 'auto', marginBottom: '20px' }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Artículo / Producto</th>
+                        <th>Categoría</th>
+                        <th style={{ textAlign: 'center' }}>Cantidad Requerida (Almacén)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {calcularListadoReposicion().map(item => (
+                        <tr key={item.id}>
+                          <td><strong>{item.nombre}</strong></td>
+                          <td style={{ textTransform: 'capitalize' }}>{item.categoria}</td>
+                          <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#dc2626', fontSize: '14px' }}>
+                            {item.totalFaltante} unidades
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => window.print()} className="primary" style={{ flex: 1, background: '#7c3aed' }}>
+                  🖨️ Imprimir / Guardar Reporte de Almacén
+                </button>
+                <button onClick={() => setMostrarReporteAlmacenFaltantes(false)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* REPORTE FLOTANTE: REPOSICIÓN DETALLADA POR HABITACIÓN */}
         {mostrarReporteHabitaciones && (
           <div className="modal-overlay">
@@ -1417,7 +1549,7 @@ export default function App() {
                 </span>
               </div>
 
-              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Desglose de artículos exactos que se consumieron en cada habitación para reabastecer los carritos:</p>
+              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Desglose de artículos faltantes por reponer. Indique la cantidad que físicamente va a ingresar:</p>
 
               <div style={{ maxHeight: '350px', overflowY: 'auto', marginBottom: '20px' }}>
                 {obtenerReportesFiltradosSupervisora().length === 0 ? (
@@ -1437,9 +1569,9 @@ export default function App() {
                               Encargado/a: {rep.asistente}
                             </span>
                             <button 
-                              onClick={() => handleCompletarReposicion(rep)} 
-                              style={{ background: '#059669', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
-                              ✅ OK Reposición
+                              onClick={() => abrirModalReposicion(rep)} 
+                              style={{ background: '#059669', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
+                              🛒 Reponer / Registrar Faltantes
                             </button>
                           </div>
                         </div>
@@ -1451,7 +1583,7 @@ export default function App() {
                             return (
                               <div key={idItem} style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '4px 10px', borderRadius: '6px', fontSize: '12px' }}>
                                 <span>{prod?.name || idItem}: </span>
-                                <strong style={{ color: '#059669' }}>{qty} unds</strong>
+                                <strong style={{ color: '#dc2626' }}>{qty} unds por reponer</strong>
                               </div>
                             );
                           })}
@@ -1468,6 +1600,59 @@ export default function App() {
                 </button>
                 <button onClick={() => setMostrarReporteHabitaciones(false)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
                   Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL GESTIÓN DE FALTANTES / REPOSICIÓN PARCIAL */}
+        {modalReposicionItem && (
+          <div className="modal-overlay">
+            <div className="modal-card" style={{ maxWidth: '500px' }}>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#1e3a8a' }}>🛒 Confirmar Reposición — Hab. {modalReposicionItem.habitacion}</h3>
+              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Ajuste la cantidad reabastecida. Si no hay mercancía disponible, deje el valor menor para registrar el faltante.</p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                {Object.entries(modalReposicionItem.desglose || {}).map(([idItem, qtyRequerida]) => {
+                  const prod = inventario.find(i => i.id === idItem);
+                  const qtyIngresada = cantidadesRepuestas[idItem] !== undefined ? cantidadesRepuestas[idItem] : qtyRequerida;
+                  const faltante = qtyRequerida - qtyIngresada;
+
+                  return (
+                    <div key={idItem} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', padding: '10px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <strong style={{ fontSize: '13px' }}>{prod?.name || idItem}</strong>
+                        <div style={{ fontSize: '11px', color: '#dc2626' }}>Requerido: {qtyRequerida} unds</div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                        <input 
+                          type="number" 
+                          min="0" 
+                          max={qtyRequerida} 
+                          value={qtyIngresada} 
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0;
+                            setCantidadesRepuestas(prev => ({ ...prev, [idItem]: Math.min(qtyRequerida, Math.max(0, val)) }));
+                          }}
+                          style={{ width: '65px', textAlign: 'center', fontWeight: 'bold', padding: '4px' }}
+                        />
+                        {faltante > 0 && (
+                          <span style={{ fontSize: '10px', color: '#dc2626', fontWeight: 'bold' }}>Faltante: {faltante}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={handleConfirmarReposicionParcial} className="primary" style={{ flex: 1, background: '#059669' }}>
+                  ✅ Guardar Reposición
+                </button>
+                <button onClick={() => setModalReposicionItem(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Cancelar
                 </button>
               </div>
             </div>
@@ -1507,7 +1692,7 @@ export default function App() {
                     <tr style={{ background: '#f8fafc' }}>
                       <td style={{ fontWeight: 'bold', textAlign: 'center', background: '#cbd5e1' }}>STATUS</td>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
-                        const hab = habitaciones.find(h => h.number === `${pisoModalMinibar}0${n}`);
+                        const hab = habitaciones.find(h => String(h.number) === `${pisoModalMinibar}0${n}`);
                         return (
                           <td key={n} style={{ textAlign: 'center', fontSize: '10px', fontWeight: 'bold' }}>
                             {hab ? (hab.status.includes('Ocupada') ? 'OCUP.' : hab.status.includes('Sucia') ? 'SUC.' : hab.status.includes('Disponible') ? 'DISP.' : hab.status.substring(0,6)) : ''}
@@ -1521,7 +1706,7 @@ export default function App() {
                       <tr key={prod.id}>
                         <td style={{ fontWeight: 'bold', fontSize: '11px' }}>{prod.name}</td>
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
-                          const hab = habitaciones.find(h => h.number === `${pisoModalMinibar}0${n}`);
+                          const hab = habitaciones.find(h => String(h.number) === `${pisoModalMinibar}0${n}`);
                           const stockHab = hab?.minibar_stock || {};
                           const qty = stockHab[prod.id] !== undefined ? stockHab[prod.id] : 0;
                           return (
@@ -1554,7 +1739,7 @@ export default function App() {
                       <tr key={prod.id}>
                         <td style={{ fontWeight: 'bold', fontSize: '11px' }}>{prod.name}</td>
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
-                          const hab = habitaciones.find(h => h.number === `${pisoModalMinibar}0${n}`);
+                          const hab = habitaciones.find(h => String(h.number) === `${pisoModalMinibar}0${n}`);
                           const stockHab = hab?.minibar_stock || {};
                           const qty = stockHab[prod.id] !== undefined ? stockHab[prod.id] : 0;
                           return (
@@ -1581,7 +1766,7 @@ export default function App() {
                     <tr style={{ background: '#e2e8f0', fontWeight: 'bold' }}>
                       <td style={{ textAlign: 'center' }}>CANTIDAD DE ARTICULOS</td>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
-                        const hab = habitaciones.find(h => h.number === `${pisoModalMinibar}0${n}`);
+                        const hab = habitaciones.find(h => String(h.number) === `${pisoModalMinibar}0${n}`);
                         const stockHab = hab?.minibar_stock || {};
                         const totalHab = Object.values(stockHab).reduce((a, b) => a + (parseInt(b) || 0), 0);
                         return (
@@ -1640,19 +1825,19 @@ export default function App() {
                 <button 
                   onClick={() => setFiltroAmaLlaves('sucia')}
                   style={{ background: '#fde047', color: '#713f12', border: filtroAmaLlaves === 'sucia' ? '2px solid #1e293b' : '1px solid #ca8a04', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  🟡 Sucias
+                   Sucias
                 </button>
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('garantizada')}
                   style={{ background: '#ea580c', color: '#ffffff', border: filtroAmaLlaves === 'garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  🟧 Garantizadas
+                   Garantizadas
                 </button>
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('no_garantizada')}
                   style={{ background: '#f472b6', color: '#831843', border: filtroAmaLlaves === 'no_garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  🌸 No Garantizadas
+                   No Garantizadas
                 </button>
               </div>
             </div>
