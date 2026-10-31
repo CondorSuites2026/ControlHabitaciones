@@ -1808,15 +1808,20 @@ export default function App() {
                     <tr style={{ background: '#e2e8f0', fontWeight: 'bold' }}>
                       <td style={{ textAlign: 'center' }}>CANTIDAD DE ARTICULOS</td>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
-                        const hab = habitaciones.find(h => String(h.number) === `${pisoModalMinibar}0${n}`);
-                        const stockHab = hab?.minibar_stock || {};
-                        const totalHab = Object.values(stockHab).reduce((a, b) => a + (parseInt(b) || 0), 0);
-                        return (
-                          <td key={n} style={{ textAlign: 'center', color: '#1e3a8a', fontSize: '12px' }}>
-                            {totalHab}
-                          </td>
-                        );
-                      })}
+  const hab = habitaciones.find(h => String(h.number) === `${pisoModalMinibar}0${n}`);
+  const stockHab = hab?.minibar_stock || {};
+  
+  // Sumamos únicamente los productos que están activos en el inventario
+  const totalHab = inventario.reduce((acc, prod) => {
+    return acc + (parseInt(stockHab[prod.id]) || 0);
+  }, 0);
+
+  return (
+    <td key={n} style={{ textAlign: 'center', color: '#1e3a8a', fontSize: '12px' }}>
+      {totalHab}
+    </td>
+  );
+})}
                     </tr>
                   </tbody>
                 </table>
