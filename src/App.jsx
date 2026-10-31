@@ -100,6 +100,17 @@ const reproducirCampanaRecepcion = () => {
   }
 };
 
+// FUNCIÓN DE CÁLCULO AUTOMÁTICO DE TURNO
+const obtenerTurnoActual = () => {
+  const horaActual = new Date().getHours();
+  // De 7:00 AM (7) a 2:59 PM (14) -> Turno Diurno
+  if (horaActual >= 7 && horaActual < 15) {
+    return 'Diurno (7:00 am - 3:00 pm)';
+  }
+  // De 3:00 PM (15) en adelante o antes de las 7:00 AM -> Turno Mixto
+  return 'Mixto (3:00 pm - 11:00 pm)';
+};
+
 export default function App() {
   const [role, setRole] = useState('recepcion');
   const [habitaciones, setHabitaciones] = useState([]);
@@ -746,6 +757,9 @@ export default function App() {
     setSubiendoArchivo(true);
 
     try {
+      // 💡 CÁLCULO AUTOMÁTICO DEL TURNO
+      const turnoCalculado = obtenerTurnoActual();
+
       let totalUSD = 0;
       inventario.forEach(item => {
         const qty = consumosSeleccionados[item.id] || 0;
@@ -762,6 +776,7 @@ export default function App() {
       const reporteCompleto = {
         asistente: asistenteSeleccionada,
         departamento: departamentoSeleccionado,
+        turno: turnoCalculado, // 👈 Turno asignado automáticamente
         supervisora: 'N/A',
         fecha: new Date().toISOString(),
         consumos: { ...consumosSeleccionados },
@@ -810,6 +825,7 @@ export default function App() {
         body: JSON.stringify({
           habitacion: selectedRoom.number,
           asistente: asistenteSeleccionada,
+          turno: turnoCalculado, // 👈 Se registra en Supabase para filtros
           supervisora: 'N/A',
           total_usd: totalUSD,
           total_bs: totalBs,
@@ -832,7 +848,7 @@ export default function App() {
         minibar_stock: stockDescontado
       } : h));
 
-      alert(`✅ Check-out ejecutado exitosamente. Consumos descontados automáticamente de la Hab. ${selectedRoom.number}.`);
+      alert(`✅ Check-out ejecutado exitosamente (${turnoCalculado}). Consumos descontados de Hab. ${selectedRoom.number}.`);
       setConsumosSeleccionados({});
       setArchivoEvidencia(null);
       setSelectedRoom(null);
@@ -1208,7 +1224,9 @@ export default function App() {
           <div className="modal-overlay">
             <div className="modal-card">
               <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>🧾 Facturación Check-Out — Habitación {roomToBill.number}</h3>
-              <p style={{ fontSize: '12px', color: '#64748b' }}>Encargado/a: <strong>{roomToBill.reporte?.asistente || 'N/A'}</strong> ({roomToBill.reporte?.departamento || 'General'})</p>
+              <p style={{ fontSize: '12px', color: '#64748b' }}>
+                Encargado/a: <strong>{roomToBill.reporte?.asistente || 'N/A'}</strong> — <span style={{ color: '#1e3a8a', fontWeight: 'bold' }}>{roomToBill.reporte?.turno || 'Turno N/A'}</span>
+              </p>
 
               {roomToBill.reporte?.evidencia?.url && (
                 <div style={{ background: '#f1f5f9', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
@@ -1224,7 +1242,6 @@ export default function App() {
               <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
                 <h4 style={{ margin: '0 0 6px 0', fontSize: '12px', textTransform: 'uppercase' }}>Consumos:</h4>
                 
-                {/* LÓGICA DE DETECCIÓN DE CONSUMOS VACÍOS O EN 0 */}
                 {(() => {
                   const consumosValidos = Object.entries(roomToBill.reporte?.consumos || {}).filter(([_, qty]) => qty > 0);
                   
@@ -1321,7 +1338,7 @@ export default function App() {
                   <option value="">-- Seleccionar Persona --</option>
                   {obtenerPersonalPorDepartamento().map(a => (
                     <option key={a.id} value={a.nombre}>
-                      {a.nombre} ({a.turno})
+                      {a.nombre}
                     </option>
                   ))}
                 </select>
@@ -1490,6 +1507,7 @@ export default function App() {
                     <tr>
                       <th>Hab.</th>
                       <th>Encargado/a</th>
+                      <th>Turno</th>
                       <th>Fecha</th>
                       <th>Total USD</th>
                     </tr>
@@ -1499,6 +1517,7 @@ export default function App() {
                       <tr key={idx}>
                         <td><strong>Hab. {rep.habitacion}</strong></td>
                         <td>{rep.asistente}</td>
+                        <td><small style={{ fontWeight: 'bold', color: '#1d4ed8' }}>{rep.turno || 'N/A'}</small></td>
                         <td>{new Date(rep.fecha).toLocaleString()}</td>
                         <td><strong>${(rep.total_usd || 0).toFixed(2)}</strong></td>
                       </tr>
@@ -1603,7 +1622,7 @@ export default function App() {
                           
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
                             <span style={{ fontSize: '11px', fontWeight: 'bold', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
-                              Encargado/a: {rep.asistente}
+                              Encargado/a: {rep.asistente} ({rep.turno || 'N/A'})
                             </span>
                             <button 
                               onClick={() => abrirModalReposicion(rep)} 
@@ -1799,14 +1818,13 @@ export default function App() {
                       </tr>
                     ))}
 
-                    {/* FILA TOTAL CANTIDAD DE ARTÍCULOS (CORREGIDA) */}
+                    {/* FILA TOTAL CANTIDAD DE ARTÍCULOS */}
                     <tr style={{ background: '#e2e8f0', fontWeight: 'bold' }}>
                       <td style={{ textAlign: 'center' }}>CANTIDAD DE ARTICULOS</td>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
                         const hab = habitaciones.find(h => String(h.number) === `${pisoModalMinibar}0${n}`);
                         const stockHab = hab?.minibar_stock || {};
                         
-                        // Suma exclusiva de los productos activos del inventario vigente
                         const totalHab = inventario.reduce((acc, prod) => {
                           return acc + (parseInt(stockHab[prod.id]) || 0);
                         }, 0);
