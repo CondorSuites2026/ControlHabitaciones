@@ -1209,57 +1209,80 @@ export default function App() {
         )}
 
         {/* MODAL DE FACTURACIÓN */}
-        {roomToBill && roomToBill.reporte && (
-          <div className="modal-overlay">
-            <div className="modal-card">
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>🧾 Facturación Check-Out — Habitación {roomToBill.number}</h3>
-              <p style={{ fontSize: '12px', color: '#64748b' }}>Encargado/a: <strong>{roomToBill.reporte?.asistente || 'N/A'}</strong> ({roomToBill.reporte?.departamento || 'General'})</p>
+{roomToBill && roomToBill.reporte && (
+  <div className="modal-overlay">
+    <div className="modal-card">
+      <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>🧾 Facturación Check-Out — Habitación {roomToBill.number}</h3>
+      <p style={{ fontSize: '12px', color: '#64748b' }}>Encargado/a: <strong>{roomToBill.reporte?.asistente || 'N/A'}</strong> ({roomToBill.reporte?.departamento || 'General'})</p>
 
-              {roomToBill.reporte?.evidencia?.url && (
-                <div style={{ background: '#f1f5f9', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>📸 EVIDENCIA MULTIMEDIA:</span>
-                  {roomToBill.reporte.evidencia.tipo === 'video' ? (
-                    <video src={roomToBill.reporte.evidencia.url} controls style={{ width: '100%', maxHeight: '180px', borderRadius: '6px' }} />
-                  ) : (
-                    <img src={roomToBill.reporte.evidencia.url} alt="Evidencia" style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: '6px' }} />
-                  )}
-                </div>
-              )}
+      {roomToBill.reporte?.evidencia?.url && (
+        <div style={{ background: '#f1f5f9', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>📸 EVIDENCIA MULTIMEDIA:</span>
+          {roomToBill.reporte.evidencia.tipo === 'video' ? (
+            <video src={roomToBill.reporte.evidencia.url} controls style={{ width: '100%', maxHeight: '180px', borderRadius: '6px' }} />
+          ) : (
+            <img src={roomToBill.reporte.evidencia.url} alt="Evidencia" style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: '6px' }} />
+          )}
+        </div>
+      )}
 
-              <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '12px', textTransform: 'uppercase' }}>Consumos:</h4>
-                {Object.entries(roomToBill.reporte?.consumos || {}).map(([id, qty]) => {
-                  if (qty <= 0) return null;
-                  const item = inventario.find(i => i.id === id);
-                  return (
-                    <div key={id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', margin: '4px 0' }}>
-                      <span>{qty}x {item?.name || id}</span>
-                      <strong>${(qty * (item?.price_usd || 0)).toFixed(2)} USD</strong>
-                    </div>
-                  );
-                })}
-                <hr style={{ margin: '10px 0' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold' }}>
-                  <span>TOTAL USD:</span>
-                  <span>${(roomToBill.reporte?.totalUSD || 0).toFixed(2)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 'bold', color: '#059669', marginTop: '4px' }}>
-                  <span>TOTAL BS (BCV {tasaBCV.toFixed(2)}):</span>
-                  <span>Bs. {(roomToBill.reporte?.totalBs || 0).toFixed(2)}</span>
-                </div>
+      <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
+        <h4 style={{ margin: '0 0 6px 0', fontSize: '12px', textTransform: 'uppercase' }}>Consumos:</h4>
+        
+        {/* LÓGICA DE DETECCIÓN DE CONSUMOS VACÍOS O EN 0 */}
+        {(() => {
+          const consumosValidos = Object.entries(roomToBill.reporte?.consumos || {}).filter(([_, qty]) => qty > 0);
+          
+          if (consumosValidos.length === 0 || (roomToBill.reporte?.totalUSD || 0) === 0) {
+            return (
+              <div style={{ 
+                margin: '10px 0', 
+                fontSize: '15px', 
+                fontWeight: 'bold', 
+                color: '#059669', 
+                background: '#ecfdf5', 
+                padding: '8px 12px', 
+                borderRadius: '6px', 
+                border: '1px solid #a7f3d0' 
+              }}>
+                ✅ Habitación OK sin consumo
               </div>
+            );
+          }
 
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button className="success" onClick={() => handleConfirmarFacturacion(roomToBill)} style={{ flex: 1 }}>
-                  ✅ Cobrado / Cambiar a Sucia
-                </button>
-                <button onClick={() => setRoomToBill(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  Cerrar
-                </button>
+          return consumosValidos.map(([id, qty]) => {
+            const item = inventario.find(i => i.id === id);
+            return (
+              <div key={id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', margin: '4px 0' }}>
+                <span>{qty}x {item?.name || id}</span>
+                <strong>${(qty * (item?.price_usd || 0)).toFixed(2)} USD</strong>
               </div>
-            </div>
-          </div>
-        )}
+            );
+          });
+        })()}
+
+        <hr style={{ margin: '10px 0' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold' }}>
+          <span>TOTAL USD:</span>
+          <span>${(roomToBill.reporte?.totalUSD || 0).toFixed(2)}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 'bold', color: '#059669', marginTop: '4px' }}>
+          <span>TOTAL BS (BCV {tasaBCV.toFixed(2)}):</span>
+          <span>Bs. {(roomToBill.reporte?.totalBs || 0).toFixed(2)}</span>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button className="success" onClick={() => handleConfirmarFacturacion(roomToBill)} style={{ flex: 1 }}>
+          ✅ Cobrado / Cambiar a Sucia
+        </button>
+        <button onClick={() => setRoomToBill(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
         {/* VISTA 2: ASISTENTE MÓVIL */}
         {role === 'asistente' && (
