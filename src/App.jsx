@@ -118,8 +118,6 @@ export default function App() {
   const [mostrarReporteFlotante, setMostrarReporteFlotante] = useState(false);
   const [mostrarReporteHabitaciones, setMostrarReporteHabitaciones] = useState(false);
   const [mostrarControlMinibar, setMostrarControlMinibar] = useState(false);
-  
-  // Estado para el nuevo reporte de almacén
   const [mostrarReporteAlmacenFaltantes, setMostrarReporteAlmacenFaltantes] = useState(false);
 
   const [notificacionesPermitidas, setNotificacionesPermitidas] = useState(false);
@@ -285,7 +283,7 @@ export default function App() {
 
   const getDefaultRoomsArray = () => {
     const rooms = [];
-    for (let f = 1; f <= 9; f++) {
+    for (let f = 3; f <= 9; f++) {
       for (let n = 1; n <= 9; n++) {
         rooms.push({ id: `${f}0${n}`, number: `${f}0${n}`, floor: f, type: n <= 4 ? 'MASTER' : n <= 7 ? 'JUNIOR' : 'SENCILLA', status: 'Disponible', amount: 0, reporte: null, minibar_stock: {}, servicio_solicitado: false });
       }
@@ -308,7 +306,7 @@ export default function App() {
         const data = await response.json();
         const defaultRooms = getDefaultRoomsArray();
         
-        if (!data || data.length < 67) {
+        if (!data || data.length < 63) {
           setHabitaciones(defaultRooms);
           for (const room of defaultRooms) {
             await fetch(`${supabaseUrl}/rest/v1/habitaciones`, {
@@ -478,41 +476,38 @@ export default function App() {
   };
 
   const handleActualizarStockMinibarHabitacion = async (roomItem, minibarActualizado) => {
-  if (!roomItem || (!roomItem.id && !roomItem.number)) return;
+    if (!roomItem || (!roomItem.id && !roomItem.number)) return;
 
-  // 1. Actualización rápida en el estado local de la interfaz
-  setHabitaciones(prev => prev.map(h => 
-    String(h.id) === String(roomItem.id) || String(h.number) === String(roomItem.number) 
-      ? { ...h, minibar_stock: minibarActualizado } 
-      : h
-  ));
+    setHabitaciones(prev => prev.map(h => 
+      String(h.id) === String(roomItem.id) || String(h.number) === String(roomItem.number) 
+        ? { ...h, minibar_stock: minibarActualizado } 
+        : h
+    ));
 
-  // 2. Persistencia en Supabase
-  try {
-    // Usamos 'number' o 'id' asegurando que no envíe undefined
-    const queryParam = roomItem.id ? `id=eq.${encodeURIComponent(roomItem.id)}` : `number=eq.${encodeURIComponent(roomItem.number)}`;
+    try {
+      const queryParam = roomItem.id ? `id=eq.${encodeURIComponent(roomItem.id)}` : `number=eq.${encodeURIComponent(roomItem.number)}`;
 
-    const response = await fetch(`${supabaseUrl}/rest/v1/habitaciones?${queryParam}`, {
-      method: 'PATCH',
-      headers: { 
-        'apikey': supabaseAnonKey, 
-        'Authorization': `Bearer ${supabaseAnonKey}`, 
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal' // 👈 Encabezado requerido por Supabase para peticiones PATCH
-      },
-      body: JSON.stringify({ 
-        minibar_stock: minibarActualizado 
-      })
-    });
+      const response = await fetch(`${supabaseUrl}/rest/v1/habitaciones?${queryParam}`, {
+        method: 'PATCH',
+        headers: { 
+          'apikey': supabaseAnonKey, 
+          'Authorization': `Bearer ${supabaseAnonKey}`, 
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ 
+          minibar_stock: minibarActualizado 
+        })
+      });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Error Supabase PATCH 400:', errText);
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error('Error Supabase PATCH 400:', errText);
+      }
+    } catch (e) {
+      console.error('Error al sincronizar stock de minibar con Supabase:', e);
     }
-  } catch (e) {
-    console.error('Error al sincronizar stock de minibar con Supabase:', e);
-  }
-};
+  };
 
   const handleToggleServicioHabitacion = async (roomItem) => {
     const nuevoEstadoServicio = !roomItem.servicio_solicitado;
@@ -1096,7 +1091,7 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(piso => (
+                  {[3, 4, 5, 6, 7, 8, 9, 10].map(piso => (
                     <tr key={piso}>
                       <td style={{ fontWeight: 'bold', background: '#f1f5f9' }}>PISO {piso}</td>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(numCol => {
@@ -1183,22 +1178,22 @@ export default function App() {
                 )}
 
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
-                   Marcar como OCUPADA 
+                  🔵 Marcar como OCUPADA (Celeste)
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#ea580c' }}>
-                   Marcar como RESERVADA GARANTIZADA
+                  🟧 Marcar como RESERVADA GARANTIZADA (Ladrillo)
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#f472b6', color: '#831843' }}>
-                   Marcar como RESERVADA
+                  🌸 Marcar como RESERVADA (Rosa)
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#eab308', color: '#713f12' }}>
-                   Marcar como SUCIA
+                  🟡 Marcar como SUCIA (Amarilla)
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada / Mantenimiento')} style={{ background: '#dc2626' }}>
-                   Marcar como BLOQUEADA / MANTENIMIENTO
+                  🔴 Marcar como BLOQUEADA / MANTENIMIENTO (Rojo)
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#059669' }}>
-                   Marcar como DISPONIBLE
+                  🟢 Marcar como DISPONIBLE (Verde)
                 </button>
                 <button onClick={() => setRoomToEditStatus(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '8px' }}>
                   Cancelar
@@ -1209,80 +1204,80 @@ export default function App() {
         )}
 
         {/* MODAL DE FACTURACIÓN */}
-{roomToBill && roomToBill.reporte && (
-  <div className="modal-overlay">
-    <div className="modal-card">
-      <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>🧾 Facturación Check-Out — Habitación {roomToBill.number}</h3>
-      <p style={{ fontSize: '12px', color: '#64748b' }}>Encargado/a: <strong>{roomToBill.reporte?.asistente || 'N/A'}</strong> ({roomToBill.reporte?.departamento || 'General'})</p>
+        {roomToBill && roomToBill.reporte && (
+          <div className="modal-overlay">
+            <div className="modal-card">
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>🧾 Facturación Check-Out — Habitación {roomToBill.number}</h3>
+              <p style={{ fontSize: '12px', color: '#64748b' }}>Encargado/a: <strong>{roomToBill.reporte?.asistente || 'N/A'}</strong> ({roomToBill.reporte?.departamento || 'General'})</p>
 
-      {roomToBill.reporte?.evidencia?.url && (
-        <div style={{ background: '#f1f5f9', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
-          <span style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>📸 EVIDENCIA MULTIMEDIA:</span>
-          {roomToBill.reporte.evidencia.tipo === 'video' ? (
-            <video src={roomToBill.reporte.evidencia.url} controls style={{ width: '100%', maxHeight: '180px', borderRadius: '6px' }} />
-          ) : (
-            <img src={roomToBill.reporte.evidencia.url} alt="Evidencia" style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: '6px' }} />
-          )}
-        </div>
-      )}
+              {roomToBill.reporte?.evidencia?.url && (
+                <div style={{ background: '#f1f5f9', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>📸 EVIDENCIA MULTIMEDIA:</span>
+                  {roomToBill.reporte.evidencia.tipo === 'video' ? (
+                    <video src={roomToBill.reporte.evidencia.url} controls style={{ width: '100%', maxHeight: '180px', borderRadius: '6px' }} />
+                  ) : (
+                    <img src={roomToBill.reporte.evidencia.url} alt="Evidencia" style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: '6px' }} />
+                  )}
+                </div>
+              )}
 
-      <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
-        <h4 style={{ margin: '0 0 6px 0', fontSize: '12px', textTransform: 'uppercase' }}>Consumos:</h4>
-        
-        {/* LÓGICA DE DETECCIÓN DE CONSUMOS VACÍOS O EN 0 */}
-        {(() => {
-          const consumosValidos = Object.entries(roomToBill.reporte?.consumos || {}).filter(([_, qty]) => qty > 0);
-          
-          if (consumosValidos.length === 0 || (roomToBill.reporte?.totalUSD || 0) === 0) {
-            return (
-              <div style={{ 
-                margin: '10px 0', 
-                fontSize: '15px', 
-                fontWeight: 'bold', 
-                color: '#059669', 
-                background: '#ecfdf5', 
-                padding: '8px 12px', 
-                borderRadius: '6px', 
-                border: '1px solid #a7f3d0' 
-              }}>
-                ✅ Habitación OK sin consumo
+              <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '12px', textTransform: 'uppercase' }}>Consumos:</h4>
+                
+                {/* LÓGICA DE DETECCIÓN DE CONSUMOS VACÍOS O EN 0 */}
+                {(() => {
+                  const consumosValidos = Object.entries(roomToBill.reporte?.consumos || {}).filter(([_, qty]) => qty > 0);
+                  
+                  if (consumosValidos.length === 0 || (roomToBill.reporte?.totalUSD || 0) === 0) {
+                    return (
+                      <div style={{ 
+                        margin: '10px 0', 
+                        fontSize: '15px', 
+                        fontWeight: 'bold', 
+                        color: '#059669', 
+                        background: '#ecfdf5', 
+                        padding: '8px 12px', 
+                        borderRadius: '6px', 
+                        border: '1px solid #a7f3d0' 
+                      }}>
+                        ✅ Habitación OK sin consumo
+                      </div>
+                    );
+                  }
+
+                  return consumosValidos.map(([id, qty]) => {
+                    const item = inventario.find(i => i.id === id);
+                    return (
+                      <div key={id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', margin: '4px 0' }}>
+                        <span>{qty}x {item?.name || id}</span>
+                        <strong>${(qty * (item?.price_usd || 0)).toFixed(2)} USD</strong>
+                      </div>
+                    );
+                  });
+                })()}
+
+                <hr style={{ margin: '10px 0' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold' }}>
+                  <span>TOTAL USD:</span>
+                  <span>${(roomToBill.reporte?.totalUSD || 0).toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 'bold', color: '#059669', marginTop: '4px' }}>
+                  <span>TOTAL BS (BCV {tasaBCV.toFixed(2)}):</span>
+                  <span>Bs. {(roomToBill.reporte?.totalBs || 0).toFixed(2)}</span>
+                </div>
               </div>
-            );
-          }
 
-          return consumosValidos.map(([id, qty]) => {
-            const item = inventario.find(i => i.id === id);
-            return (
-              <div key={id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', margin: '4px 0' }}>
-                <span>{qty}x {item?.name || id}</span>
-                <strong>${(qty * (item?.price_usd || 0)).toFixed(2)} USD</strong>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="success" onClick={() => handleConfirmarFacturacion(roomToBill)} style={{ flex: 1 }}>
+                  ✅ Cobrado / Cambiar a Sucia
+                </button>
+                <button onClick={() => setRoomToBill(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  Cerrar
+                </button>
               </div>
-            );
-          });
-        })()}
-
-        <hr style={{ margin: '10px 0' }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold' }}>
-          <span>TOTAL USD:</span>
-          <span>${(roomToBill.reporte?.totalUSD || 0).toFixed(2)}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 'bold', color: '#059669', marginTop: '4px' }}>
-          <span>TOTAL BS (BCV {tasaBCV.toFixed(2)}):</span>
-          <span>Bs. {(roomToBill.reporte?.totalBs || 0).toFixed(2)}</span>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button className="success" onClick={() => handleConfirmarFacturacion(roomToBill)} style={{ flex: 1 }}>
-          ✅ Cobrado / Cambiar a Sucia
-        </button>
-        <button onClick={() => setRoomToBill(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-          Cerrar
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            </div>
+          </div>
+        )}
 
         {/* VISTA 2: ASISTENTE MÓVIL */}
         {role === 'asistente' && (
@@ -1298,7 +1293,7 @@ export default function App() {
                   const habsPiso = habitaciones.filter(h => h.floor === pisoNum);
                   setSelectedRoom(habsPiso[0] || null);
                 }} style={{ width: '100%' }}>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
+                  {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
                 </select>
               </div>
 
@@ -1392,7 +1387,7 @@ export default function App() {
                 <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Seleccionar Piso</label>
                 <select value={pisoSupervisora} onChange={(e) => setPisoSupervisora(e.target.value)} style={{ width: '150px' }}>
                   <option value="todos">🌐 Todos los Pisos</option>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
+                  {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
                 </select>
               </div>
 
@@ -1714,7 +1709,7 @@ export default function App() {
                     value={pisoModalMinibar} 
                     onChange={(e) => setPisoModalMinibar(e.target.value)} 
                     style={{ width: '130px', padding: '6px', fontSize: '12px', fontWeight: 'bold', background: '#f8fafc' }}>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={String(p)}>Piso {p}</option>)}
+                    {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={String(p)}>Piso {p}</option>)}
                   </select>
                 </div>
               </div>
@@ -1804,24 +1799,24 @@ export default function App() {
                       </tr>
                     ))}
 
-                    {/* FILA TOTAL CANTIDAD DE ARTÍCULOS */}
+                    {/* FILA TOTAL CANTIDAD DE ARTÍCULOS (CORREGIDA) */}
                     <tr style={{ background: '#e2e8f0', fontWeight: 'bold' }}>
                       <td style={{ textAlign: 'center' }}>CANTIDAD DE ARTICULOS</td>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
-  const hab = habitaciones.find(h => String(h.number) === `${pisoModalMinibar}0${n}`);
-  const stockHab = hab?.minibar_stock || {};
-  
-  // Sumamos únicamente los productos que están activos en el inventario
-  const totalHab = inventario.reduce((acc, prod) => {
-    return acc + (parseInt(stockHab[prod.id]) || 0);
-  }, 0);
+                        const hab = habitaciones.find(h => String(h.number) === `${pisoModalMinibar}0${n}`);
+                        const stockHab = hab?.minibar_stock || {};
+                        
+                        // Suma exclusiva de los productos activos del inventario vigente
+                        const totalHab = inventario.reduce((acc, prod) => {
+                          return acc + (parseInt(stockHab[prod.id]) || 0);
+                        }, 0);
 
-  return (
-    <td key={n} style={{ textAlign: 'center', color: '#1e3a8a', fontSize: '12px' }}>
-      {totalHab}
-    </td>
-  );
-})}
+                        return (
+                          <td key={n} style={{ textAlign: 'center', color: '#1e3a8a', fontSize: '12px' }}>
+                            {totalHab}
+                          </td>
+                        );
+                      })}
                     </tr>
                   </tbody>
                 </table>
@@ -1850,7 +1845,7 @@ export default function App() {
                 <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Piso:</label>
                 <select value={pisoAmaLlaves} onChange={(e) => setPisoAmaLlaves(e.target.value)} style={{ width: '180px' }}>
                   <option value="todos">🌐 Todos los Pisos</option>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
+                  {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
                 </select>
               </div>
 
@@ -1872,19 +1867,19 @@ export default function App() {
                 <button 
                   onClick={() => setFiltroAmaLlaves('sucia')}
                   style={{ background: '#fde047', color: '#713f12', border: filtroAmaLlaves === 'sucia' ? '2px solid #1e293b' : '1px solid #ca8a04', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
-                   Sucias
+                  🟡 Sucias
                 </button>
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('garantizada')}
                   style={{ background: '#ea580c', color: '#ffffff', border: filtroAmaLlaves === 'garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
-                   Garantizadas
+                  🟧 Garantizadas
                 </button>
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('no_garantizada')}
                   style={{ background: '#f472b6', color: '#831843', border: filtroAmaLlaves === 'no_garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
-                   No Garantizadas
+                  🌸 No Garantizadas
                 </button>
               </div>
             </div>
