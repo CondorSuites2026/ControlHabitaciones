@@ -1203,17 +1203,17 @@ export default function App() {
                       <div key={idx} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '8px' }}>
                           <div>
-                            <strong style={{ fontSize: '14px', color: '#1e3a8a' }}>Habitación {rep.habitacion}</strong>
+                            <strong style={{ fontSize: '14px', color: '#1e3a8a' }}>Habitación {rep?.habitacion || 'N/A'}</strong>
                           </div>
                           <div style={{ fontSize: '11px', fontWeight: 'bold', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
-                            Asistente: {rep.asistente || 'N/A'} ({rep.turno || 'N/A'})
+                            Asistente: {rep?.asistente || 'N/A'} ({rep?.turno || 'N/A'})
                           </div>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
-                          {Object.entries(rep.desglose || {}).map(([idItem, qty]) => {
+                          {Object.entries(rep?.desglose || {}).map(([idItem, qty]) => {
                             if (qty <= 0) return null;
-                            const prod = inventario.find(i => i.id === idItem);
+                            const prod = (inventario || []).find(i => i.id === idItem);
                             const precioUnitario = prod?.price_usd || 0;
                             const subtotal = qty * precioUnitario;
                             return (
@@ -1226,8 +1226,8 @@ export default function App() {
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px dashed #cbd5e1', paddingTop: '6px', fontSize: '13px', fontWeight: 'bold' }}>
-                          <span>Total USD: ${(rep.total_usd || 0).toFixed(2)}</span>
-                          <span style={{ color: '#059669' }}>Total Bs: Bs. {(rep.total_bs || 0).toFixed(2)}</span>
+                          <span>Total USD: ${(rep?.total_usd || 0).toFixed(2)}</span>
+                          <span style={{ color: '#059669' }}>Total Bs: Bs. {(rep?.total_bs || 0).toFixed(2)}</span>
                         </div>
                       </div>
                     ))}
