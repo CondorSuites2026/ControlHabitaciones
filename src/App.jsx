@@ -100,12 +100,16 @@ const reproducirCampanaRecepcion = () => {
   }
 };
 
+// 🕒 CÁLCULO DE LOS 3 TURNOS OFICIALES DEL HOTEL
 const obtenerTurnoActual = () => {
   const horaActual = new Date().getHours();
   if (horaActual >= 7 && horaActual < 15) {
-    return 'Diurno (7:00 am - 3:00 pm)';
+    return '1er Turno (7:00 am - 3:00 pm)';
+  } else if (horaActual >= 15 && horaActual < 23) {
+    return '2do Turno (3:00 pm - 11:00 pm)';
+  } else {
+    return '3er Turno (11:00 pm - 7:00 am)';
   }
-  return 'Mixto (3:00 pm - 11:00 pm)';
 };
 
 export default function App() {
@@ -128,6 +132,9 @@ export default function App() {
   const [mostrarControlMinibar, setMostrarControlMinibar] = useState(false);
   const [mostrarReporteAlmacenFaltantes, setMostrarReporteAlmacenFaltantes] = useState(false);
   const [mostrarReporteRecepcion, setMostrarReporteRecepcion] = useState(false);
+  
+  // 🔘 Estado para el selector de turnos en recepción
+  const [turnoSeleccionadoRecepcion, setTurnoSeleccionadoRecepcion] = useState('todos');
 
   const [notificacionesPermitidas, setNotificacionesPermitidas] = useState(false);
   const prevPendientesCount = useRef(-1);
@@ -410,6 +417,31 @@ export default function App() {
         if (data) setReportesHistorial(data);
       }
     } catch (e) {}
+  };
+
+  // 🔍 FILTRADO DE REPORTES POR TURNO PARA RECEPCIÓN
+  const obtenerReportesRecepcionPorTurno = () => {
+    if (!Array.isArray(reportesHistorial)) return [];
+    const ahora = new Date();
+    const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 0, 0, 0);
+    const finHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 23, 59, 59);
+
+    return reportesHistorial.filter(rep => {
+      if (!rep || !rep.fecha) return false;
+      const fechaRep = new Date(rep.fecha);
+      
+      const esHoy = fechaRep >= inicioHoy && fechaRep <= finHoy;
+      if (!esHoy) return false;
+
+      if (turnoSeleccionadoRecepcion !== 'todos') {
+        const turnoRep = (rep.turno || '').toLowerCase();
+        if (turnoSeleccionadoRecepcion === '1er' && !turnoRep.includes('7:00 am')) return false;
+        if (turnoSeleccionadoRecepcion === '2do' && !turnoRep.includes('3:00 pm')) return false;
+        if (turnoSeleccionadoRecepcion === '3er' && !turnoRep.includes('11:00 pm')) return false;
+      }
+
+      return true;
+    });
   };
 
   const handleGuardarInventario = async (e) => {
@@ -1177,36 +1209,47 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL REPORTE DE CONSUMOS FACTURADOS PARA RECEPCIÓN */}
+        {/* MODAL REPORTE DE CONSUMOS FACTURADOS PARA RECEPCIÓN CON CONCILIACIÓN POR TURNO */}
         {mostrarReporteRecepcion && (
           <div className="modal-overlay">
-            <div className="modal-card" style={{ maxWidth: '800px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
+            <div className="modal-card" style={{ maxWidth: '850px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>📊 Relación de Consumos Facturados — Cierre de Turno</h3>
-                <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#fef08a', padding: '4px 8px', borderRadius: '4px' }}>
-                  Fecha: {new Date().toLocaleDateString()}
-                </span>
+                
+                {/* SELECTOR DE TURNO */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e293b' }}>Filtrar Turno:</label>
+                  <select 
+                    value={turnoSeleccionadoRecepcion} 
+                    onChange={(e) => setTurnoSeleccionadoRecepcion(e.target.value)}
+                    style={{ padding: '6px 10px', fontSize: '12px', fontWeight: 'bold', borderRadius: '6px', background: '#fef08a', border: '1px solid #ca8a04', cursor: 'pointer' }}>
+                    <option value="todos">🌐 Todos los Turnos de Hoy</option>
+                    <option value="1er">1er Turno (7:00 am - 3:00 pm)</option>
+                    <option value="2do">2do Turno (3:00 pm - 11:00 pm)</option>
+                    <option value="3er">3er Turno (11:00 pm - 7:00 am)</option>
+                  </select>
+                </div>
               </div>
 
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
-                Resumen de habitaciones con consumos registrados y facturados en el turno actual para el arqueo de caja:
+                Resumen de arqueo de caja y consumos facturados para la conciliación del turno seleccionado:
               </p>
 
               <div style={{ maxHeight: '380px', overflowY: 'auto', marginBottom: '20px' }}>
-                {obtenerReportesFiltradosSupervisores().length === 0 ? (
+                {obtenerReportesRecepcionPorTurno().length === 0 ? (
                   <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '30px' }}>
-                    No hay consumos facturados registrados en el turno de hoy.
+                    No hay consumos facturados registrados para el turno seleccionado el día de hoy.
                   </p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {obtenerReportesFiltradosSupervisores().map((rep, idx) => (
+                    {obtenerReportesRecepcionPorTurno().map((rep, idx) => (
                       <div key={idx} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '8px' }}>
                           <div>
                             <strong style={{ fontSize: '14px', color: '#1e3a8a' }}>Habitación {rep?.habitacion || 'N/A'}</strong>
                           </div>
                           <div style={{ fontSize: '11px', fontWeight: 'bold', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
-                            Asistente: {rep?.asistente || 'N/A'} ({rep?.turno || 'N/A'})
+                            Asistente: {rep?.asistente || 'N/A'} — <span style={{ color: '#1d4ed8' }}>{rep?.turno || 'N/A'}</span>
                           </div>
                         </div>
 
@@ -1237,7 +1280,7 @@ export default function App() {
 
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => window.print()} className="primary" style={{ flex: 1, background: '#1e3a8a' }}>
-                  🖨️ Imprimir / Guardar Relación de Turno
+                  🖨️ Imprimir Relación de Turno Seleccionado
                 </button>
                 <button onClick={() => setMostrarReporteRecepcion(false)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
                   Cerrar
@@ -1246,7 +1289,7 @@ export default function App() {
             </div>
           </div>
         )}
-        
+
         {/* MODAL CAMBIAR ESTADO / SOLICITAR SERVICIO */}
         {roomToEditStatus && (
           <div className="modal-overlay">
