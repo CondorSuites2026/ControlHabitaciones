@@ -1193,13 +1193,13 @@ export default function App() {
               </p>
 
               <div style={{ maxHeight: '380px', overflowY: 'auto', marginBottom: '20px' }}>
-                {obtenerReportesRecepcionHoy().length === 0 ? (
+                {obtenerReportesFiltradosSupervisores().length === 0 ? (
                   <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '30px' }}>
                     No hay consumos facturados registrados en el turno de hoy.
                   </p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {obtenerReportesRecepcionHoy().map((rep, idx) => (
+                    {obtenerReportesFiltradosSupervisores().map((rep, idx) => (
                       <div key={idx} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '8px' }}>
                           <div>
@@ -1246,6 +1246,7 @@ export default function App() {
             </div>
           </div>
         )}
+        
         {/* MODAL CAMBIAR ESTADO / SOLICITAR SERVICIO */}
         {roomToEditStatus && (
           <div className="modal-overlay">
