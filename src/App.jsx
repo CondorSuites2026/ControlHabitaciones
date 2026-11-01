@@ -1178,78 +1178,74 @@ export default function App() {
         )}
 
         {/* MODAL REPORTE DE CONSUMOS FACTURADOS PARA RECEPCIÓN */}
-        {mostrarReporteRecepcion && (
-          <div className="modal-overlay">
-            <div className="modal-card" style={{ maxWidth: '800px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>📊 Relación de Consumos Facturados — Cierre de Turno</h3>
-                <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#fef08a', padding: '4px 8px', borderRadius: '4px' }}>
-                  Fecha: {new Date().toLocaleDateString()}
-                </span>
-              </div>
+{mostrarReporteRecepcion && (
+  <div className="modal-overlay">
+    <div className="modal-card" style={{ maxWidth: '800px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
+        <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>📊 Relación de Consumos Facturados — Cierre de Turno</h3>
+        <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#fef08a', padding: '4px 8px', borderRadius: '4px' }}>
+          Fecha: {new Date().toLocaleDateString()}
+        </span>
+      </div>
 
-              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
-                Resumen de habitaciones con consumos registrados y pendientes o facturados en el turno actual para el arqueo de caja:
-              </p>
+      <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
+        Resumen de habitaciones con consumos registrados y facturados en el turno actual para el arqueo de caja:
+      </p>
 
-              <div style={{ maxHeight: '380px', overflowY: 'auto', marginBottom: '20px' }}>
-                {habitaciones.filter(h => h.reporte && h.reporte.consumos && Object.values(h.reporte.consumos).some(q => q > 0)).length === 0 ? (
-                  <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '30px' }}>
-                    No hay habitaciones con consumos registrados en este momento.
-                  </p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {habitaciones
-                      .filter(h => h.reporte && h.reporte.consumos && Object.values(h.reporte.consumos).some(q => q > 0))
-                      .map(h => (
-                        <div key={h.id} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '8px' }}>
-                            <div>
-                              <strong style={{ fontSize: '14px', color: '#1e3a8a' }}>Habitación {h.number}</strong>
-                              <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '8px' }}>({h.type})</span>
-                            </div>
-                            <div style={{ fontSize: '11px', fontWeight: 'bold', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
-                              Asistente: {h.reporte.asistente || 'N/A'} ({h.reporte.turno || 'N/A'})
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
-                            {Object.entries(h.reporte.consumos || {}).map(([idItem, qty]) => {
-                              if (qty <= 0) return null;
-                              const prod = inventario.find(i => i.id === idItem);
-                              const precioUnitario = prod?.price_usd || 0;
-                              const subtotal = qty * precioUnitario;
-                              return (
-                                <div key={idItem} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                                  <span>{qty}x {prod?.name || idItem} (${precioUnitario.toFixed(2)} c/u)</span>
-                                  <strong>${subtotal.toFixed(2)} USD</strong>
-                                </div>
-                              );
-                            })}
-                          </div>
-
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px dashed #cbd5e1', paddingTop: '6px', fontSize: '13px', fontWeight: 'bold' }}>
-                            <span>Total USD: ${h.reporte.totalUSD.toFixed(2)}</span>
-                            <span style={{ color: '#059669' }}>Total Bs: Bs. {h.reporte.totalBs.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      ))}
+      <div style={{ maxHeight: '380px', overflowY: 'auto', marginBottom: '20px' }}>
+        {obtenerReportesRecepcionHoy().length === 0 ? (
+          <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '30px' }}>
+            No hay consumos facturados registrados en el turno de hoy.
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {obtenerReportesRecepcionHoy().map((rep, idx) => (
+              <div key={idx} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '8px' }}>
+                  <div>
+                    <strong style={{ fontSize: '14px', color: '#1e3a8a' }}>Habitación {rep.habitacion}</strong>
                   </div>
-                )}
-              </div>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
+                    Asistente: {rep.asistente || 'N/A'} ({rep.turno || 'N/A'})
+                  </div>
+                </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={() => window.print()} className="primary" style={{ flex: 1, background: '#1e3a8a' }}>
-                  🖨️ Imprimir / Guardar Relación de Turno
-                </button>
-                <button onClick={() => setMostrarReporteRecepcion(false)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  Cerrar
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
+                  {Object.entries(rep.desglose || {}).map(([idItem, qty]) => {
+                    if (qty <= 0) return null;
+                    const prod = inventario.find(i => i.id === idItem);
+                    const precioUnitario = prod?.price_usd || 0;
+                    const subtotal = qty * precioUnitario;
+                    return (
+                      <div key={idItem} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                        <span>{qty}x {prod?.name || idItem} (${precioUnitario.toFixed(2)} c/u)</span>
+                        <strong>${subtotal.toFixed(2)} USD</strong>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px dashed #cbd5e1', paddingTop: '6px', fontSize: '13px', fontWeight: 'bold' }}>
+                  <span>Total USD: ${(rep.total_usd || 0).toFixed(2)}</span>
+                  <span style={{ color: '#059669' }}>Total Bs: Bs. {(rep.total_bs || 0).toFixed(2)}</span>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         )}
+      </div>
 
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button onClick={() => window.print()} className="primary" style={{ flex: 1, background: '#1e3a8a' }}>
+          🖨️ Imprimir / Guardar Relación de Turno
+        </button>
+        <button onClick={() => setMostrarReporteRecepcion(false)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+)}
         {/* MODAL CAMBIAR ESTADO / SOLICITAR SERVICIO */}
         {roomToEditStatus && (
           <div className="modal-overlay">
