@@ -120,7 +120,7 @@ export default function App() {
 
   const [pisoAmaLlaves, setPisoAmaLlaves] = useState('todos');
   const [filtroAmaLlaves, setFiltroAmaLlaves] = useState('todas');
-  const [pisosupervisora, setPisosupervisora] = useState('todos');
+  const [pisosupervisores, setPisosupervisores] = useState('todos');
   const [pisoModalMinibar, setPisoModalMinibar] = useState('3');
   const [filtroTiempo, setFiltroTiempo] = useState('dia');
   const [mostrarReporteFlotante, setMostrarReporteFlotante] = useState(false);
@@ -736,7 +736,7 @@ export default function App() {
     return personal.filter(p => {
       const rolStr = (p.rol || '').toLowerCase();
       if (departamentoSeleccionado === 'Asistente') return rolStr.includes('asistente');
-      if (departamentoSeleccionado === 'supervisora') return rolStr.includes('supervis');
+      if (departamentoSeleccionado === 'supervisores') return rolStr.includes('supervis');
       if (departamentoSeleccionado === 'Equipo Nocturno') return rolStr.includes('nocturn');
       return true;
     });
@@ -774,7 +774,6 @@ export default function App() {
         asistente: asistenteSeleccionada,
         departamento: departamentoSeleccionado,
         turno: turnoCalculado,
-        supervisora: 'N/A',
         fecha: new Date().toISOString(),
         consumos: { ...consumosSeleccionados },
         totalUSD,
@@ -823,7 +822,6 @@ export default function App() {
           habitacion: selectedRoom.number,
           asistente: asistenteSeleccionada,
           turno: turnoCalculado,
-          supervisora: 'N/A',
           total_usd: totalUSD,
           total_bs: totalBs,
           tasa_bcv: tasaBCV,
@@ -914,16 +912,16 @@ export default function App() {
     return st.includes('por facturar') || st.includes('sucia / por facturar');
   });
 
-  const obtenerReportesFiltradossupervisora = () => {
+  const obtenerReportesFiltradosSupervisores = () => {
     const ahora = new Date();
     const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 0, 0, 0);
     const finHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 23, 59, 59);
 
     return reportesHistorial.filter(rep => {
-      if (pisosupervisora !== 'todos') {
+      if (pisosupervisores !== 'todos') {
         const habStr = String(rep.habitacion || '');
         const pisoHab = habStr.length === 4 ? parseInt(habStr.substring(0, 2)) : parseInt(habStr.substring(0, 1));
-        if (pisoHab !== parseInt(pisosupervisora)) return false;
+        if (pisoHab !== parseInt(pisosupervisores)) return false;
       }
 
       if (!rep.fecha) return true;
@@ -944,7 +942,7 @@ export default function App() {
   };
 
   const calcularListadoReposicion = () => {
-    const filtrados = obtenerReportesFiltradossupervisora();
+    const filtrados = obtenerReportesFiltradosSupervisores();
     const acumuladoItems = {};
 
     filtrados.forEach(rep => {
@@ -1065,7 +1063,7 @@ export default function App() {
         <div className="nav-buttons">
           {[
             { id: 'recepcion', label: 'Recepción' },
-            { id: 'supervisora', label: 'supervisora' },
+            { id: 'supervisores', label: 'Supervisores' },
             { id: 'amadelhaves', label: 'Ama de Llaves' },
             { id: 'admin', label: 'Administración' }
           ].map(m => (
@@ -1280,22 +1278,22 @@ export default function App() {
                 )}
 
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
-                   Marcar como OCUPADA
+                  Marcar como OCUPADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#ea580c' }}>
-                   Marcar como RESERVADA GARANTIZADA
+                  Marcar como RESERVADA GARANTIZADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#f472b6', color: '#831843' }}>
-                   Marcar como RESERVADA
+                  Marcar como RESERVADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#eab308', color: '#713f12' }}>
-                   Marcar como SUCIA
+                  Marcar como SUCIA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada / Mantenimiento')} style={{ background: '#dc2626' }}>
-                   Marcar como BLOQUEADA / MANTENIMIENTO
+                  Marcar como BLOQUEADA / MANTENIMIENTO
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#059669' }}>
-                   Marcar como DISPONIBLE
+                  Marcar como DISPONIBLE
                 </button>
                 <button onClick={() => setRoomToEditStatus(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '8px' }}>
                   Cancelar
@@ -1410,7 +1408,7 @@ export default function App() {
                   }} 
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>
                   <option value="Asistente">🧹 Asistentes (Piso)</option>
-                  <option value="supervisora">📋 supervisora</option>
+                  <option value="supervisores">📋 Supervisores</option>
                   <option value="Equipo Nocturno">🌙 Equipo Nocturno</option>
                 </select>
               </div>
@@ -1479,16 +1477,16 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 3: supervisora */}
-        {role === 'supervisora' && (
+        {/* VISTA 3: SUPERVISORES */}
+        {role === 'supervisores' && (
           <div className="card-box">
-            <h3 style={{ margin: 0, fontSize: '18px' }}>📋 Panel de Supervisión</h3>
+            <h3 style={{ margin: 0, fontSize: '18px' }}>📋 Panel de Supervisores</h3>
             <p style={{ fontSize: '12px', color: '#64748b' }}>Monitoreo de habitaciones, reportes de consumo y listados de reposición.</p>
             
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', background: '#f1f5f9', padding: '12px', borderRadius: '8px', alignItems: 'center' }}>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Seleccionar Piso</label>
-                <select value={pisosupervisora} onChange={(e) => setPisosupervisora(e.target.value)} style={{ width: '150px' }}>
+                <select value={pisosupervisores} onChange={(e) => setPisosupervisores(e.target.value)} style={{ width: '150px' }}>
                   <option value="todos">🌐 Todos los Pisos</option>
                   {[3, 4, 5, 6, 7, 8, 9, 10].map(p => <option key={p} value={p}>Piso {p}</option>)}
                 </select>
@@ -1533,7 +1531,7 @@ export default function App() {
                 </thead>
                 <tbody>
                   {habitaciones
-                    .filter(h => pisosupervisora === 'todos' || h.floor === parseInt(pisosupervisora))
+                    .filter(h => pisosupervisores === 'todos' || h.floor === parseInt(pisosupervisores))
                     .map(h => (
                       <tr key={h.id}>
                         <td><strong>{h.number}</strong></td>
@@ -1559,7 +1557,7 @@ export default function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>📊 Reporte General Consolidado de Consumo</h3>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#fef08a', padding: '4px 8px', borderRadius: '4px' }}>
-                  {pisosupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisosupervisora}`} — {filtroTiempo.toUpperCase()}
+                  {pisosupervisores === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisosupervisores}`} — {filtroTiempo.toUpperCase()}
                 </span>
               </div>
 
@@ -1600,7 +1598,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {obtenerReportesFiltradossupervisora().map((rep, idx) => (
+                    {obtenerReportesFiltradosSupervisores().map((rep, idx) => (
                       <tr key={idx}>
                         <td><strong>Hab. {rep.habitacion}</strong></td>
                         <td>{rep.asistente}</td>
@@ -1632,7 +1630,7 @@ export default function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #7c3aed', paddingBottom: '10px', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#7c3aed' }}>📦 Solicitud de Compra / Surtido a Almacén</h3>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#ede9fe', color: '#6d28d9', padding: '4px 8px', borderRadius: '4px' }}>
-                  {pisosupervisora === 'todos' ? '🌐 Todo el Hotel' : `Piso ${pisosupervisora}`} — Faltantes Pendientes
+                  {pisosupervisores === 'todos' ? '🌐 Todo el Hotel' : `Piso ${pisosupervisores}`} — Faltantes Pendientes
                 </span>
               </div>
 
@@ -1688,18 +1686,18 @@ export default function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Reposición Detallada por Habitación</h3>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#bbf7d0', color: '#065f46', padding: '4px 8px', borderRadius: '4px' }}>
-                  {pisosupervisora === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisosupervisora}`} — {filtroTiempo.toUpperCase()}
+                  {pisosupervisores === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisosupervisores}`} — {filtroTiempo.toUpperCase()}
                 </span>
               </div>
 
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Desglose de artículos faltantes por reponer. Indique la cantidad que físicamente va a ingresar:</p>
 
               <div style={{ maxHeight: '350px', overflowY: 'auto', marginBottom: '20px' }}>
-                {obtenerReportesFiltradossupervisora().length === 0 ? (
+                {obtenerReportesFiltradosSupervisores().length === 0 ? (
                   <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>No hay registros de consumos por habitación para el filtro seleccionado.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {obtenerReportesFiltradossupervisora().map((rep, idx) => (
+                    {obtenerReportesFiltradosSupervisores().map((rep, idx) => (
                       <div key={idx} style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
                           <div>
@@ -2150,7 +2148,7 @@ export default function App() {
                   onChange={e => setNuevoPersonal({...nuevoPersonal, rol: e.target.value})} 
                   style={{ width: '180px' }}>
                   <option value="Asistente">Asistente (Piso)</option>
-                  <option value="supervisora">supervisora</option>
+                  <option value="supervisores">Supervisores</option>
                   <option value="Equipo Nocturno">Equipo Nocturno</option>
                 </select>
                 <input 
