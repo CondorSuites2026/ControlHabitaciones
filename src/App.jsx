@@ -590,6 +590,7 @@ const handleActualizarStockMinibarHabitacion = async (roomItem, minibarActualiza
     }
   };
 
+  
   const handleToggleServicioHabitacion = async (roomItem) => {
     const nuevoEstadoServicio = !roomItem.servicio_solicitado;
     setHabitaciones(prev => prev.map(h => h.id === roomItem.id || h.number === roomItem.number ? {
