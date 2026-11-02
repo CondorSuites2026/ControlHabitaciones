@@ -210,7 +210,7 @@ export default function App() {
       return (a.name || '').localeCompare(b.name || '');
     });
   };
-  
+
   useEffect(() => {
     inicializarApp();
     sincronizarTasaBCVOnline();
@@ -556,7 +556,7 @@ export default function App() {
     }
   };
 
-  const handleActualizarStockMinibarHabitacion = async (roomItem, minibarActualizado) => {
+const handleActualizarStockMinibarHabitacion = async (roomItem, minibarActualizado) => {
     if (!roomItem || (!roomItem.id && !roomItem.number)) return;
 
     setHabitaciones(prev => prev.map(h => 
@@ -579,9 +579,6 @@ export default function App() {
         body: JSON.stringify({ 
           minibar_stock: minibarActualizado 
         })
-
-  return (
-    <div className="app-container">
       });
 
       if (!response.ok) {
