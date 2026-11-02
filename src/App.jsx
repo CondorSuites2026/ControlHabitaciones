@@ -188,15 +188,25 @@ export default function App() {
   const [editandoItem, setEditandoItem] = useState(null);
   const [nuevoPersonal, setNuevoPersonal] = useState({ nombre: '', rol: 'Asistente', turno: '' });
 
-  // ⚙️ Función de ordenamiento jerárquico estricto (AQUÍ SÍ VA BIEN)
+  // ⚙️ Función de ordenamiento jerárquico estricto (Adaptada a Supabase)
   const ordenarInventarioJerarquico = (listaItems) => {
     const obtenerPrioridad = (item) => {
       const cat = (item.category || '').toLowerCase();
-      const sub = (item.subcategory || '').toLowerCase();
+      const id = (item.id || '').toLowerCase();
+      const name = (item.name || '').toLowerCase();
       
-      if (cat === 'minibar' || cat === 'bebida') {
-        if (sub === 'bebidas' || cat === 'bebida') return 1; // 1. Minibar - Bebidas
-        return 2; // 2. Minibar - Dulces
+      // Detectar si el producto del minibar es una bebida basándonos en su ID o Nombre
+      const esBebida = cat === 'minibar' && (
+        id.includes('agua') || id.includes('gatorade') || id.includes('pepsi') || 
+        id.includes('polar') || id.includes('redbull') || id.includes('solera') || 
+        id.includes('golden') || name.includes('agua') || name.includes('gatorade') || 
+        name.includes('pepsi') || name.includes('polar') || name.includes('redbull') || 
+        name.includes('solera') || name.includes('kolita')
+      );
+
+      if (cat === 'minibar') {
+        if (esBebida) return 1; // 1. Minibar - Bebidas primero
+        return 2;             // 2. Minibar - Dulces y Snacks después
       }
       if (cat === 'utensilios') return 3; // 3. Utensilios
       if (cat === 'lenceria' || cat === 'lencería') return 4; // 4. Lencería
@@ -589,8 +599,8 @@ const handleActualizarStockMinibarHabitacion = async (roomItem, minibarActualiza
       console.error('Error al sincronizar stock de minibar con Supabase:', e);
     }
   };
+{ordenarInventarioJerarquico(inventario).map(item => (
 
-  
   const handleToggleServicioHabitacion = async (roomItem) => {
     const nuevoEstadoServicio = !roomItem.servicio_solicitado;
     setHabitaciones(prev => prev.map(h => h.id === roomItem.id || h.number === roomItem.number ? {
@@ -1520,24 +1530,22 @@ const bebidasLista = ordenarInventarioJerarquico(inventario.filter(i => (i.categ
               </div>
 
               {selectedRoom && (
-                <>
-                  <div>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', textTransform: 'uppercase' }}>📦 Consumos</h4>
-                    {ordenarInventarioJerarquico(inventario).map(item => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
-                        <div>
-                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
-                          <div style={{ fontSize: '11px', color: '#64748b' }}>${item.price_usd.toFixed(2)} USD</div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
-                          <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
-                          <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
+  <>
+    <div>
+      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', textTransform: 'uppercase' }}>📦 Consumos</h4>
+      {ordenarInventarioJerarquico(inventario).map(item => (
+  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
+    <div>
+      <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
+      <div style={{ fontSize: '11px', color: '#64748b' }}>${item.price_usd.toFixed(2)} USD</div>
+    </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
+      <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
+      <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
+    </div>
+  </div>
+))}
                   <div style={{ background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', width: '100%', boxSizing: 'border-box' }}>
                     <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>📸 ADJUNTAR EVIDENCIA (FOTO/VIDEO)</label>
                     <input type="file" accept="image/*,video/*" onChange={(e) => setArchivoEvidencia(e.target.files[0] || null)} style={{ fontSize: '12px', width: '100%' }} />
