@@ -188,6 +188,29 @@ export default function App() {
   const [editandoItem, setEditandoItem] = useState(null);
   const [nuevoPersonal, setNuevoPersonal] = useState({ nombre: '', rol: 'Asistente', turno: '' });
 
+  // ⚙️ Función de ordenamiento jerárquico estricto (AQUÍ SÍ VA BIEN)
+  const ordenarInventarioJerarquico = (listaItems) => {
+    const obtenerPrioridad = (item) => {
+      const cat = (item.category || '').toLowerCase();
+      const sub = (item.subcategory || '').toLowerCase();
+      
+      if (cat === 'minibar' || cat === 'bebida') {
+        if (sub === 'bebidas' || cat === 'bebida') return 1; // 1. Minibar - Bebidas
+        return 2; // 2. Minibar - Dulces
+      }
+      if (cat === 'utensilios') return 3; // 3. Utensilios
+      if (cat === 'lenceria' || cat === 'lencería') return 4; // 4. Lencería
+      return 5;
+    };
+
+    return [...listaItems].sort((a, b) => {
+      const pA = obtenerPrioridad(a);
+      const pB = obtenerPrioridad(b);
+      if (pA !== pB) return pA - pB;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  };
+  
   useEffect(() => {
     inicializarApp();
     sincronizarTasaBCVOnline();
@@ -556,28 +579,6 @@ export default function App() {
         body: JSON.stringify({ 
           minibar_stock: minibarActualizado 
         })
-        // ⚙️ Función de ordenamiento jerárquico estricto
-  const ordenarInventarioJerarquico = (listaItems) => {
-    const obtenerPrioridad = (item) => {
-      const cat = (item.category || '').toLowerCase();
-      const sub = (item.subcategory || '').toLowerCase();
-      
-      if (cat === 'minibar' || cat === 'bebida') {
-        if (sub === 'bebidas' || cat === 'bebida') return 1; // 1. Minibar - Bebidas
-        return 2; // 2. Minibar - Dulces
-      }
-      if (cat === 'utensilios') return 3; // 3. Utensilios
-      if (cat === 'lenceria' || cat === 'lencería') return 4; // 4. Lencería
-      return 5;
-    };
-
-    return [...listaItems].sort((a, b) => {
-      const pA = obtenerPrioridad(a);
-      const pB = obtenerPrioridad(b);
-      if (pA !== pB) return pA - pB;
-      return (a.name || '').localeCompare(b.name || '');
-    });
-  };
 
   return (
     <div className="app-container">
@@ -2260,7 +2261,7 @@ const bebidasLista = ordenarInventarioJerarquico(inventario.filter(i => (i.categ
                         </td>
                       </tr>
                     ) : (
-                      ordenarInventarioJerarquico(personal).map(p => (
+                      personal.map(p => (
                         <tr key={p.id}>
                           <td><strong>{p.nombre}</strong></td>
                           <td>{p.rol}</td>
