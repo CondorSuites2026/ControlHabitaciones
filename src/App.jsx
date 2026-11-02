@@ -1365,7 +1365,7 @@ const bebidasLista = ordenarInventarioJerarquico(inventario.filter(i => (i.categ
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#ea580c' }}>
                   Marcar como RESERVADA GARANTIZADA
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#ce7ea7', color: '#831843' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#f472b6', color: '#831843' }}>
                   Marcar como RESERVADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#c8b57a', color: '#713f12' }}>
