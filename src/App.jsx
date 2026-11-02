@@ -143,21 +143,38 @@ export default function App() {
   const [cantidadesRepuestas, setCantidadesRepuestas] = useState({});
 
   const [inventario, setInventario] = useState([
-    { id: 'milkyway', name: 'MILKYWAY', category: 'minibar', price_usd: 3.00, stock: 100 },
-    { id: 'snickers', name: 'SNICKERS', category: 'minibar', price_usd: 3.00, stock: 100 },
-    { id: 'mm', name: 'M&M', category: 'minibar', price_usd: 3.00, stock: 100 },
-    { id: 'chiclets', name: 'CHICLETS EXTRA', category: 'minibar', price_usd: 3.00, stock: 100 },
-    { id: 'pringles', name: 'PRINGLES', category: 'minibar', price_usd: 3.00, stock: 100 },
-    { id: 'nutella', name: 'NUTELLA MINI', category: 'minibar', price_usd: 3.00, stock: 100 },
-    { id: 'gatorade', name: 'GATORADE', category: 'bebida', price_usd: 4.00, stock: 100 },
-    { id: 'polar', name: 'POLAR', category: 'bebida', price_usd: 3.00, stock: 100 },
-    { id: 'redbull', name: 'REDBULL', category: 'bebida', price_usd: 4.00, stock: 100 },
-    { id: 'solera', name: 'SOLERA VERDE', category: 'bebida', price_usd: 3.00, stock: 100 },
-    { id: 'pepsi', name: 'PEPSI', category: 'bebida', price_usd: 2.50, stock: 100 },
-    { id: 'pepsilight', name: 'PEPSI LIGHT', category: 'bebida', price_usd: 2.50, stock: 100 },
-    { id: 'golden', name: 'GOLDEN KOLITA', category: 'bebida', price_usd: 2.50, stock: 100 },
-    { id: 'aguas', name: 'AGUAS', category: 'bebida', price_usd: 1.50, stock: 100 },
-    { id: 'sparkling', name: 'AGUA SPARKLING', category: 'bebida', price_usd: 2.00, stock: 100 }
+    // --- 1. MINIBAR - BEBIDAS ---
+    { id: 'aguas', name: 'AGUAS', category: 'minibar', subcategory: 'bebidas', price_usd: 1.50, stock: 100 },
+    { id: 'gatorade', name: 'GATORADE', category: 'minibar', subcategory: 'bebidas', price_usd: 4.00, stock: 100 },
+    { id: 'golden', name: 'GOLDEN KOLITA', category: 'minibar', subcategory: 'bebidas', price_usd: 2.50, stock: 100 },
+    { id: 'pepsi', name: 'PEPSI', category: 'minibar', subcategory: 'bebidas', price_usd: 2.50, stock: 100 },
+    { id: 'pepsilight', name: 'PEPSI LIGHT', category: 'minibar', subcategory: 'bebidas', price_usd: 2.50, stock: 100 },
+    { id: 'polar', name: 'POLAR', category: 'minibar', subcategory: 'bebidas', price_usd: 3.00, stock: 100 },
+    { id: 'redbull', name: 'REDBULL', category: 'minibar', subcategory: 'bebidas', price_usd: 4.00, stock: 100 },
+    { id: 'solera', name: 'SOLERA VERDE', category: 'minibar', subcategory: 'bebidas', price_usd: 3.00, stock: 100 },
+    { id: 'sparkling', name: 'AGUA SPARKLING', category: 'minibar', subcategory: 'bebidas', price_usd: 2.00, stock: 100 },
+
+    // --- 2. MINIBAR - DULCES ---
+    { id: 'milkyway', name: 'MILKYWAY', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
+    { id: 'snickers', name: 'SNICKERS', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
+    { id: 'mm', name: 'M&M', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
+    { id: 'chiclets', name: 'CHICLETS EXTRA', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
+    { id: 'pringles', name: 'PRINGLES', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
+    { id: 'nutella', name: 'NUTELLA MINI', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
+
+    // --- 3. UTENSILIOS ---
+    { id: 'copa_vino', name: 'COPA VINO TINTO', category: 'utensilios', price_usd: 20.00, stock: 100 },
+    { id: 'cucharillas_g', name: 'CUCHARILLAS GRANDES', category: 'utensilios', price_usd: 5.00, stock: 100 },
+    { id: 'cucharillas_p', name: 'CUCHARILLAS PEQUEÑAS', category: 'utensilios', price_usd: 5.00, stock: 100 },
+    { id: 'platos_g', name: 'PLATOS GRANDES', category: 'utensilios', price_usd: 20.00, stock: 100 },
+    { id: 'platos_p', name: 'PLATOS PEQUEÑOS', category: 'utensilios', price_usd: 10.00, stock: 100 },
+
+    // --- 4. LENCERÍAS ---
+    { id: 'alfombrin', name: 'ALFOMBRIN', category: 'lenceria', price_usd: 20.00, stock: 60 },
+    { id: 'almohada', name: 'ALMOHADA GRANDE', category: 'lenceria', price_usd: 20.00, stock: 100 },
+    { id: 'bata_bano', name: 'BATA DE BAÑO', category: 'lenceria', price_usd: 45.00, stock: 108 },
+    { id: 'camino_cama', name: 'CAMINO DE CAMA', category: 'lenceria', price_usd: 30.00, stock: 100 },
+    { id: 'cojin', name: 'COJINES', category: 'lenceria', price_usd: 20.00, stock: 150 }
   ]);
 
   const [personal, setPersonal] = useState([]);
@@ -539,6 +556,31 @@ export default function App() {
         body: JSON.stringify({ 
           minibar_stock: minibarActualizado 
         })
+        // ⚙️ Función de ordenamiento jerárquico estricto
+  const ordenarInventarioJerarquico = (listaItems) => {
+    const obtenerPrioridad = (item) => {
+      const cat = (item.category || '').toLowerCase();
+      const sub = (item.subcategory || '').toLowerCase();
+      
+      if (cat === 'minibar' || cat === 'bebida') {
+        if (sub === 'bebidas' || cat === 'bebida') return 1; // 1. Minibar - Bebidas
+        return 2; // 2. Minibar - Dulces
+      }
+      if (cat === 'utensilios') return 3; // 3. Utensilios
+      if (cat === 'lenceria' || cat === 'lencería') return 4; // 4. Lencería
+      return 5;
+    };
+
+    return [...listaItems].sort((a, b) => {
+      const pA = obtenerPrioridad(a);
+      const pB = obtenerPrioridad(b);
+      if (pA !== pB) return pA - pB;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  };
+
+  return (
+    <div className="app-container">
       });
 
       if (!response.ok) {
@@ -1014,8 +1056,8 @@ export default function App() {
       .sort((a, b) => parseInt(a.number) - parseInt(b.number));
   };
 
-  const articulosMinibarLista = inventario.filter(i => (i.category || '').toLowerCase() === 'minibar');
-  const bebidasLista = inventario.filter(i => (i.category || '').toLowerCase() === 'bebida');
+  const articulosMinibarLista = ordenarInventarioJerarquico(inventario.filter(i => (i.category || '').toLowerCase() === 'minibar'));
+const bebidasLista = ordenarInventarioJerarquico(inventario.filter(i => (i.category || '').toLowerCase() === 'bebida'));
 
   return (
     <div className="app-container">
@@ -1323,16 +1365,16 @@ export default function App() {
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#ea580c' }}>
                   Marcar como RESERVADA GARANTIZADA
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#f472b6', color: '#831843' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#ce7ea7', color: '#831843' }}>
                   Marcar como RESERVADA
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#eab308', color: '#713f12' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#c8b57a', color: '#713f12' }}>
                   Marcar como SUCIA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada / Mantenimiento')} style={{ background: '#dc2626' }}>
                   Marcar como BLOQUEADA / MANTENIMIENTO
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#059669' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#2a9976' }}>
                   Marcar como DISPONIBLE
                 </button>
                 <button onClick={() => setRoomToEditStatus(null)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '8px' }}>
@@ -1482,7 +1524,7 @@ export default function App() {
                 <>
                   <div>
                     <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', textTransform: 'uppercase' }}>📦 Consumos</h4>
-                    {inventario.map(item => (
+                    {ordenarInventarioJerarquico(inventario).map(item => (
                       <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
                         <div>
                           <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
@@ -2010,19 +2052,19 @@ export default function App() {
                 <button 
                   onClick={() => setFiltroAmaLlaves('sucia')}
                   style={{ background: '#fde047', color: '#713f12', border: filtroAmaLlaves === 'sucia' ? '2px solid #1e293b' : '1px solid #ca8a04', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  🟡 Sucias
+                   Sucias
                 </button>
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('garantizada')}
                   style={{ background: '#ea580c', color: '#ffffff', border: filtroAmaLlaves === 'garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  🟧 Garantizadas
+                   Garantizadas
                 </button>
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('no_garantizada')}
                   style={{ background: '#f472b6', color: '#831843', border: filtroAmaLlaves === 'no_garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  🌸 No Garantizadas
+                   No Garantizadas
                 </button>
               </div>
             </div>
@@ -2134,7 +2176,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {inventario.map(item => (
+                    {ordenarInventarioJerarquico(inventario).map(item => (
                       <tr key={item.id}>
                         <td><code>{item.id}</code></td>
                         <td><strong>{item.name}</strong></td>
@@ -2218,7 +2260,7 @@ export default function App() {
                         </td>
                       </tr>
                     ) : (
-                      personal.map(p => (
+                      ordenarInventarioJerarquico(personal).map(p => (
                         <tr key={p.id}>
                           <td><strong>{p.nombre}</strong></td>
                           <td>{p.rol}</td>
