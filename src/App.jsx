@@ -195,7 +195,6 @@ export default function App() {
       const id = (item.id || '').toLowerCase();
       const name = (item.name || '').toLowerCase();
       
-      // Detectar si el producto del minibar es una bebida basándonos en su ID o Nombre
       const esBebida = cat === 'minibar' && (
         id.includes('agua') || id.includes('gatorade') || id.includes('pepsi') || 
         id.includes('polar') || id.includes('redbull') || id.includes('solera') || 
@@ -469,7 +468,6 @@ export default function App() {
     } catch (e) {}
   };
 
-  // 🔍 FILTRADO DE REPORTES POR TURNO PARA RECEPCIÓN
   const obtenerReportesRecepcionPorTurno = () => {
     if (!Array.isArray(reportesHistorial)) return [];
     const ahora = new Date();
@@ -566,7 +564,7 @@ export default function App() {
     }
   };
 
-const handleActualizarStockMinibarHabitacion = async (roomItem, minibarActualizado) => {
+  const handleActualizarStockMinibarHabitacion = async (roomItem, minibarActualizado) => {
     if (!roomItem || (!roomItem.id && !roomItem.number)) return;
 
     setHabitaciones(prev => prev.map(h => 
@@ -599,7 +597,6 @@ const handleActualizarStockMinibarHabitacion = async (roomItem, minibarActualiza
       console.error('Error al sincronizar stock de minibar con Supabase:', e);
     }
   };
-{ordenarInventarioJerarquico(inventario).map(item => (
 
   const handleToggleServicioHabitacion = async (roomItem) => {
     const nuevoEstadoServicio = !roomItem.servicio_solicitado;
@@ -1066,7 +1063,7 @@ const handleActualizarStockMinibarHabitacion = async (roomItem, minibarActualiza
   };
 
   const articulosMinibarLista = ordenarInventarioJerarquico(inventario.filter(i => (i.category || '').toLowerCase() === 'minibar'));
-const bebidasLista = ordenarInventarioJerarquico(inventario.filter(i => (i.category || '').toLowerCase() === 'bebida'));
+  const bebidasLista = ordenarInventarioJerarquico(inventario.filter(i => (i.category || '').toLowerCase() === 'bebida'));
 
   return (
     <div className="app-container">
@@ -1267,7 +1264,6 @@ const bebidasLista = ordenarInventarioJerarquico(inventario.filter(i => (i.categ
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>📊 Relación de Consumos Facturados — Cierre de Turno</h3>
                 
-                {/* SELECTOR DE TURNO */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e293b' }}>Filtrar Turno:</label>
                   <select 
@@ -1530,35 +1526,32 @@ const bebidasLista = ordenarInventarioJerarquico(inventario.filter(i => (i.categ
               </div>
 
               {selectedRoom && (
-  <>
-    <div>
-      <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', textTransform: 'uppercase' }}>📦 Consumos</h4>
-      {ordenarInventarioJerarquico(inventario).map(item => (
-  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
-    <div>
-      <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
-      <div style={{ fontSize: '11px', color: '#64748b' }}>${item.price_usd.toFixed(2)} USD</div>
-    </div>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
-      <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
-      <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
-    </div>
-  </div>
-))}
-                  <div style={{ background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', width: '100%', boxSizing: 'border-box' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>📸 ADJUNTAR EVIDENCIA (FOTO/VIDEO)</label>
-                    <input type="file" accept="image/*,video/*" onChange={(e) => setArchivoEvidencia(e.target.files[0] || null)} style={{ fontSize: '12px', width: '100%' }} />
-                    {archivoEvidencia && <p style={{ fontSize: '11px', color: '#059669', fontWeight: 'bold', margin: '4px 0 0 0' }}>Archivo: {archivoEvidencia.name}</p>}
+                <>
+                  <div>
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', textTransform: 'uppercase' }}>📦 Consumos</h4>
+                    {ordenarInventarioJerarquico(inventario).map(item => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
+                        <div>
+                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>${item.price_usd.toFixed(2)} USD</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
+                          <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
+                          <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
-                  <button 
-                    type="button"
-                    disabled={subiendoArchivo} 
-                    className="primary" 
-                    onClick={handleEjecutarCheckout}
-                    style={{ width: '100%', padding: '14px', fontSize: '14px', opacity: subiendoArchivo ? 0.6 : 1, cursor: subiendoArchivo ? 'not-allowed' : 'pointer' }}>
-                    {subiendoArchivo ? 'Procesando en Supabase...' : '🚨 Ejecutar Check-Out'}
+                  <div style={{ background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>📸 ADJUNTAR EVIDENCIA (FOTO O VIDEO)</label>
+                    <input type="file" accept="image/*,video/*" onChange={(e) => setArchivoEvidencia(e.target.files[0] || null)} />
+                    {archivoEvidencia && <p style={{ fontSize: '11px', color: '#059669', fontWeight: 'bold', margin: '4px 0 0 0' }}>Archivo seleccionado: {archivoEvidencia.name}</p>}
+                  </div>
+
+                  <button className="primary" onClick={handleEjecutarCheckout} disabled={subiendoArchivo}>
+                    {subiendoArchivo ? '⏳ Subiendo evidencia y procesando...' : '🚀 PROCESAR CHECK-OUT'}
                   </button>
                 </>
               )}
