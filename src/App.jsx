@@ -907,7 +907,7 @@ export default function App() {
           total_usd: totalUSD,
           total_bs: totalBs,
           tasa_bcv: tasaBCV,
-          desglose: consumosSeleccionados
+          desglose: consumosSeleccionados,
           faltantes_obs: itemPersonalizadoText.trim()
         })
       });
@@ -1470,7 +1470,7 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 2: ASISTENTE MÓVIL */}
+{/* VISTA 2: ASISTENTE MÓVIL */}
         {role === 'asistente' && (
           <div style={{ maxWidth: '650px', margin: '0 auto', width: '100%' }} className="card-box">
             <h2 style={{ fontSize: '20px', margin: 0 }}>Check-Out e Inspección Móvil</h2>
@@ -1531,14 +1531,16 @@ export default function App() {
               {selectedRoom && (
                 <>
                   <div>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', textTransform: 'uppercase' }}>📦 Consumos (Ordenados por categoría)</h4>
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', textTransform: 'uppercase' }}>📦 Consumos (Organizados por Categoría)</h4>
                     {(() => {
-                      let ultimaCategoria = '';
-                      return ordenarInventarioJerarquico(inventario).map(item => {
+                      const itemsOrdenados = ordenarInventarioJerarquico(inventario);
+                      let categoriaActual = '';
+
+                      return itemsOrdenados.map(item => {
                         const cat = (item.category || '').toLowerCase();
                         const id = (item.id || '').toLowerCase();
                         const name = (item.name || '').toLowerCase();
-                        
+
                         const esBebida = cat === 'minibar' && (
                           id.includes('agua') || id.includes('gatorade') || id.includes('pepsi') || 
                           id.includes('polar') || id.includes('redbull') || id.includes('solera') || 
@@ -1547,25 +1549,27 @@ export default function App() {
                           name.includes('solera') || name.includes('kolita')
                         );
 
-                        let nombreCategoriaVisual = 'Minibar - Dulces / Snacks';
-                        if (cat === 'minibar' && esBebida) nombreCategoriaVisual = 'Minibar - Bebidas';
-                        else if (cat === 'utensilios') nombreCategoriaVisual = 'Utensilios';
-                        else if (cat === 'lenceria' || cat === 'lencería') nombreCategoriaVisual = 'Lencería';
+                        let tituloSeccion = 'Minibar - Dulces y Snacks';
+                        if (cat === 'minibar' && esBebida) tituloSeccion = 'Minibar - Bebidas';
+                        else if (cat === 'utensilios') tituloSeccion = 'Utensilios';
+                        else if (cat === 'lenceria' || cat === 'lencería') tituloSeccion = 'Lencería';
 
-                        const mostrarEncabezado = nombreCategoriaVisual !== ultimaCategoria;
-                        if (mostrarEncabezado) ultimaCategoria = nombreCategoriaVisual;
+                        const mostrarTitulo = tituloSeccion !== categoriaActual;
+                        if (mostrarTitulo) {
+                          categoriaActual = tituloSeccion;
+                        }
 
                         return (
                           <React.Fragment key={item.id}>
-                            {mostrarEncabezado && (
-                              <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '4px 8px', borderRadius: '4px', margin: '10px 0 6px 0', textTransform: 'uppercase' }}>
-                                {nombreCategoriaVisual}
+                            {mostrarTitulo && (
+                              <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '12px 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                {tituloSeccion}
                               </div>
                             )}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
                               <div>
                                 <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
-                                <div style={{ fontSize: '11px', color: '#64748b' }}>${item.price_usd.toFixed(2)} USD</div>
+                                <div style={{ fontSize: '11px', color: '#64748b' }}>${Number(item.price_usd || 0).toFixed(2)} USD</div>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
@@ -1580,7 +1584,7 @@ export default function App() {
                   </div>
 
                   {/* CAMPO DE NOTIFICACIÓN DE FALTANTE / PIEZA EDITABLE */}
-                  <div style={{ background: '#fff3cd', padding: '12px', borderRadius: '8px', border: '1px solid #ffebaAvailable', marginTop: '10px' }}>
+                  <div style={{ background: '#fff3cd', padding: '12px', borderRadius: '8px', border: '1px solid #ffeeba', marginTop: '10px' }}>
                     <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', color: '#856404', marginBottom: '4px' }}>
                       ⚠️ NOTIFICAR FALTANTE / DAÑO DE PIEZA (OPCIONAL)
                     </label>
