@@ -857,6 +857,7 @@ export default function App() {
         turno: turnoCalculado,
         fecha: new Date().toISOString(),
         consumos: { ...consumosSeleccionados },
+        faltantes_obs: itemPersonalizadoText.trim(),
         totalUSD,
         totalBs,
         tasaBCV,
@@ -907,6 +908,7 @@ export default function App() {
           total_bs: totalBs,
           tasa_bcv: tasaBCV,
           desglose: consumosSeleccionados
+          faltantes_obs: itemPersonalizadoText.trim()
         })
       });
 
@@ -1468,7 +1470,6 @@ export default function App() {
           </div>
         )}
 
-        {/* VISTA 2: ASISTENTE MÓVIL */}
         {/* VISTA 2: ASISTENTE MÓVIL */}
         {role === 'asistente' && (
           <div style={{ maxWidth: '650px', margin: '0 auto', width: '100%' }} className="card-box">
