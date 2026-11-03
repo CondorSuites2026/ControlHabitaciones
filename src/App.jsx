@@ -1519,7 +1519,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="card-box" style={{ background: '#f8fafc', width: '100%', boxSizing: 'border-box' }}>
+            <div className="card-box" style={{ background: '#f8fafc', width: '100%', boxSizing: 'border-box', marginTop: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Habitación del Piso {selectedFloor}</label>
                 <select value={selectedRoom?.id || ''} onChange={(e) => setSelectedRoom(habitaciones.find(h => h.id === e.target.value))} style={{ width: '100%' }}>
@@ -1531,13 +1531,13 @@ export default function App() {
               {selectedRoom && (
                 <>
                   <div>
-                    <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', textTransform: 'uppercase', color: '#1e3a8a', borderBottom: '2px solid #1e3a8a', paddingBottom: '4px' }}>📦 Registro de Consumos e Inspección</h4>
+                    <h4 style={{ margin: '12px 0 12px 0', fontSize: '13px', textTransform: 'uppercase', color: '#1e3a8a', borderBottom: '2px solid #1e3a8a', paddingBottom: '4px' }}>📦 Registro de Consumos e Inspección</h4>
                     
                     {/* 1. SECCIÓN: MINIBAR - BEBIDAS */}
                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '10px 0 6px 0', textTransform: 'uppercase' }}>
                       Minibar - Bebidas
                     </div>
-                    {ordenarInventarioJerarquico(inventario).filter(item => {
+                    {inventario.filter(item => {
                       const cat = (item.category || '').toLowerCase();
                       const id = (item.id || '').toLowerCase();
                       const name = (item.name || '').toLowerCase();
@@ -1566,7 +1566,7 @@ export default function App() {
                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
                       Minibar - Dulces y Snacks
                     </div>
-                    {ordenarInventarioJerarquico(inventario).filter(item => {
+                    {inventario.filter(item => {
                       const cat = (item.category || '').toLowerCase();
                       const id = (item.id || '').toLowerCase();
                       const name = (item.name || '').toLowerCase();
@@ -1594,7 +1594,7 @@ export default function App() {
                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
                       Utensilios
                     </div>
-                    {ordenarInventarioJerarquico(inventario).filter(item => (item.category || '').toLowerCase() === 'utensilios').map(item => (
+                    {inventario.filter(item => (item.category || '').toLowerCase() === 'utensilios').map(item => (
                       <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
                         <div>
                           <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
@@ -1612,7 +1612,7 @@ export default function App() {
                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
                       Lencería
                     </div>
-                    {ordenarInventarioJerarquico(inventario).filter(item => {
+                    {inventario.filter(item => {
                       const cat = (item.category || '').toLowerCase();
                       return cat === 'lenceria' || cat === 'lencería';
                     }).map(item => (
@@ -1652,15 +1652,12 @@ export default function App() {
 
                   <button className="primary" onClick={handleEjecutarCheckout} disabled={subiendoArchivo} style={{ marginTop: '10px' }}>
                     {subiendoArchivo ? '⏳ Subiendo evidencia y procesando...' : '🚀 PROCESAR CHECK-OUT'}
-                </button>
+                  </button>
                 </>
               )}
             </div>
           </div>
         )}
-      </div>
-    );
-  }
 
         {/* VISTA 3: SUPERVISORES */}
         {role === 'supervisores' && (
@@ -2374,12 +2371,9 @@ export default function App() {
                             </button>
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-       </div>     
-      ))}
-    </div>
-  );
-}
+                      ))}
+          </tbody>
+        </table>
+      </div>
+    );
+    }
