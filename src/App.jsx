@@ -100,7 +100,6 @@ const reproducirCampanaRecepcion = () => {
   }
 };
 
-// 🕒 CÁLCULO DE LOS 3 TURNOS OFICIALES DEL HOTEL
 const obtenerTurnoActual = () => {
   const horaActual = new Date().getHours();
   if (horaActual >= 7 && horaActual < 15) {
@@ -133,7 +132,6 @@ export default function App() {
   const [mostrarReporteAlmacenFaltantes, setMostrarReporteAlmacenFaltantes] = useState(false);
   const [mostrarReporteRecepcion, setMostrarReporteRecepcion] = useState(false);
   
-  // 🔘 Estado para el selector de turnos en recepción
   const [turnoSeleccionadoRecepcion, setTurnoSeleccionadoRecepcion] = useState('todos');
 
   const [notificacionesPermitidas, setNotificacionesPermitidas] = useState(false);
@@ -143,7 +141,6 @@ export default function App() {
   const [cantidadesRepuestas, setCantidadesRepuestas] = useState({});
 
   const [inventario, setInventario] = useState([
-    // --- 1. MINIBAR - BEBIDAS ---
     { id: 'aguas', name: 'AGUAS', category: 'minibar', subcategory: 'bebidas', price_usd: 1.50, stock: 100 },
     { id: 'gatorade', name: 'GATORADE', category: 'minibar', subcategory: 'bebidas', price_usd: 4.00, stock: 100 },
     { id: 'golden', name: 'GOLDEN KOLITA', category: 'minibar', subcategory: 'bebidas', price_usd: 2.50, stock: 100 },
@@ -154,7 +151,6 @@ export default function App() {
     { id: 'solera', name: 'SOLERA VERDE', category: 'minibar', subcategory: 'bebidas', price_usd: 3.00, stock: 100 },
     { id: 'sparkling', name: 'AGUA SPARKLING', category: 'minibar', subcategory: 'bebidas', price_usd: 2.00, stock: 100 },
 
-    // --- 2. MINIBAR - DULCES ---
     { id: 'milkyway', name: 'MILKYWAY', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
     { id: 'snickers', name: 'SNICKERS', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
     { id: 'mm', name: 'M&M', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
@@ -162,14 +158,12 @@ export default function App() {
     { id: 'pringles', name: 'PRINGLES', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
     { id: 'nutella', name: 'NUTELLA MINI', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
 
-    // --- 3. UTENSILIOS ---
     { id: 'copa_vino', name: 'COPA VINO TINTO', category: 'utensilios', price_usd: 20.00, stock: 100 },
     { id: 'cucharillas_g', name: 'CUCHARILLAS GRANDES', category: 'utensilios', price_usd: 5.00, stock: 100 },
     { id: 'cucharillas_p', name: 'CUCHARILLAS PEQUEÑAS', category: 'utensilios', price_usd: 5.00, stock: 100 },
     { id: 'platos_g', name: 'PLATOS GRANDES', category: 'utensilios', price_usd: 20.00, stock: 100 },
     { id: 'platos_p', name: 'PLATOS PEQUEÑOS', category: 'utensilios', price_usd: 10.00, stock: 100 },
 
-    // --- 4. LENCERÍAS ---
     { id: 'alfombrin', name: 'ALFOMBRIN', category: 'lenceria', price_usd: 20.00, stock: 60 },
     { id: 'almohada', name: 'ALMOHADA GRANDE', category: 'lenceria', price_usd: 20.00, stock: 100 },
     { id: 'bata_bano', name: 'BATA DE BAÑO', category: 'lenceria', price_usd: 45.00, stock: 108 },
@@ -189,7 +183,6 @@ export default function App() {
   const [editandoItem, setEditandoItem] = useState(null);
   const [nuevoPersonal, setNuevoPersonal] = useState({ nombre: '', rol: 'Asistente', turno: '' });
 
-  // ⚙️ Función de ordenamiento jerárquico estricto (Adaptada a Supabase)
   const ordenarInventarioJerarquico = (listaItems) => {
     const obtenerPrioridad = (item) => {
       const cat = (item.category || '').toLowerCase();
@@ -205,11 +198,11 @@ export default function App() {
       );
 
       if (cat === 'minibar') {
-        if (esBebida) return 1; // 1. Minibar - Bebidas primero
-        return 2;             // 2. Minibar - Dulces y Snacks después
+        if (esBebida) return 1;
+        return 2;
       }
-      if (cat === 'utensilios') return 3; // 3. Utensilios
-      if (cat === 'lenceria' || cat === 'lencería') return 4; // 4. Lencería
+      if (cat === 'utensilios') return 3;
+      if (cat === 'lenceria' || cat === 'lencería') return 4;
       return 5;
     };
 
@@ -577,7 +570,7 @@ export default function App() {
     try {
       const queryParam = roomItem.id ? `id=eq.${encodeURIComponent(roomItem.id)}` : `number=eq.${encodeURIComponent(roomItem.number)}`;
 
-      const response = await fetch(`${supabaseUrl}/rest/v1/habitaciones?${queryParam}`, {
+      await fetch(`${supabaseUrl}/rest/v1/habitaciones?${queryParam}`, {
         method: 'PATCH',
         headers: { 
           'apikey': supabaseAnonKey, 
@@ -589,14 +582,7 @@ export default function App() {
           minibar_stock: minibarActualizado 
         })
       });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error('Error Supabase PATCH 400:', errText);
-      }
-    } catch (e) {
-      console.error('Error al sincronizar stock de minibar con Supabase:', e);
-    }
+    } catch (e) {}
   };
 
   const handleToggleServicioHabitacion = async (roomItem) => {
@@ -805,7 +791,6 @@ export default function App() {
         nombre: file.name
       };
     } catch (err) {
-      console.error('Error detallado al subir evidencia:', err.message);
       alert('⚠️ No se pudo subir la evidencia: ' + err.message);
       return null;
     } finally {
@@ -929,6 +914,7 @@ export default function App() {
       alert(`✅ Check-out ejecutado exitosamente (${turnoCalculado}). Consumos descontados de Hab. ${selectedRoom.number}.`);
       setConsumosSeleccionados({});
       setArchivoEvidencia(null);
+      setItemPersonalizadoText('');
       setSelectedRoom(null);
       setAsistenteSeleccionada('');
       await fetchHabitacionesSilencioso();
@@ -1260,7 +1246,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL REPORTE DE CONSUMOS FACTURADOS PARA RECEPCIÓN CON CONCILIACIÓN POR TURNO */}
+        {/* MODAL REPORTE DE CONSUMOS FACTURADOS PARA RECEPCIÓN */}
         {mostrarReporteRecepcion && (
           <div className="modal-overlay">
             <div className="modal-card" style={{ maxWidth: '850px' }}>
@@ -1280,10 +1266,6 @@ export default function App() {
                   </select>
                 </div>
               </div>
-
-              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
-                Resumen de arqueo de caja y consumos facturados para la conciliación del turno seleccionado:
-              </p>
 
               <div style={{ maxHeight: '380px', overflowY: 'auto', marginBottom: '20px' }}>
                 {obtenerReportesRecepcionPorTurno().length === 0 ? (
@@ -1470,7 +1452,7 @@ export default function App() {
           </div>
         )}
 
-{/* VISTA 2: ASISTENTE MÓVIL */}
+        {/* VISTA 2: ASISTENTE MÓVIL */}
         {role === 'asistente' && (
           <div style={{ maxWidth: '650px', margin: '0 auto', width: '100%' }} className="card-box">
             <h2 style={{ fontSize: '20px', margin: 0 }}>Check-Out e Inspección Móvil</h2>
@@ -1531,118 +1513,118 @@ export default function App() {
               {selectedRoom && (
                 <>
                   <div>
-  <h4 style={{ margin: '12px 0 12px 0', fontSize: '13px', textTransform: 'uppercase', color: '#1e3a8a', borderBottom: '2px solid #1e3a8a', paddingBottom: '4px' }}>📦 Registro de Consumos e Inspección</h4>
-  
-  {/* 1. MINIBAR - BEBIDAS */}
-  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '10px 0 6px 0', textTransform: 'uppercase' }}>
-    Minibar - Bebidas
-  </div>
-  {inventario.filter(item => {
-    const cat = (item.category || '').toLowerCase();
-    const id = (item.id || '').toLowerCase();
-    const name = (item.name || '').toLowerCase();
-    return cat === 'minibar' && (
-      id.includes('agua') || id.includes('gatorade') || id.includes('pepsi') || 
-      id.includes('polar') || id.includes('redbull') || id.includes('solera') || 
-      id.includes('golden') || name.includes('agua') || name.includes('gatorade') || 
-      name.includes('pepsi') || name.includes('polar') || name.includes('redbull') || 
-      name.includes('solera') || name.includes('kolita')
-    );
-  }).map(item => (
-    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
-      <div>
-        <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
-        <div style={{ fontSize: '11px', color: '#64748b' }}>${Number(item.price_usd || 0).toFixed(2)} USD</div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
-        <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
-        <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
-      </div>
-    </div>
-  ))}
+                    <h4 style={{ margin: '12px 0 12px 0', fontSize: '13px', textTransform: 'uppercase', color: '#1e3a8a', borderBottom: '2px solid #1e3a8a', paddingBottom: '4px' }}>📦 Registro de Consumos e Inspección</h4>
+                    
+                    {/* 1. SECCIÓN: MINIBAR - BEBIDAS */}
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '10px 0 6px 0', textTransform: 'uppercase' }}>
+                      Minibar - Bebidas
+                    </div>
+                    {inventario.filter(item => {
+                      const cat = (item.category || '').toLowerCase();
+                      const id = (item.id || '').toLowerCase();
+                      const name = (item.name || '').toLowerCase();
+                      return cat === 'minibar' && (
+                        id.includes('agua') || id.includes('gatorade') || id.includes('pepsi') || 
+                        id.includes('polar') || id.includes('redbull') || id.includes('solera') || 
+                        id.includes('golden') || name.includes('agua') || name.includes('gatorade') || 
+                        name.includes('pepsi') || name.includes('polar') || name.includes('redbull') || 
+                        name.includes('solera') || name.includes('kolita')
+                      );
+                    }).map(item => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
+                        <div>
+                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>${Number(item.price_usd || 0).toFixed(2)} USD</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
+                          <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
+                          <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
+                        </div>
+                      </div>
+                    ))}
 
-  {/* 2. MINIBAR - DULCES Y SNACKS */}
-  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
-    Minibar - Dulces y Snacks
-  </div>
-  {inventario.filter(item => {
-    const cat = (item.category || '').toLowerCase();
-    const id = (item.id || '').toLowerCase();
-    const name = (item.name || '').toLowerCase();
-    const esBebida = id.includes('agua') || id.includes('gatorade') || id.includes('pepsi') || 
-      id.includes('polar') || id.includes('redbull') || id.includes('solera') || 
-      id.includes('golden') || name.includes('agua') || name.includes('gatorade') || 
-      name.includes('pepsi') || name.includes('polar') || name.includes('redbull') || 
-      name.includes('solera') || name.includes('kolita');
-    return cat === 'minibar' && !esBebida;
-  }).map(item => (
-    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
-      <div>
-        <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
-        <div style={{ fontSize: '11px', color: '#64748b' }}>${Number(item.price_usd || 0).toFixed(2)} USD</div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
-        <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
-        <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
-      </div>
-    </div>
-  ))}
+                    {/* 2. SECCIÓN: MINIBAR - DULCES Y SNACKS */}
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
+                      Minibar - Dulces y Snacks
+                    </div>
+                    {inventario.filter(item => {
+                      const cat = (item.category || '').toLowerCase();
+                      const id = (item.id || '').toLowerCase();
+                      const name = (item.name || '').toLowerCase();
+                      const esBebida = id.includes('agua') || id.includes('gatorade') || id.includes('pepsi') || 
+                        id.includes('polar') || id.includes('redbull') || id.includes('solera') || 
+                        id.includes('golden') || name.includes('agua') || name.includes('gatorade') || 
+                        name.includes('pepsi') || name.includes('polar') || name.includes('redbull') || 
+                        name.includes('solera') || name.includes('kolita');
+                      return cat === 'minibar' && !esBebida;
+                    }).map(item => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
+                        <div>
+                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>${Number(item.price_usd || 0).toFixed(2)} USD</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
+                          <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
+                          <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
+                        </div>
+                      </div>
+                    ))}
 
-  {/* 3. UTENSILIOS */}
-  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
-    Utensilios
-  </div>
-  {inventario.filter(item => (item.category || '').toLowerCase() === 'utensilios').map(item => (
-    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
-      <div>
-        <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
-        <div style={{ fontSize: '11px', color: '#64748b' }}>${Number(item.price_usd || 0).toFixed(2)} USD</div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
-        <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
-        <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
-      </div>
-    </div>
-  ))}
+                    {/* 3. SECCIÓN: UTENSILIOS */}
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
+                      Utensilios
+                    </div>
+                    {inventario.filter(item => (item.category || '').toLowerCase() === 'utensilios').map(item => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
+                        <div>
+                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>${Number(item.price_usd || 0).toFixed(2)} USD</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
+                          <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
+                          <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
+                        </div>
+                      </div>
+                    ))}
 
-  {/* 4. LENCERÍA */}
-  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
-    Lencería
-  </div>
-  {inventario.filter(item => {
-    const cat = (item.category || '').toLowerCase();
-    return cat === 'lenceria' || cat === 'lencería';
-  }).map(item => (
-    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
-      <div>
-        <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
-        <div style={{ fontSize: '11px', color: '#64748b' }}>${Number(item.price_usd || 0).toFixed(2)} USD</div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
-        <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
-        <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
-      </div>
-    </div>
-  ))}
-</div>
+                    {/* 4. SECCIÓN: LENCERÍA */}
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
+                      Lencería
+                    </div>
+                    {inventario.filter(item => {
+                      const cat = (item.category || '').toLowerCase();
+                      return cat === 'lenceria' || cat === 'lencería';
+                    }).map(item => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
+                        <div>
+                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>${Number(item.price_usd || 0).toFixed(2)} USD</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
+                          <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
+                          <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
-{/* CAMPO DE NOTIFICACIÓN DE FALTANTE / PIEZA EDITABLE */}
-<div style={{ background: '#fff3cd', padding: '12px', borderRadius: '8px', border: '1px solid #ffeeba', marginTop: '14px' }}>
-  <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', color: '#856404', marginBottom: '4px' }}>
-    ⚠️ NOTIFICAR FALTANTE / DAÑO DE PIEZA (OPCIONAL)
-  </label>
-  <input 
-    type="text" 
-    placeholder="Ej: Control de TV faltante, Toalla dañada..."
-    value={itemPersonalizadoText}
-    onChange={(e) => setItemPersonalizadoText(e.target.value)}
-    style={{ background: '#fff', width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
-  />
-</div>
+                  {/* CAMPO DE NOTIFICACIÓN DE FALTANTE / PIEZA EDITABLE */}
+                  <div style={{ background: '#fff3cd', padding: '12px', borderRadius: '8px', border: '1px solid #ffeeba', marginTop: '14px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', color: '#856404', marginBottom: '4px' }}>
+                      ⚠️ NOTIFICAR FALTANTE / DAÑO DE PIEZA (OPCIONAL)
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="Ej: Control de TV faltante, Toalla dañada..."
+                      value={itemPersonalizadoText}
+                      onChange={(e) => setItemPersonalizadoText(e.target.value)}
+                      style={{ background: '#fff', width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                    />
+                  </div>
 
                   <div style={{ background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop: '10px' }}>
                     <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>📸 ADJUNTAR EVIDENCIA (FOTO O VIDEO)</label>
@@ -1805,7 +1787,7 @@ export default function App() {
           </div>
         )}
 
-        {/* NUEVO REPORTE FLOTANTE: MERCANCÍA FALTANTE PARA ALMACÉN */}
+        {/* REPORTE FLOTANTE: MERCANCÍA FALTANTE PARA ALMACÉN */}
         {mostrarReporteAlmacenFaltantes && (
           <div className="modal-overlay">
             <div className="modal-card" style={{ maxWidth: '650px' }}>
@@ -2011,7 +1993,6 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {/* FILA STATUS */}
                     <tr style={{ background: '#f8fafc' }}>
                       <td style={{ fontWeight: 'bold', textAlign: 'center', background: '#cbd5e1' }}>STATUS</td>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
@@ -2024,7 +2005,6 @@ export default function App() {
                       })}
                     </tr>
 
-                    {/* SECCIÓN ARTÍCULOS (MINIBAR) */}
                     {articulosMinibarLista.map(prod => (
                       <tr key={prod.id}>
                         <td style={{ fontWeight: 'bold', fontSize: '11px' }}>{prod.name}</td>
@@ -2052,12 +2032,10 @@ export default function App() {
                       </tr>
                     ))}
 
-                    {/* FILA SEPARADORA CANTIDAD */}
                     <tr style={{ background: '#cbd5e1' }}>
                       <td colSpan="10" style={{ fontWeight: 'bold', textAlign: 'center', fontSize: '12px' }}>BEBIDAS / CANTIDAD</td>
                     </tr>
 
-                    {/* SECCIÓN BEBIDAS */}
                     {bebidasLista.map(prod => (
                       <tr key={prod.id}>
                         <td style={{ fontWeight: 'bold', fontSize: '11px' }}>{prod.name}</td>
@@ -2085,7 +2063,6 @@ export default function App() {
                       </tr>
                     ))}
 
-                    {/* FILA TOTAL CANTIDAD DE ARTÍCULOS */}
                     <tr style={{ background: '#e2e8f0', fontWeight: 'bold' }}>
                       <td style={{ textAlign: 'center' }}>CANTIDAD DE ARTICULOS</td>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => {
@@ -2371,9 +2348,15 @@ export default function App() {
                             </button>
                           </td>
                         </tr>
-                      ))}
-          </tbody>
-        </table>
-      </div>
-    );
-    }
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
