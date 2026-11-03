@@ -183,6 +183,7 @@ export default function App() {
   const [asistenteSeleccionada, setAsistenteSeleccionada] = useState('');
   const [consumosSeleccionados, setConsumosSeleccionados] = useState({});
   const [archivoEvidencia, setArchivoEvidencia] = useState(null);
+  const [itemPersonalizadoText, setItemPersonalizadoText] = useState('');
 
   const [nuevoItem, setNuevoItem] = useState({ id: '', name: '', category: 'minibar', price_usd: 0, stock: 0 });
   const [editandoItem, setEditandoItem] = useState(null);
@@ -1468,6 +1469,7 @@ export default function App() {
         )}
 
         {/* VISTA 2: ASISTENTE MÓVIL */}
+        {/* VISTA 2: ASISTENTE MÓVIL */}
         {role === 'asistente' && (
           <div style={{ maxWidth: '650px', margin: '0 auto', width: '100%' }} className="card-box">
             <h2 style={{ fontSize: '20px', margin: 0 }}>Check-Out e Inspección Móvil</h2>
@@ -1528,20 +1530,66 @@ export default function App() {
               {selectedRoom && (
                 <>
                   <div>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', textTransform: 'uppercase' }}>📦 Consumos</h4>
-                    {ordenarInventarioJerarquico(inventario).map(item => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
-                        <div>
-                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
-                          <div style={{ fontSize: '11px', color: '#64748b' }}>${item.price_usd.toFixed(2)} USD</div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
-                          <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
-                          <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
-                        </div>
-                      </div>
-                    ))}
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', textTransform: 'uppercase' }}>📦 Consumos (Ordenados por categoría)</h4>
+                    {(() => {
+                      let ultimaCategoria = '';
+                      return ordenarInventarioJerarquico(inventario).map(item => {
+                        const cat = (item.category || '').toLowerCase();
+                        const id = (item.id || '').toLowerCase();
+                        const name = (item.name || '').toLowerCase();
+                        
+                        const esBebida = cat === 'minibar' && (
+                          id.includes('agua') || id.includes('gatorade') || id.includes('pepsi') || 
+                          id.includes('polar') || id.includes('redbull') || id.includes('solera') || 
+                          id.includes('golden') || name.includes('agua') || name.includes('gatorade') || 
+                          name.includes('pepsi') || name.includes('polar') || name.includes('redbull') || 
+                          name.includes('solera') || name.includes('kolita')
+                        );
+
+                        let nombreCategoriaVisual = 'Minibar - Dulces / Snacks';
+                        if (cat === 'minibar' && esBebida) nombreCategoriaVisual = 'Minibar - Bebidas';
+                        else if (cat === 'utensilios') nombreCategoriaVisual = 'Utensilios';
+                        else if (cat === 'lenceria' || cat === 'lencería') nombreCategoriaVisual = 'Lencería';
+
+                        const mostrarEncabezado = nombreCategoriaVisual !== ultimaCategoria;
+                        if (mostrarEncabezado) ultimaCategoria = nombreCategoriaVisual;
+
+                        return (
+                          <React.Fragment key={item.id}>
+                            {mostrarEncabezado && (
+                              <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '4px 8px', borderRadius: '4px', margin: '10px 0 6px 0', textTransform: 'uppercase' }}>
+                                {nombreCategoriaVisual}
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
+                              <div>
+                                <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
+                                <div style={{ fontSize: '11px', color: '#64748b' }}>${item.price_usd.toFixed(2)} USD</div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
+                                <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
+                                <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
+                              </div>
+                            </div>
+                          </React.Fragment>
+                        );
+                      });
+                    })()}
+                  </div>
+
+                  {/* CAMPO DE NOTIFICACIÓN DE FALTANTE / PIEZA EDITABLE */}
+                  <div style={{ background: '#fff3cd', padding: '12px', borderRadius: '8px', border: '1px solid #ffebaAvailable', marginTop: '10px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', color: '#856404', marginBottom: '4px' }}>
+                      ⚠️ NOTIFICAR FALTANTE / DAÑO DE PIEZA (OPCIONAL)
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="Ej: Control de TV faltante, Toalla dañada..."
+                      value={itemPersonalizadoText}
+                      onChange={(e) => setItemPersonalizadoText(e.target.value)}
+                      style={{ background: '#fff' }}
+                    />
                   </div>
 
                   <div style={{ background: '#fff', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
