@@ -1113,16 +1113,16 @@ export default function App() {
       </header>
 
       <main>
-        {/* VISTA 1: RECEPCIÓN */}
+       {/* VISTA 1: RECEPCIÓN */}
         {role === 'recepcion' && (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
       
-      {/* Título y Cuadro de Ocupación al lado */}
+      {/* Contenedor del título y el cuadro de ocupación */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
         <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
         
-        {/* Cuadro indicador de Ocupación */}
+        {/* Cuadro de Ocupación del Día */}
         {(() => {
           const totalHabs = habitaciones.length;
           const ocupadas = habitaciones.filter(h => (h.status || '').toLowerCase().includes('ocupada')).length;
