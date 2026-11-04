@@ -141,34 +141,25 @@ export default function App() {
   const [cantidadesRepuestas, setCantidadesRepuestas] = useState({});
 
   const [inventario, setInventario] = useState([
-    { id: 'aguas', name: 'AGUAS', category: 'minibar', subcategory: 'bebidas', price_usd: 1.50, stock: 100 },
-    { id: 'gatorade', name: 'GATORADE', category: 'minibar', subcategory: 'bebidas', price_usd: 4.00, stock: 100 },
-    { id: 'golden', name: 'GOLDEN KOLITA', category: 'minibar', subcategory: 'bebidas', price_usd: 2.50, stock: 100 },
-    { id: 'pepsi', name: 'PEPSI', category: 'minibar', subcategory: 'bebidas', price_usd: 2.50, stock: 100 },
-    { id: 'pepsilight', name: 'PEPSI LIGHT', category: 'minibar', subcategory: 'bebidas', price_usd: 2.50, stock: 100 },
-    { id: 'polar', name: 'POLAR', category: 'minibar', subcategory: 'bebidas', price_usd: 3.00, stock: 100 },
-    { id: 'redbull', name: 'REDBULL', category: 'minibar', subcategory: 'bebidas', price_usd: 4.00, stock: 100 },
-    { id: 'solera', name: 'SOLERA VERDE', category: 'minibar', subcategory: 'bebidas', price_usd: 3.00, stock: 100 },
-    { id: 'sparkling', name: 'AGUA SPARKLING', category: 'minibar', subcategory: 'bebidas', price_usd: 2.00, stock: 100 },
-
-    { id: 'milkyway', name: 'MILKYWAY', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
-    { id: 'snickers', name: 'SNICKERS', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
-    { id: 'mm', name: 'M&M', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
-    { id: 'chiclets', name: 'CHICLETS EXTRA', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
-    { id: 'pringles', name: 'PRINGLES', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
-    { id: 'nutella', name: 'NUTELLA MINI', category: 'minibar', subcategory: 'dulces', price_usd: 3.00, stock: 100 },
-
-    { id: 'copa_vino', name: 'COPA VINO TINTO', category: 'utensilios', price_usd: 20.00, stock: 100 },
-    { id: 'cucharillas_g', name: 'CUCHARILLAS GRANDES', category: 'utensilios', price_usd: 5.00, stock: 100 },
-    { id: 'cucharillas_p', name: 'CUCHARILLAS PEQUEÑAS', category: 'utensilios', price_usd: 5.00, stock: 100 },
-    { id: 'platos_g', name: 'PLATOS GRANDES', category: 'utensilios', price_usd: 20.00, stock: 100 },
-    { id: 'platos_p', name: 'PLATOS PEQUEÑOS', category: 'utensilios', price_usd: 10.00, stock: 100 },
-
-    { id: 'alfombrin', name: 'ALFOMBRIN', category: 'lenceria', price_usd: 20.00, stock: 60 },
-    { id: 'almohada', name: 'ALMOHADA GRANDE', category: 'lenceria', price_usd: 20.00, stock: 100 },
-    { id: 'bata_bano', name: 'BATA DE BAÑO', category: 'lenceria', price_usd: 45.00, stock: 108 },
-    { id: 'camino_cama', name: 'CAMINO DE CAMA', category: 'lenceria', price_usd: 30.00, stock: 100 },
-    { id: 'cojin', name: 'COJINES', category: 'lenceria', price_usd: 20.00, stock: 150 }
+    { id: 'aguas', name: 'AGUAS', category: 'minibar', price_usd: 1.50, stock: 100 },
+    { id: 'gatorade', name: 'GATORADE', category: 'minibar', price_usd: 4.00, stock: 100 },
+    { id: 'golden_kolita', name: 'Golden Kolita', category: 'minibar', price_usd: 3, stock: 100 },
+    { id: 'pepsi', name: 'Pepsi Original', category: 'minibar', price_usd: 3, stock: 100 },
+    { id: 'pepsi_light', name: 'Pepsi Ligth', category: 'minibar', price_usd: 3, stock: 100 },
+    { id: 'polar', name: 'Polar Original', category: 'minibar', price_usd: 3, stock: 100 },
+    { id: 'redbull', name: 'Redbull', category: 'minibar', price_usd: 4, stock: 100 },
+    { id: 'solera_verde', name: 'Solera Verde', category: 'minibar', price_usd: 3, stock: 100 },
+    { id: 'chicle_extra', name: 'Chicle Extra 15 Unid', category: 'minibar', price_usd: 3, stock: 100 },
+    { id: 'snickers', name: 'Snickers chocolate', category: 'minibar', price_usd: 3, stock: 100 },
+    { id: 'milkyway', name: 'Milky Way 75gr', category: 'minibar', price_usd: 3, stock: 100 },
+    { id: 'mm', name: 'M&M de tubo 30gr', category: 'minibar', price_usd: 3, stock: 100 },
+    { id: 'tenedor', name: 'Tenedor', category: 'utensilios', price_usd: 5, stock: 100 },
+    { id: 'platos_p', name: 'Platos pequeños', category: 'utensilios', price_usd: 10, stock: 100 },
+    { id: 'copa_vino_tinto', name: 'Copa Vino Tinto', category: 'utensilios', price_usd: 20, stock: 100 },
+    { id: 'tazas_cafe', name: 'Tazas para Cafe', category: 'utensilios', price_usd: 15, stock: 100 },
+    { id: 'platos_g', name: 'Platos Grandes', category: 'utensilios', price_usd: 20, stock: 100 },
+    { id: 'cucharillas_p', name: 'Cucharillas pequeñas', category: 'utensilios', price_usd: 5, stock: 100 },
+    { id: 'cucharillas_g', name: 'Cucharillas Grandes', category: 'utensilios', price_usd: 5, stock: 100 }
   ]);
 
   const [personal, setPersonal] = useState([]);
@@ -423,14 +414,6 @@ export default function App() {
         const data = await response.json();
         if (data && data.length > 0) {
           setInventario(data);
-        } else {
-          for (const item of inventario) {
-            await fetch(`${supabaseUrl}/rest/v1/inventario`, {
-              method: 'POST',
-              headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-              body: JSON.stringify(item)
-            });
-          }
         }
       }
     } catch (e) {}
@@ -1515,21 +1498,22 @@ export default function App() {
                   <div>
                     <h4 style={{ margin: '12px 0 12px 0', fontSize: '13px', textTransform: 'uppercase', color: '#1e3a8a', borderBottom: '2px solid #1e3a8a', paddingBottom: '4px' }}>📦 Registro de Consumos e Inspección</h4>
                     
-                    {/* 1. SECCIÓN: MINIBAR - BEBIDAS */}
+                    {/* 1. MINIBAR - BEBIDAS */}
                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '10px 0 6px 0', textTransform: 'uppercase' }}>
                       Minibar - Bebidas
                     </div>
                     {inventario.filter(item => {
-                      const cat = (item.category || '').toLowerCase();
                       const id = (item.id || '').toLowerCase();
                       const name = (item.name || '').toLowerCase();
-                      return cat === 'minibar' && (
-                        id.includes('agua') || id.includes('gatorade') || id.includes('pepsi') || 
+                      const cat = (item.category || '').toLowerCase();
+                      
+                      const esBebida = id.includes('agua') || id.includes('gatorade') || id.includes('pepsi') || 
                         id.includes('polar') || id.includes('redbull') || id.includes('solera') || 
                         id.includes('golden') || name.includes('agua') || name.includes('gatorade') || 
                         name.includes('pepsi') || name.includes('polar') || name.includes('redbull') || 
-                        name.includes('solera') || name.includes('kolita')
-                      );
+                        name.includes('solera') || name.includes('kolita');
+
+                      return cat === 'minibar' && esBebida;
                     }).map(item => (
                       <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
                         <div>
@@ -1544,19 +1528,21 @@ export default function App() {
                       </div>
                     ))}
 
-                    {/* 2. SECCIÓN: MINIBAR - DULCES Y SNACKS */}
+                    {/* 2. MINIBAR - DULCES Y SNACKS */}
                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
                       Minibar - Dulces y Snacks
                     </div>
                     {inventario.filter(item => {
-                      const cat = (item.category || '').toLowerCase();
                       const id = (item.id || '').toLowerCase();
                       const name = (item.name || '').toLowerCase();
+                      const cat = (item.category || '').toLowerCase();
+                      
                       const esBebida = id.includes('agua') || id.includes('gatorade') || id.includes('pepsi') || 
                         id.includes('polar') || id.includes('redbull') || id.includes('solera') || 
                         id.includes('golden') || name.includes('agua') || name.includes('gatorade') || 
                         name.includes('pepsi') || name.includes('polar') || name.includes('redbull') || 
                         name.includes('solera') || name.includes('kolita');
+
                       return cat === 'minibar' && !esBebida;
                     }).map(item => (
                       <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
@@ -1572,11 +1558,14 @@ export default function App() {
                       </div>
                     ))}
 
-                    {/* 3. SECCIÓN: UTENSILIOS */}
+                    {/* 3. UTENSILIOS */}
                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
                       Utensilios
                     </div>
-                    {inventario.filter(item => (item.category || '').toLowerCase() === 'utensilios').map(item => (
+                    {inventario.filter(item => {
+                      const cat = (item.category || '').toLowerCase();
+                      return cat === 'utensilios';
+                    }).map(item => (
                       <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
                         <div>
                           <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
@@ -1590,7 +1579,7 @@ export default function App() {
                       </div>
                     ))}
 
-                    {/* 4. SECCIÓN: LENCERÍA */}
+                    {/* 4. LENCERÍA */}
                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
                       Lencería
                     </div>
