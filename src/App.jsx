@@ -1118,10 +1118,10 @@ export default function App() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               
-              {/* Título y Cuadro de Ocupación */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
                 
+                {/* Cuadro de Ocupación */}
                 <div style={{ 
                   background: '#eff6ff', 
                   border: '1px solid #bfdbfe', 
@@ -1167,7 +1167,7 @@ export default function App() {
                 <thead>
                   <tr>
                     <th>Ubicación</th>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].man ? null : [1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => <th key={n} style={{ textAlign: 'center' }}>0{n}</th>)}
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => <th key={n} style={{ textAlign: 'center' }}>0{n}</th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -1226,9 +1226,8 @@ export default function App() {
                   ))}
                 </tbody>
               </table>
-            </div>
-          </div>
-        )}
+            </div>        
+          )}
 
         {/* MODAL REPORTE DE CONSUMOS FACTURADOS PARA RECEPCIÓN */}
         {mostrarReporteRecepcion && (
@@ -2328,25 +2327,19 @@ export default function App() {
                       </tr>
                     ) : (
                       personal.map(p => (
-                        <tr key={p.id}>
-                          <td><strong>{p.nombre}</strong></td>
-                          <td>{p.rol}</td>
-                          <td>{p.turno}</td>
-                          <td style={{ textAlign: 'center' }}>
-                            <button onClick={() => handleEliminarPersonal(p.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
-                              Eliminar
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}
+              <tr key={p.id}>
+                <td><strong>{p.nombre}</strong></td>
+                <td>{p.rol}</td>
+                <td>{p.turno}</td>
+                <td style={{ textAlign: 'center' }}>
+                  <button onClick={() => handleEliminarPersonal(p.id)}>
+                    Eliminar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
