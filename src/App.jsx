@@ -1118,7 +1118,7 @@ export default function App() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               
-              {/* Contenedor del Título y el Cuadro de Ocupación */}
+              {/* Título y Cuadro de Ocupación */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
                 
@@ -1146,6 +1146,89 @@ export default function App() {
                 📊 Reporte de Consumos Facturados (Cierre de Turno)
               </button>
             </div>
+
+            {habitacionesPendientes.length > 0 && (
+              <div className="alerta-parpadeante" style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                <div style={{ color: '#991b1b', fontWeight: 'bold' }}>
+                  🔔 ¡ATENCIÓN RECEPCIÓN! Hay {habitacionesPendientes.length} salida(s) pendientes por facturar.
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {habitacionesPendientes.map(h => (
+                    <button key={h.id} onClick={() => setRoomToBill(h)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      Facturar Hab. {h.number} (${h.amount})
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ overflowX: 'auto' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ubicación</th>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].man ? null : [1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => <th key={n} style={{ textAlign: 'center' }}>0{n}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[3, 4, 5, 6, 7, 8, 9, 10].map(piso => (
+                    <tr key={piso}>
+                      <td style={{ fontWeight: 'bold', background: '#f1f5f9' }}>PISO {piso}</td>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(numCol => {
+                        const numStr = piso === 10 ? (numCol <= 4 ? `100${numCol}` : null) : `${piso}0${numCol}`;
+                        const hab = habitaciones.find(h => h.number === numStr);
+                        if (!hab) return <td key={numCol} style={{ background: '#f8fafc' }}></td>;
+                        const badgeClass = getStatusClass(hab.status);
+                        const esAlerta = (hab.status || '').toLowerCase().includes('por facturar');
+
+                        return (
+                          <td 
+                            key={hab.id} 
+                            onClick={() => {
+                              if (esAlerta) setRoomToBill(hab);
+                              else setRoomToEditStatus(hab);
+                            }}
+                            className={`${badgeClass} ${esAlerta ? 'alerta-parpadeante' : ''}`}
+                            style={{ cursor: 'pointer', height: '70px', verticalAlign: 'top', position: 'relative' }}>
+                            
+                            {hab.servicio_solicitado && (
+                              <span 
+                                title="Solicitud de Servicio Activa"
+                                style={{ 
+                                  position: 'absolute', 
+                                  top: '4px', 
+                                  right: '6px', 
+                                  background: '#fef08a', 
+                                  color: '#dc2626', 
+                                  fontWeight: '900', 
+                                  fontSize: '14px', 
+                                  lineHeight: '1',
+                                  padding: '2px 5px', 
+                                  borderRadius: '4px',
+                                  border: '1px solid #dc2626',
+                                  boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                                }}>
+                                S
+                              </span>
+                            )}
+
+                            <div style={{ fontWeight: 'bold' }}>{hab.number} / {(hab.type || '').substring(0,3)}</div>
+                            <div style={{ fontSize: '10px', marginTop: '4px', fontWeight: 'bold' }}>{hab.status}</div>
+                            {hab.amount > 0 && (
+                              <div style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '2px' }}>
+                                ${hab.amount} USD <br/><small>(Bs. {(hab.amount * tasaBCV).toFixed(2)})</small>
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* MODAL REPORTE DE CONSUMOS FACTURADOS PARA RECEPCIÓN */}
         {mostrarReporteRecepcion && (
