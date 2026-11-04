@@ -52,7 +52,35 @@ export default function App() {
         {role === 'recepcion' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              
+         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
+  
+  {/* Título y Cuadro de Ocupación del Día */}
+  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+    <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
+    
+    <div style={{ 
+      background: '#eff6ff', 
+      border: '1px solid #bfdbfe', 
+      padding: '5px 12px', 
+      borderRadius: '6px', 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '8px',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+    }}>
+      <span style={{ fontSize: '12px', color: '#1e40af', fontWeight: 'bold' }}>📅 Ocupación del Día:</span>
+      <span style={{ fontSize: '13px', color: '#1e3a8a', fontWeight: '900' }}>
+        {habitaciones.filter(h => (h.status || '').toLowerCase().includes('ocupada')).length} Hab.
+      </span>
+    </div>
+  </div>
+
+  <button 
+    onClick={() => setMostrarReporteRecepcion(true)}
+    style={{ background: '#059669', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>
+    📊 Reporte de Consumos Facturados (Cierre de Turno)
+  </button>
+</div>     
               {/* Título y Cuadro de Ocupación */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
