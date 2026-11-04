@@ -13,7 +13,6 @@ export default function App() {
   const [nuevoPersonal, setNuevoPersonal] = useState({ nombre: '', rol: '', turno: '' });
 
   useEffect(() => {
-    // Carga inicial o simulación de datos para evitar errores de render
     fetchHabitaciones();
   }, []);
 
@@ -48,93 +47,91 @@ export default function App() {
 
       <main style={{ flex: 1, padding: '20px', maxWidth: '1440px', margin: '0 auto', width: '100%' }}>
         
-      {/* VISTA 1: RECEPCIÓN */}
-      {role === 'recepcion' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            
-            {/* TÍTULO Y CUADRO DE HABITACIONES OCUPADAS DEL DÍA */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
-  
-  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
-    <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
-    
-    {/* CUADRO DE OCUPACIÓN DIARIA */}
-    <div style={{ 
-      background: '#eff6ff', 
-      border: '1px solid #bfdbfe', 
-      padding: '5px 12px', 
-      borderRadius: '6px', 
-      display: 'flex', 
-      alignItems: 'center', 
-      gap: '8px',
-      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-    }}>
-      <span style={{ fontSize: '12px', color: '#1e40af', fontWeight: 'bold' }}>📊 Ocupadas del Día:</span>
-      <span style={{ fontSize: '13px', color: '#1e3a8a', fontWeight: '900' }}>
-        {habitaciones.filter(h => (h.status || '').toLowerCase().trim() === 'ocupada').length} Hab.
-      </span>
-    </div>
-  </div>
-
-  <button 
-    onClick={() => setMostrarReporteRecepcion(true)}
-    style={{ background: '#059669', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>
-    📊 Reporte de Consumos Facturados (Cierre de Turno)
-  </button>
-</div>
-
-          {habitacionesPendientes.length > 0 && (
-            <div style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-              <div style={{ color: '#991b1b', fontWeight: 'bold' }}>
-                🔔 ¡ATENCIÓN RECEPCIÓN! Hay {habitacionesPendientes.length} salida(s) pendientes por facturar.
+        {/* VISTA 1: RECEPCIÓN */}
+        {role === 'recepcion' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
+                
+                {/* CUADRO DE OCUPACIÓN DIARIA */}
+                <div style={{ 
+                  background: '#eff6ff', 
+                  border: '1px solid #bfdbfe', 
+                  padding: '5px 12px', 
+                  borderRadius: '6px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                }}>
+                  <span style={{ fontSize: '12px', color: '#1e40af', fontWeight: 'bold' }}>📊 Ocupadas del Día:</span>
+                  <span style={{ fontSize: '13px', color: '#1e3a8a', fontWeight: '900' }}>
+                    {habitaciones.filter(h => (h.status || '').toLowerCase().trim() === 'ocupada').length} Hab.
+                  </span>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {habitacionesPendientes.map(h => (
-                  <button key={h.id} onClick={() => setRoomToBill(h)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                    Facturar Hab. {h.number} (${h.amount})
-                  </button>
-                ))}
-              </div>
+
+              <button 
+                onClick={() => setMostrarReporteRecepcion(true)}
+                style={{ background: '#059669', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>
+                📊 Reporte de Consumos Facturados (Cierre de Turno)
+              </button>
             </div>
-          )}
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc' }}>
-                  <th style={{ padding: '10px', border: '1px solid #e2e8f0' }}>Ubicación</th>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => <th key={n} style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>0{n}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {[3, 4, 5, 6, 7, 8, 9, 10].map(piso => (
-                  <tr key={piso}>
-                    <td style={{ padding: '10px', border: '1px solid #e2e8f0', fontWeight: 'bold', background: '#f1f5f9' }}>PISO {piso}</td>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(numCol => {
-                      const numStr = piso === 10 ? (numCol <= 4 ? `100${numCol}` : null) : `${piso}0${numCol}`;
-                      const hab = habitaciones.find(h => h.number === numStr);
-                      if (!hab) return <td key={numCol} style={{ padding: '10px', border: '1px solid #e2e8f0', background: '#f8fafc' }}></td>;
-                      const badgeClass = getStatusClass(hab.status);
+            {habitacionesPendientes.length > 0 && (
+              <div style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                <div style={{ color: '#991b1b', fontWeight: 'bold' }}>
+                  🔔 ¡ATENCIÓN RECEPCIÓN! Hay {habitacionesPendientes.length} salida(s) pendientes por facturar.
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {habitacionesPendientes.map(h => (
+                    <button key={h.id} onClick={() => setRoomToBill(h)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      Facturar Hab. {h.number} (${h.amount})
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-                      return (
-                        <td 
-                          key={hab.id} 
-                          onClick={() => setRoomToEditStatus(hab)}
-                          className={badgeClass}
-                          style={{ padding: '10px', border: '1px solid #e2e8f0', cursor: 'pointer', height: '70px', verticalAlign: 'top', position: 'relative' }}>
-                          <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{hab.number}</div>
-                          <div style={{ fontSize: '10px', marginTop: '4px', fontWeight: 'bold' }}>{hab.status}</div>
-                        </td>
-                      );
-                    })}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc' }}>
+                    <th style={{ padding: '10px', border: '1px solid #e2e8f0' }}>Ubicación</th>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => <th key={n} style={{ padding: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>0{n}</th>)}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {[3, 4, 5, 6, 7, 8, 9, 10].map(piso => (
+                    <tr key={piso}>
+                      <td style={{ padding: '10px', border: '1px solid #e2e8f0', fontWeight: 'bold', background: '#f1f5f9' }}>PISO {piso}</td>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(numCol => {
+                        const numStr = piso === 10 ? (numCol <= 4 ? `100${numCol}` : null) : `${piso}0${numCol}`;
+                        const hab = habitaciones.find(h => h.number === numStr);
+                        if (!hab) return <td key={numCol} style={{ padding: '10px', border: '1px solid #e2e8f0', background: '#f8fafc' }}></td>;
+                        const badgeClass = getStatusClass(hab.status);
+
+                        return (
+                          <td 
+                            key={hab.id} 
+                            onClick={() => setRoomToEditStatus(hab)}
+                            className={badgeClass}
+                            style={{ padding: '10px', border: '1px solid #e2e8f0', cursor: 'pointer', height: '70px', verticalAlign: 'top', position: 'relative' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{hab.number}</div>
+                            <div style={{ fontSize: '10px', marginTop: '4px', fontWeight: 'bold' }}>{hab.status}</div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
         {/* VISTA 2: PERSONAL */}
         {role === 'personal' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -156,17 +153,18 @@ export default function App() {
                       <td style={{ padding: '10px' }}>{p.turno}</td>
                     </tr>
                   ))}
-                  
-                  {/* PIE DE PÁGINA */}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      {/* PIE DE PÁGINA */}
       <footer style={{ textAlign: 'center', padding: '20px', marginTop: '30px', borderTop: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px' }}>
         <p style={{ margin: 0 }}>© 2026 Hotel Condor Suites — Todos los derechos reservados</p>
       </footer>
-
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      </div>
-);
+    </div>
+  );
+}
