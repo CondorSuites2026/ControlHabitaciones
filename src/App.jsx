@@ -53,23 +53,23 @@ export default function App() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             
-            {/* Título y Cuadro de Ocupación del Día */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {/* TÍTULO Y CUADRO DE HABITACIONES OCUPADAS DEL DÍA */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
               <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
               
               <div style={{ 
                 background: '#eff6ff', 
                 border: '1px solid #bfdbfe', 
-                padding: '4px 10px', 
-                borderRadius: '6px', 
+                padding: '6px 14px', 
+                borderRadius: '8px', 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: '6px',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                gap: '8px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
               }}>
-                <span style={{ fontSize: '11px', color: '#1e40af', fontWeight: 'bold' }}>📊 Ocupación:</span>
-                <span style={{ fontSize: '12px', color: '#1e3a8a', fontWeight: '900' }}>
-                  {habitaciones.filter(h => (h.status || '').toLowerCase().includes('ocupada')).length} Hab.
+                <span style={{ fontSize: '12px', color: '#1e40af', fontWeight: 'bold' }}>📊 Ocupadas del Día:</span>
+                <span style={{ fontSize: '14px', color: '#1e3a8a', fontWeight: '900' }}>
+                  {habitaciones.filter(h => (h.status || '').toLowerCase().trim() === 'ocupada').length} Hab.
                 </span>
               </div>
             </div>
