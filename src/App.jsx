@@ -1112,7 +1112,7 @@ export default function App() {
         </div>
       </header>
 
-      <main>
+  
       {/* VISTA 1: RECEPCIÓN */}
         {role === 'recepcion' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
