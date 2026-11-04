@@ -1115,16 +1115,46 @@ export default function App() {
       <main>
         {/* VISTA 1: RECEPCIÓN */}
         {role === 'recepcion' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
-              <button 
-                onClick={() => setMostrarReporteRecepcion(true)}
-                className="primary" 
-                style={{ background: '#059669', width: 'auto', padding: '10px 16px', fontSize: '13px' }}>
-                📊 Reporte de Consumos Facturados (Cierre de Turno)
-              </button>
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+      
+      {/* Título y Cuadro de Ocupación al lado */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
+        
+        {/* Cuadro indicador de Ocupación */}
+        {(() => {
+          const totalHabs = habitaciones.length;
+          const ocupadas = habitaciones.filter(h => (h.status || '').toLowerCase().includes('ocupada')).length;
+          const porcentaje = totalHabs > 0 ? ((ocupadas / totalHabs) * 100).toFixed(1) : 0;
+          
+          return (
+            <div style={{ 
+              background: '#eff6ff', 
+              border: '1px solid #bfdbfe', 
+              padding: '6px 12px', 
+              borderRadius: '8px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+            }}>
+              <span style={{ fontSize: '12px', color: '#1e40af', fontWeight: 'bold' }}>📊 Ocupación del Día:</span>
+              <span style={{ fontSize: '13px', color: '#1e3a8a', fontWeight: '900' }}>
+                {ocupadas} / {totalHabs} ({porcentaje}%)
+              </span>
             </div>
+          );
+        })()}
+      </div>
+
+      <button 
+        onClick={() => setMostrarReporteRecepcion(true)}
+        className="primary" 
+        style={{ background: '#059669', width: 'auto', padding: '10px 16px', fontSize: '13px' }}>
+        📊 Reporte de Consumos Facturados (Cierre de Turno)
+      </button>
+    </div>
 
             {habitacionesPendientes.length > 0 && (
               <div className="alerta-parpadeante" style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
