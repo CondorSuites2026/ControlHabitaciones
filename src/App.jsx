@@ -1121,19 +1121,20 @@ export default function App() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                 <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
                 
+                {/* CUADRO ÚNICO DE CANTIDAD DE OCUPACIÓN */}
                 <div style={{ 
                   background: '#eff6ff', 
                   border: '1px solid #bfdbfe', 
-                  padding: '6px 12px', 
+                  padding: '6px 14px', 
                   borderRadius: '8px', 
                   display: 'flex', 
                   alignItems: 'center', 
                   gap: '8px',
                   boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                 }}>
-                  <span style={{ fontSize: '12px', color: '#1e40af', fontWeight: 'bold' }}>📊 Ocupación del Día:</span>
+                  <span style={{ fontSize: '12px', color: '#1e40af', fontWeight: 'bold' }}>📊 Ocupación:</span>
                   <span style={{ fontSize: '13px', color: '#1e3a8a', fontWeight: '900' }}>
-                    {habitaciones.filter(h => (h.status || '').toLowerCase().includes('ocupada')).length} / {habitaciones.length} ({habitaciones.length > 0 ? ((habitaciones.filter(h => (h.status || '').toLowerCase().includes('ocupada')).length / habitaciones.length) * 100).toFixed(1) : 0}%)
+                    {habitaciones.filter(h => (h.status || '').toLowerCase().includes('ocupada')).length} Hab.
                   </span>
                 </div>
               </div>
