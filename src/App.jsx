@@ -54,32 +54,35 @@ export default function App() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             
             {/* TÍTULO Y CUADRO DE HABITACIONES OCUPADAS DEL DÍA */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
-              <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
-              
-              <div style={{ 
-                background: '#eff6ff', 
-                border: '1px solid #bfdbfe', 
-                padding: '6px 14px', 
-                borderRadius: '8px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-              }}>
-                <span style={{ fontSize: '12px', color: '#1e40af', fontWeight: 'bold' }}>📊 Ocupadas del Día:</span>
-                <span style={{ fontSize: '14px', color: '#1e3a8a', fontWeight: '900' }}>
-                  {habitaciones.filter(h => (h.status || '').toLowerCase().trim() === 'ocupada').length} Hab.
-                </span>
-              </div>
-            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
+  
+  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+    <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
+    
+    {/* CUADRO DE OCUPACIÓN DIARIA */}
+    <div style={{ 
+      background: '#eff6ff', 
+      border: '1px solid #bfdbfe', 
+      padding: '5px 12px', 
+      borderRadius: '6px', 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '8px',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+    }}>
+      <span style={{ fontSize: '12px', color: '#1e40af', fontWeight: 'bold' }}>📊 Ocupadas del Día:</span>
+      <span style={{ fontSize: '13px', color: '#1e3a8a', fontWeight: '900' }}>
+        {habitaciones.filter(h => (h.status || '').toLowerCase().trim() === 'ocupada').length} Hab.
+      </span>
+    </div>
+  </div>
 
-            <button 
-              onClick={() => setMostrarReporteRecepcion(true)}
-              style={{ background: '#059669', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>
-              📊 Reporte de Consumos Facturados (Cierre de Turno)
-            </button>
-          </div>
+  <button 
+    onClick={() => setMostrarReporteRecepcion(true)}
+    style={{ background: '#059669', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>
+    📊 Reporte de Consumos Facturados (Cierre de Turno)
+  </button>
+</div>
 
           {habitacionesPendientes.length > 0 && (
             <div style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
@@ -157,6 +160,11 @@ export default function App() {
             </table>
           </div>
         </div>
+        {/* PIE DE PÁGINA */}
+      <footer style={{ textAlign: 'center', padding: '20px', marginTop: '30px', borderTop: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px' }}>
+        <p style={{ margin: 0 }}>Hotel Condor Suites — Todos los derechos reservados © {new Date().getFullYear()}</p>
+      </footer>
+      
       )}
 
     </main>
