@@ -156,17 +156,17 @@ export default function App() {
                       <td style={{ padding: '10px' }}>{p.turno}</td>
                     </tr>
                   ))}
-                </tbody>
+                  
+                  {/* PIE DE PÁGINA */}
+      <footer style={{ textAlign: 'center', padding: '20px', marginTop: '30px', borderTop: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px' }}>
+        <p style={{ margin: 0 }}>© 2026 Hotel Condor Suites — Todos los derechos reservados</p>
+      </footer>
+
+              </tbody>
             </table>
           </div>
         </div>
-        {/* PIE DE PÁGINA */}
-      <footer style={{ textAlign: 'center', padding: '20px', marginTop: '30px', borderTop: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px' }}>
-        <p style={{ margin: 0 }}>Hotel Condor Suites — Todos los derechos reservados © {new Date().getFullYear()}</p>
-      </footer>
-      
       )}
 
-    </main>
-  </div>
+      </div>
 );
