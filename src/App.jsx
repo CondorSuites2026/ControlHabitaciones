@@ -175,32 +175,11 @@ export default function App() {
   const [nuevoPersonal, setNuevoPersonal] = useState({ nombre: '', rol: 'Asistente', turno: '' });
 
   const ordenarInventarioJerarquico = (listaItems) => {
-    const obtenerPrioridad = (item) => {
-      const cat = (item.category || '').toLowerCase();
-      const id = (item.id || '').toLowerCase();
-      const name = (item.name || '').toLowerCase();
-      
-      const esBebida = cat === 'minibar' && (
-        id.includes('agua') || id.includes('gatorade') || id.includes('pepsi') || 
-        id.includes('polar') || id.includes('redbull') || id.includes('solera') || 
-        id.includes('golden') || name.includes('agua') || name.includes('gatorade') || 
-        name.includes('pepsi') || name.includes('polar') || name.includes('redbull') || 
-        name.includes('solera') || name.includes('kolita')
-      );
-
-      if (cat === 'minibar') {
-        if (esBebida) return 1;
-        return 2;
-      }
-      if (cat === 'utensilios') return 3;
-      if (cat === 'lenceria' || cat === 'lencería') return 4;
-      return 5;
-    };
-
     return [...listaItems].sort((a, b) => {
-      const pA = obtenerPrioridad(a);
-      const pB = obtenerPrioridad(b);
-      if (pA !== pB) return pA - pB;
+      const ordenA = a.orden !== undefined && a.orden !== null ? a.orden : 99;
+      const ordenB = b.orden !== undefined && b.orden !== null ? b.orden : 99;
+      
+      if (ordenA !== ordenB) return ordenA - ordenB;
       return (a.name || '').localeCompare(b.name || '');
     });
   };
@@ -406,7 +385,8 @@ export default function App() {
 
   const fetchInventario = async () => {
     try {
-      const response = await fetch(`${supabaseUrl}/rest/v1/inventario?select=*`, {
+      // Solicitamos los datos ordenados directamente por la columna 'orden'
+      const response = await fetch(`${supabaseUrl}/rest/v1/inventario?select=*&order=orden.asc`, {
         method: 'GET',
         headers: { 'apikey': supabaseAnonKey, 'Authorization': `Bearer ${supabaseAnonKey}` }
       });
