@@ -1166,16 +1166,32 @@ export default function App() {
       <main>
         {/* VISTA 1: RECEPCIÓN */}
         {role === 'recepcion' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
-              <button 
-                onClick={() => setMostrarReporteRecepcion(true)}
-                className="primary" 
-                style={{ background: '#059669', width: 'auto', padding: '10px 16px', fontSize: '13px' }}>
-                📊 Reporte de Consumos Facturados (Cierre de Turno)
-              </button>
-            </div>
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <h2 style={{ margin: 0, fontSize: '18px', color: '#1e3a8a' }}>🏨 Estado General de Habitaciones</h2>
+        
+        {/* 🏷️ Insignia de Ocupadas del Día */}
+        <span style={{ 
+          background: '#0284c7', 
+          color: '#fff', 
+          padding: '6px 12px', 
+          borderRadius: '8px', 
+          fontWeight: 'bold', 
+          fontSize: '13px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+        }}>
+          Ocupadas del Día: {habitaciones.filter(h => (h.status || '').toLowerCase().includes('ocupada')).length} Hab.
+        </span>
+      </div>
+
+      <button 
+        onClick={() => setMostrarReporteRecepcion(true)}
+        className="primary" 
+        style={{ background: '#059669', width: 'auto', padding: '10px 16px', fontSize: '13px' }}>
+        📊 Reporte de Consumos Facturados (Cierre de Turno)
+      </button>
+    </div>
 
             {habitacionesPendientes.length > 0 && (
               <div className="alerta-parpadeante" style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
