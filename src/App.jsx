@@ -1178,7 +1178,7 @@ export default function App() {
             </div>
 
             {habitacionesPendientes.length > 0 && (
-              <div className="alerta-parpadeante" style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', 			alignItems: 'center', gap: '10px' }}>
+              <div className="alerta-parpadeante" style={{ background: '#fef2f2', border: '2px solid #ef4444', borderRadius: '8px', padding: '14px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                 <div style={{ color: '#991b1b', fontWeight: 'bold' }}>
                   🔔 ¡ATENCIÓN RECEPCIÓN! Hay {habitacionesPendientes.length} salida(s) pendientes por facturar.
                 </div>
@@ -1519,7 +1519,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="card-box" style={{ background: '#f8fafc', width: '100%', boxSizing: 'border-box', marginTop: '12px' }}>
+            <div className="card-box" style={{ background: '#f8fafc', width: '100%', boxSizing: 'border-box' }}>
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Habitación del Piso {selectedFloor}</label>
                 <select value={selectedRoom?.id || ''} onChange={(e) => setSelectedRoom(habitaciones.find(h => h.id === e.target.value))} style={{ width: '100%' }}>
@@ -1531,7 +1531,7 @@ export default function App() {
               {selectedRoom && (
                 <>
                   <div>
-                    <h4 style={{ margin: '12px 0 12px 0', fontSize: '13px', textTransform: 'uppercase', color: '#1e3a8a', borderBottom: '2px solid #1e3a8a', paddingBottom: '4px' }}>📦 Registro de Consumos e Inspección</h4>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', textTransform: 'uppercase', color: '#1e3a8a', borderBottom: '2px solid #1e3a8a', paddingBottom: '4px' }}>📦 Registro de Consumos e Inspección</h4>
                     
                     {/* 1. SECCIÓN: MINIBAR - BEBIDAS */}
                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '10px 0 6px 0', textTransform: 'uppercase' }}>
@@ -1655,9 +1655,6 @@ export default function App() {
                   </button>
                 </>
               )}
-            </div>
-          </div>
-        )}
 
         {/* VISTA 3: SUPERVISORES */}
         {role === 'supervisores' && (
@@ -2371,9 +2368,12 @@ export default function App() {
                             </button>
                           </td>
                         </tr>
-                      ))}
-          </tbody>
-        </table>
-      </div>
-    );
-    }
+                      ))
+                    )}
+                  </tbody>
+                </table>
+       </div>     
+      ))}
+    </div>
+  );
+}
