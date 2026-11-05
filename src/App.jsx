@@ -1655,6 +1655,9 @@ export default function App() {
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        )}
 
         {/* VISTA 3: SUPERVISORES */}
         {role === 'supervisores' && (
@@ -2372,8 +2375,11 @@ export default function App() {
                     )}
                   </tbody>
                 </table>
-       </div>     
-      ))}
+              </div>
+            </div>
+          </div>   
+        )}
+      </main>
     </div>
   );
 }
