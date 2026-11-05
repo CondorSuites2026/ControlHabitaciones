@@ -1368,7 +1368,7 @@ export default function App() {
                   <button 
                     onClick={() => handleToggleServicioHabitacion(roomToEditStatus)} 
                     style={{ 
-                      background: roomToEditStatus.servicio_solicitado ? '#dc2626' : '#f59e0b', 
+                      background: roomToEditStatus.servicio_solicitado ? '#61ee8e' : '#f4ce8d', 
                       color: '#fff', 
                       padding: '12px', 
                       borderRadius: '8px', 
@@ -1386,13 +1386,13 @@ export default function App() {
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
                   Marcar como OCUPADA
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#f27a3a' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#e47539' }}>
                   Marcar como RESERVADA GARANTIZADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#fda3d2', color: '#831843' }}>
                   Marcar como RESERVADA
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#f6d265', color: '#713f12' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#f4d67c', color: '#713f12' }}>
                   Marcar como SUCIA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada / Mantenimiento')} style={{ background: '#dc2626' }}>
@@ -1445,7 +1445,7 @@ export default function App() {
                         background: '#ecfdf5', 
                         padding: '8px 12px', 
                         borderRadius: '6px', 
-                        border: '1px solid #a7f3d0' 
+                        border: '1px solid #3ede93' 
                       }}>
                         ✅ Habitación OK sin consumo
                       </div>
