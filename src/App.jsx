@@ -1409,7 +1409,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL DE FACTURACIÓN */}
+       {/* MODAL DE FACTURACIÓN */}
         {roomToBill && roomToBill.reporte && (
           <div className="modal-overlay">
             <div className="modal-card">
@@ -1418,14 +1418,28 @@ export default function App() {
                 Encargado/a: <strong>{roomToBill.reporte?.asistente || 'N/A'}</strong> — <span style={{ color: '#1e3a8a', fontWeight: 'bold' }}>{roomToBill.reporte?.turno || 'Turno N/A'}</span>
               </p>
 
+              {/* 📸 EVIDENCIA MULTIMEDIA REDUCIDA */}
               {roomToBill.reporte?.evidencia?.url && (
-                <div style={{ background: '#f1f5f9', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '6px' }}>📸 EVIDENCIA MULTIMEDIA:</span>
+                <div style={{ background: '#f1f5f9', padding: '10px', borderRadius: '8px', marginBottom: '12px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '6px', textAlign: 'left' }}>📸 EVIDENCIA MULTIMEDIA:</span>
                   {roomToBill.reporte.evidencia.tipo === 'video' ? (
-                    <video src={roomToBill.reporte.evidencia.url} controls style={{ width: '100%', maxHeight: '180px', borderRadius: '6px' }} />
+                    <video src={roomToBill.reporte.evidencia.url} controls style={{ maxWidth: '100%', height: '140px', borderRadius: '6px', objectFit: 'contain' }} />
                   ) : (
-                    <img src={roomToBill.reporte.evidencia.url} alt="Evidencia" style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: '6px' }} />
+                    <img src={roomToBill.reporte.evidencia.url} alt="Evidencia" style={{ maxWidth: '100%', height: '140px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer' }} onClick={() => window.open(roomToBill.reporte.evidencia.url, '_blank')} title="Click para ver en tamaño completo" />
                   )}
+                  <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px' }}>Haz clic en la imagen si deseas verla a mayor tamaño.</div>
+                </div>
+              )}
+
+              {/* ⚠️ NOTA DE FALTANTE / PIEZA DAÑADA */}
+              {roomToBill.reporte?.faltantes_obs && roomToBill.reporte.faltantes_obs.trim() !== '' && (
+                <div style={{ background: '#fff3cd', border: '1px solid #ffeeba', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#856404', display: 'block', marginBottom: '2px' }}>
+                    ⚠️ NOTA DE FALTANTE / DAÑO REPORTADO:
+                  </span>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#533f03', fontWeight: 'bold' }}>
+                    {roomToBill.reporte.faltantes_obs}
+                  </p>
                 </div>
               )}
 
@@ -1445,7 +1459,7 @@ export default function App() {
                         background: '#ecfdf5', 
                         padding: '8px 12px', 
                         borderRadius: '6px', 
-                        border: '1px solid #3ede93' 
+                        border: '1px solid #a7f3d0' 
                       }}>
                         ✅ Habitación OK sin consumo
                       </div>
@@ -2398,8 +2412,8 @@ export default function App() {
       </main>
       {/* 🟢 COPIA EL PIE DE PÁGINA AQUÍ */}
       <footer style={{ textAlign: 'center', padding: '20px', marginTop: '30px', borderTop: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px' }}>
-        <p style={{ margin: 0 }}>© 2026 Hotel Condor Suites — Todos los derechos reservados</p>
-        <p>Credo y desarrollado por: Ruben Abinazar Figarella.</p>
+        <p style={{ margin: 0 }}>©2026 Hotel Condor Suites—Todos los derechos reservados</p>
+        <p>Desarrollador: Ruben Abinazar Figarella.</p>
       </footer>
     </div>
   );
