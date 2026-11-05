@@ -1189,7 +1189,7 @@ export default function App() {
         onClick={() => setMostrarReporteRecepcion(true)}
         className="primary" 
         style={{ background: '#059669', width: 'auto', padding: '10px 16px', fontSize: '13px' }}>
-        📊 Reporte de Consumos Facturados (Cierre de Turno)
+        📊 Consumos Facturados (Cierre de Turno)
       </button>
     </div>
 
@@ -1386,13 +1386,13 @@ export default function App() {
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
                   Marcar como OCUPADA
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#ea580c' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#f27a3a' }}>
                   Marcar como RESERVADA GARANTIZADA
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#f472b6', color: '#831843' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#fda3d2', color: '#831843' }}>
                   Marcar como RESERVADA
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#c8b57a', color: '#713f12' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#f6d265', color: '#713f12' }}>
                   Marcar como SUCIA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada / Mantenimiento')} style={{ background: '#dc2626' }}>
@@ -1649,7 +1649,7 @@ export default function App() {
                   {/* CAMPO DE NOTIFICACIÓN DE FALTANTE / PIEZA EDITABLE */}
                   <div style={{ background: '#fff3cd', padding: '12px', borderRadius: '8px', border: '1px solid #ffeeba', marginTop: '14px' }}>
                     <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', color: '#856404', marginBottom: '4px' }}>
-                      ⚠️ NOTIFICAR FALTANTE / DAÑO DE PIEZA (OPCIONAL)
+                      ⚠️ NOTIFICAR FALTANTE / PIEZA DAÑADA (OPCIONAL) 
                     </label>
                     <input 
                       type="text" 
@@ -2161,25 +2161,25 @@ export default function App() {
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('servicio')}
-                  style={{ background: '#dc2626', color: '#ffffff', border: filtroAmaLlaves === 'servicio' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  style={{ background: '#b31b1b', color: '#ffffff', border: filtroAmaLlaves === 'servicio' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
                   🔔 Con Solicitud (S)
                 </button>
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('sucia')}
-                  style={{ background: '#fde047', color: '#713f12', border: filtroAmaLlaves === 'sucia' ? '2px solid #1e293b' : '1px solid #ca8a04', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  style={{ background: '#f8e78f', color: '#713f12', border: filtroAmaLlaves === 'sucia' ? '2px solid #1e293b' : '1px solid #ca8a04', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
                    Sucias
                 </button>
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('garantizada')}
-                  style={{ background: '#ea580c', color: '#ffffff', border: filtroAmaLlaves === 'garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  style={{ background: '#f3874e', color: '#ffffff', border: filtroAmaLlaves === 'garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
                    Garantizadas
                 </button>
 
                 <button 
                   onClick={() => setFiltroAmaLlaves('no_garantizada')}
-                  style={{ background: '#f472b6', color: '#831843', border: filtroAmaLlaves === 'no_garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  style={{ background: '#f590c4', color: '#831843', border: filtroAmaLlaves === 'no_garantizada' ? '2px solid #1e293b' : 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
                    No Garantizadas
                 </button>
               </div>
