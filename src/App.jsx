@@ -1453,7 +1453,7 @@ export default function App() {
                     return (
                       <div style={{ 
                         margin: '10px 0', 
-                        fontSize: '15px', 
+                        fontSize: '25px', 
                         fontWeight: 'bold', 
                         color: '#059669', 
                         background: '#ecfdf5', 
