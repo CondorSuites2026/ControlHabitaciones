@@ -1078,16 +1078,16 @@ export default function App() {
         .logo-box img { height: 38px; width: auto; display: block; object-fit: contain; }
         .nav-buttons { display: flex; background: #1d4ed8; padding: 4px; border-radius: 8px; gap: 4px; flex-wrap: wrap; }
         .nav-btn { padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer; border: none; background: transparent; color: #e2e8f0; }
-        .nav-btn.active { background: #f59e0b; color: #0f172a; }
+        .nav-btn.active { background: #f6ab29; color: #0f172a; }
         main { flex: 1; padding: 16px; max-width: 1440px; margin: 0 auto; width: 100%; box-sizing: border-box; }
         .bcv-box { display: flex; align-items: center; background: #1d4ed8; padding: 6px 12px; border-radius: 8px; border: 1px solid #3b82f6; gap: 8px; color: #fef08a; font-weight: bold; font-size: 12px; }
-        .btn-update { background: #f59e0b; color: #0f172a; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 12px; }
+        .btn-update { background: #f6ab29; color: #0f172a; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 12px; }
         
         .badge-disponible { background: #bbf7d0; color: #065f46; }
         .badge-ocupada { background: #7dd3fc; color: #0369a1; }
         .badge-sucia { background: #fde047; color: #713f12; }
         .badge-reservada-no-garantizada { background: #f472b6; color: #831843; }
-        .badge-reservada-garantizada { background: #ea580c; color: #ffffff; }
+        .badge-reservada-garantizada { background: #f6ab29; color: #ffffff; }
         .badge-danger { background: #ef4444; color: #ffffff; }
         .badge-mantenimiento { background: #dc2626; color: #ffffff; }
 
@@ -1138,7 +1138,7 @@ export default function App() {
           <button 
             onClick={() => setRole('asistente')}
             className="btn-update"
-            style={{ background: role === 'asistente' ? '#10b981' : '#f59e0b', color: role === 'asistente' ? '#fff' : '#0f172a' }}>
+            style={{ background: role === 'asistente' ? '#10b981' : '#f6ab29', color: role === 'asistente' ? '#fff' : '#0f172a' }}>
             📱 Asistente Móvil
           </button>
         </div>
