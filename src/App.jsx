@@ -132,6 +132,9 @@ export default function App() {
   const [mostrarControlMinibar, setMostrarControlMinibar] = useState(false);
   const [mostrarReporteAlmacenFaltantes, setMostrarReporteAlmacenFaltantes] = useState(false);
   const [mostrarReporteRecepcion, setMostrarReporteRecepcion] = useState(false);
+  const [mostrarModalEvidencias, setMostrarModalEvidencias] = useState(false);
+  const [filtroHabitacionEvidencia, setFiltroHabitacionEvidencia] = useState('');
+  const [filtroAsistenteEvidencia, setFiltroAsistenteEvidencia] = useState('');
   
   // 🔘 Estado para el selector de turnos en recepción
   const [turnoSeleccionadoRecepcion, setTurnoSeleccionadoRecepcion] = useState('todos');
@@ -1718,6 +1721,10 @@ export default function App() {
                 <button onClick={() => setMostrarReporteFlotante(true)} className="primary" style={{ background: '#059669', padding: '10px 14px', fontSize: '12px' }}>
                   📊 Reporte General Consolidado
                 </button>
+                {/* 🟢 NUEVO BOTÓN DE EVIDENCIAS */}
+                <button onClick={() => setMostrarModalEvidencias(true)} className="primary" style={{ background: '#0284c7', padding: '10px 14px', fontSize: '12px' }}>
+                🖼️ Galería de Evidencias (Fotos / Videos)
+                </button>
                 <button onClick={() => setMostrarReporteHabitaciones(true)} className="primary" style={{ background: '#1e3a8a', padding: '10px 14px', fontSize: '12px' }}>
                   🏨 Reposición por Habitación
                 </button>
@@ -2409,6 +2416,124 @@ export default function App() {
             </div>
           </div>   
         )}
+        {/* MODAL GALERÍA DE EVIDENCIAS (FOTOS Y VIDEOS) */}
+{mostrarModalEvidencias && (
+  <div className="modal-overlay">
+    <div className="modal-card" style={{ maxWidth: '950px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #0284c7', paddingBottom: '10px', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+        <h3 style={{ margin: 0, fontSize: '18px', color: '#0284c7' }}>🖼️ Registro de Evidencias Fotográficas y Videos</h3>
+        <span style={{ fontSize: '12px', fontWeight: 'bold', background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '4px' }}>
+          {pisosupervisores === 'todos' ? '🌐 Todos los Pisos' : `Piso ${pisosupervisores}`} — {filtroTiempo.toUpperCase()}
+        </span>
+      </div>
+
+      {/* FILTROS SECUNDARIOS: HABITACIÓN Y ASISTENTE */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+        <div style={{ flex: 1, minWidth: '160px' }}>
+          <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Buscar Habitación:</label>
+          <input 
+            type="text" 
+            placeholder="Ej: 305" 
+            value={filtroHabitacionEvidencia} 
+            onChange={(e) => setFiltroHabitacionEvidencia(e.target.value)} 
+            style={{ padding: '6px', fontSize: '12px' }}
+          />
+        </div>
+
+        <div style={{ flex: 1, minWidth: '180px' }}>
+          <label style={{ fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Buscar Asistente:</label>
+          <input 
+            type="text" 
+            placeholder="Ej: Daimar" 
+            value={filtroAsistenteEvidencia} 
+            onChange={(e) => setFiltroAsistenteEvidencia(e.target.value)} 
+            style={{ padding: '6px', fontSize: '12px' }}
+          />
+        </div>
+      </div>
+
+      {/* GRILLA DE EVIDENCIAS */}
+      <div style={{ maxHeight: '450px', overflowY: 'auto', marginBottom: '20px' }}>
+        {(() => {
+          const reportesConEvidencia = obtenerReportesFiltradosSupervisores().filter(rep => {
+            if (!rep.reporte?.evidencia?.url && !rep.evidencia?.url) return false;
+
+            if (filtroHabitacionEvidencia.trim() !== '') {
+              if (!String(rep.habitacion).includes(filtroHabitacionEvidencia.trim())) return false;
+            }
+
+            if (filtroAsistenteEvidencia.trim() !== '') {
+              const asis = (rep.asistente || '').toLowerCase();
+              if (!asis.includes(filtroAsistenteEvidencia.trim().toLowerCase())) return false;
+            }
+
+            return true;
+          });
+
+          if (reportesConEvidencia.length === 0) {
+            return (
+              <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '8px' }}>
+                📷 No se encontraron fotos o videos registrados para los filtros seleccionados.
+              </p>
+            );
+          }
+
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '14px' }}>
+              {reportesConEvidencia.map((rep, idx) => {
+                const ev = rep.reporte?.evidencia || rep.evidencia;
+                return (
+                  <div key={idx} style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', borderBottom: '1px solid #f1f5f9', paddingBottom: '4px' }}>
+                      <strong style={{ color: '#1e3a8a' }}>Habitación {rep.habitacion}</strong>
+                      <span style={{ fontSize: '10px', color: '#64748b' }}>{new Date(rep.fecha).toLocaleDateString()}</span>
+                    </div>
+
+                    <div style={{ fontSize: '11px', color: '#334155' }}>
+                      👤 Encargado/a: <strong>{rep.asistente}</strong> <br />
+                      🕒 Turno: <span style={{ color: '#1d4ed8', fontWeight: 'bold' }}>{rep.turno || 'N/A'}</span>
+                    </div>
+
+                    {/* REPRODUCTOR MULTIMEDIA */}
+                    <div style={{ background: '#000', borderRadius: '6px', height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                      {ev.tipo === 'video' ? (
+                        <video src={ev.url} controls style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      ) : (
+                        <img 
+                          src={ev.url} 
+                          alt={`Evidencia Hab ${rep.habitacion}`} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
+                          onClick={() => window.open(ev.url, '_blank')}
+                          title="Clic para ampliar imagen"
+                        />
+                      )}
+                    </div>
+
+                    {/* FALTANTES / OBS */}
+                    {(rep.faltantes_obs || rep.reporte?.faltantes_obs) && (
+                      <div style={{ fontSize: '10px', background: '#fff3cd', color: '#856404', padding: '4px 6px', borderRadius: '4px', border: '1px solid #ffeeba' }}>
+                        ⚠️ <strong>Nota:</strong> {rep.faltantes_obs || rep.reporte?.faltantes_obs}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button onClick={() => window.print()} className="primary" style={{ flex: 1, background: '#0284c7' }}>
+          🖨️ Imprimir / Reporte de Evidencias
+        </button>
+        <button onClick={() => setMostrarModalEvidencias(false)} style={{ background: '#cbd5e1', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </main>
       {/* 🟢 COPIA EL PIE DE PÁGINA AQUÍ */}
       <footer style={{ textAlign: 'center', padding: '20px', marginTop: '30px', borderTop: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px' }}>
