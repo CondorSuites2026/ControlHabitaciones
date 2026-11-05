@@ -2455,15 +2455,52 @@ export default function App() {
       {/* GRILLA DE EVIDENCIAS */}
       <div style={{ maxHeight: '450px', overflowY: 'auto', marginBottom: '20px' }}>
         {(() => {
-          const reportesConEvidencia = obtenerReportesFiltradosSupervisores().filter(rep => {
-            if (!rep.reporte?.evidencia?.url && !rep.evidencia?.url) return false;
+          // 🟢 Recopilar evidencias tanto del historial de reportes como del estado actual de las habitaciones
+          const listaUnificada = [];
 
+          // 1. Extraer de habitaciones que tengan reporte con evidencia
+          habitaciones.forEach(h => {
+            if (h.reporte && h.reporte.evidencia && h.reporte.evidencia.url) {
+              if (pisosupervisores === 'todos' || h.floor === parseInt(pisosupervisores)) {
+                listaUnificada.push({
+                  habitacion: h.number,
+                  asistente: h.reporte.asistente || 'Personal de Piso',
+                  turno: h.reporte.turno || 'N/A',
+                  fecha: h.reporte.fecha || new Date().toISOString(),
+                  evidencia: h.reporte.evidencia,
+                  faltantes_obs: h.reporte.faltantes_obs || ''
+                });
+              }
+            }
+          });
+
+          // 2. Extraer del historial de reportes (por si acaso)
+          obtenerReportesFiltradosSupervisores().forEach(rep => {
+            const ev = rep.reporte?.evidencia || rep.evidencia;
+            if (ev && ev.url) {
+              // Evitar duplicados exactos si ya está en la habitación
+              const yaExiste = listaUnificada.some(item => item.evidencia.url === ev.url);
+              if (!yaExiste) {
+                listaUnigrantizada = listaUnificada.push({
+                  habitacion: rep.habitacion,
+                  asistente: rep.asistente || 'Personal',
+                  turno: rep.turno || 'N/A',
+                  fecha: rep.fecha || new Date().toISOString(),
+                  evidencia: ev,
+                  faltantes_obs: rep.faltantes_obs || rep.reporte?.faltantes_obs || ''
+                });
+              }
+            }
+          });
+
+          // Aplicar filtros de búsqueda por Habitación o Asistente
+          const reportesConEvidencia = listaUnificada.filter(item => {
             if (filtroHabitacionEvidencia.trim() !== '') {
-              if (!String(rep.habitacion).includes(filtroHabitacionEvidencia.trim())) return false;
+              if (!String(item.habitacion).includes(filtroHabitacionEvidencia.trim())) return false;
             }
 
             if (filtroAsistenteEvidencia.trim() !== '') {
-              const asis = (rep.asistente || '').toLowerCase();
+              const asis = (item.asistente || '').toLowerCase();
               if (!asis.includes(filtroAsistenteEvidencia.trim().toLowerCase())) return false;
             }
 
@@ -2473,25 +2510,25 @@ export default function App() {
           if (reportesConEvidencia.length === 0) {
             return (
               <p style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '40px', background: '#f8fafc', borderRadius: '8px' }}>
-                📷 No se encontraron fotos o videos registrados para los filtros seleccionados.
+                📷 No se encontraron fotos o videos registrados en las habitaciones o filtros seleccionados.
               </p>
             );
           }
 
           return (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '14px' }}>
-              {reportesConEvidencia.map((rep, idx) => {
-                const ev = rep.reporte?.evidencia || rep.evidencia;
+              {reportesConEvidencia.map((item, idx) => {
+                const ev = item.evidencia;
                 return (
                   <div key={idx} style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', borderBottom: '1px solid #f1f5f9', paddingBottom: '4px' }}>
-                      <strong style={{ color: '#1e3a8a' }}>Habitación {rep.habitacion}</strong>
-                      <span style={{ fontSize: '10px', color: '#64748b' }}>{new Date(rep.fecha).toLocaleDateString()}</span>
+                      <strong style={{ color: '#1e3a8a' }}>Habitación {item.habitacion}</strong>
+                      <span style={{ fontSize: '10px', color: '#64748b' }}>{new Date(item.fecha).toLocaleDateString()}</span>
                     </div>
 
                     <div style={{ fontSize: '11px', color: '#334155' }}>
-                      👤 Encargado/a: <strong>{rep.asistente}</strong> <br />
-                      🕒 Turno: <span style={{ color: '#1d4ed8', fontWeight: 'bold' }}>{rep.turno || 'N/A'}</span>
+                      👤 Encargado/a: <strong>{item.asistente}</strong> <br />
+                      🕒 Turno: <span style={{ color: '#1d4ed8', fontWeight: 'bold' }}>{item.turno || 'N/A'}</span>
                     </div>
 
                     {/* REPRODUCTOR MULTIMEDIA */}
@@ -2501,7 +2538,7 @@ export default function App() {
                       ) : (
                         <img 
                           src={ev.url} 
-                          alt={`Evidencia Hab ${rep.habitacion}`} 
+                          alt={`Evidencia Hab ${item.habitacion}`} 
                           style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
                           onClick={() => window.open(ev.url, '_blank')}
                           title="Clic para ampliar imagen"
@@ -2510,9 +2547,9 @@ export default function App() {
                     </div>
 
                     {/* FALTANTES / OBS */}
-                    {(rep.faltantes_obs || rep.reporte?.faltantes_obs) && (
+                    {item.faltantes_obs && item.faltantes_obs.trim() !== '' && (
                       <div style={{ fontSize: '10px', background: '#fff3cd', color: '#856404', padding: '4px 6px', borderRadius: '4px', border: '1px solid #ffeeba' }}>
-                        ⚠️ <strong>Nota:</strong> {rep.faltantes_obs || rep.reporte?.faltantes_obs}
+                        ⚠️ <strong>Nota:</strong> {item.faltantes_obs}
                       </div>
                     )}
                   </div>
@@ -2522,7 +2559,6 @@ export default function App() {
           );
         })()}
       </div>
-
       <div style={{ display: 'flex', gap: '8px' }}>
         <button onClick={() => window.print()} className="primary" style={{ flex: 1, background: '#0284c7' }}>
           🖨️ Imprimir / Reporte de Evidencias
