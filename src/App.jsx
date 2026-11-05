@@ -1399,7 +1399,7 @@ export default function App() {
                   Marcar como SUCIA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada / Mantto')} style={{ background: '#dc2626' }}>
-                  Marcar como BLOQUEADA / MANTENIMIENTO
+                  Marcar como BLOQUEADA / MANTTO
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#2a9976' }}>
                   Marcar como DISPONIBLE
