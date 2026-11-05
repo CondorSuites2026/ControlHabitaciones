@@ -2396,6 +2396,11 @@ export default function App() {
           </div>   
         )}
       </main>
+      {/* 🟢 COPIA EL PIE DE PÁGINA AQUÍ */}
+      <footer style={{ textAlign: 'center', padding: '20px', marginTop: '30px', borderTop: '1px solid #e2e8f0', color: '#64748b', fontSize: '12px' }}>
+        <p style={{ margin: 0 }}>© 2026 Hotel Condor Suites — Todos los derechos reservados</p>
+        <p>Credo y desarrollado por: Ruben Abinazar Figarella.</p>
+      </footer>
     </div>
   );
 }
