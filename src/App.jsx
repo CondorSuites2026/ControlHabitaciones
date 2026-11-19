@@ -766,7 +766,7 @@ export default function App() {
   const getStatusClass = (status) => {
     const s = (status || '').toLowerCase();
     if (s.includes('por facturar') || s.includes('sucia / por facturar')) return 'badge-danger';
-    if (s.includes('bloqueada') || s.includes('mantenimiento')) return 'badge-mantenimiento';
+    if (s.includes('bloqueada')) return 'badge-bloqueada';
     if (s.includes('ocupada')) return 'badge-ocupada';
     if (s.includes('garantizada')) return 'badge-garantizada';
     if (s.includes('reservada')) return 'badge-reservada-no-garantizada';
