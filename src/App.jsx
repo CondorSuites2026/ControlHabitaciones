@@ -1093,7 +1093,7 @@ export default function App() {
         .badge-reservada-no-garantizada { background: #f472b6; color: #831843; }
         .badge-garantizada { background: #f6ab29; color: #ffffff; }
         .badge-danger { background: #ef4444; color: #ffffff; }
-        .badge-mantenimiento { background: #dc2626; color: #ffffff; }
+        .badge-bloqueada { background: #dc2626; color: #ffffff; }
 
         @keyframes pulseAlert { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.97); } 100% { opacity: 1; transform: scale(1); } }
         .alerta-parpadeante { animation: pulseAlert 1s infinite ease-in-out; }
