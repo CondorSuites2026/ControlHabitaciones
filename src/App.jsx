@@ -1061,8 +1061,8 @@ export default function App() {
         const st = (h.status || '').toLowerCase();
         if (filtroAmaLlaves === 'servicio') return h.servicio_solicitado;
         if (filtroAmaLlaves === 'sucia') return st.includes('sucia');
-        if (filtroAmaLlaves === 'garantizada') return st.includes('garantizada') && st.includes('reservada');
-        if (filtroAmaLlaves === 'no_garantizada') return st.includes('reservada') && !st.includes('garantizada');
+        if (filtroAmaLlaves === 'garantizada') return st.includes('garantizada') && !st.includes('no garantizada');
+        if (filtroAmaLlaves === 'no_garantizada') return st.includes('no garantizada') || (st.includes('reservada') && !st.includes('garantizada'));  
         if (filtroAmaLlaves === 'ocupada') return st.includes('ocupada');
         return true;
       })
