@@ -1390,7 +1390,7 @@ export default function App() {
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Ocupada')} style={{ background: '#0284c7' }}>
                   Marcar como OCUPADA
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada Garantizada')} style={{ background: '#ca7814' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Garantizada')} style={{ background: '#ca7814' }}>
                   Marcar como GARANTIZADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Reservada')} style={{ background: '#fda3d2', color: '#831843' }}>
@@ -1399,7 +1399,7 @@ export default function App() {
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#e1b32a', color: '#713f12' }}>
                   Marcar como SUCIA
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada / Mantto')} style={{ background: '#b31919' }}>
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada')} style={{ background: '#b31919' }}>
                   Marcar como BLOQUEADA.
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#2a9976' }}>
