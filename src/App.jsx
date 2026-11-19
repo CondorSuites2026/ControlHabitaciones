@@ -768,7 +768,7 @@ export default function App() {
     if (s.includes('por facturar') || s.includes('sucia / por facturar')) return 'badge-danger';
     if (s.includes('bloqueada') || s.includes('mantenimiento')) return 'badge-mantenimiento';
     if (s.includes('ocupada')) return 'badge-ocupada';
-    if (s.includes('garantizada') && s.includes('reservada')) return 'badge-reservada-garantizada';
+    if (s.includes('garantizada')) return 'badge-garantizada';
     if (s.includes('reservada')) return 'badge-reservada-no-garantizada';
     if (s.includes('sucia')) return 'badge-sucia';
     return 'badge-disponible';
@@ -1091,7 +1091,7 @@ export default function App() {
         .badge-ocupada { background: #7dd3fc; color: #0369a1; }
         .badge-sucia { background: #fde047; color: #713f12; }
         .badge-reservada-no-garantizada { background: #f472b6; color: #831843; }
-        .badge-reservada-garantizada { background: #f6ab29; color: #ffffff; }
+        .badge-garantizada { background: #f6ab29; color: #ffffff; }
         .badge-danger { background: #ef4444; color: #ffffff; }
         .badge-mantenimiento { background: #dc2626; color: #ffffff; }
 
