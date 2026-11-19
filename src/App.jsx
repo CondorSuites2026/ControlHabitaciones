@@ -1399,8 +1399,8 @@ export default function App() {
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Sucia')} style={{ background: '#e1b32a', color: '#713f12' }}>
                   Marcar como SUCIA
                 </button>
-                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada')} style={{ background: '#b31919' }}>
-                  Marcar como BLOQUEADA.
+                <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Bloqueada')} style={{ background: '#c01818' }}>
+                  Marcar como BLOQUEADA
                 </button>
                 <button className="primary" onClick={() => handleCambiarEstadoHabitacion(roomToEditStatus, 'Disponible')} style={{ background: '#2a9976' }}>
                   Marcar como DISPONIBLE
@@ -2260,7 +2260,7 @@ export default function App() {
                               🔵 Habitación Ocupada (En Estancia)
                             </span>
                           )}
-                          {((h.status || '').toLowerCase().includes('bloqueada') || (h.status || '').toLowerCase().includes('mantto')) && (
+                          {((h.status || '').toLowerCase().includes('bloqueada')) && (
                             <span style={{ fontSize: '11px', color: '#dc2626', fontWeight: 'bold', alignSelf: 'center' }}>
                               🔴 Habitación en Mantenimiento / Bloqueada
                             </span>
