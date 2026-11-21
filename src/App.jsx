@@ -144,6 +144,11 @@ export default function App() {
 
   const [modalReposicionItem, setModalReposicionItem] = useState(null);
   const [cantidadesRepuestas, setCantidadesRepuestas] = useState({});
+  const [errorStockLinea, setErrorStockLinea] = useState({});
+  useEffect(() => {
+    setConsumosSeleccionados({});
+    setErrorStockLinea({});
+  }, [selectedRoom?.id, selectedFloor]);
 
   const [inventario, setInventario] = useState([
     // --- 1. MINIBAR - BEBIDAS ---
@@ -709,7 +714,7 @@ export default function App() {
         hayFaltantes = true;
       }
 
-      nuevoStockMinibar[idItem] = (nuevoStockMinibar[idItem] || 0) + qtyIngresada;
+      nuevoStockMinibar[idItem] = (Number(nuevoStockMinibar[idItem]) || 0) + qtyIngresada;
     });
 
     try {
@@ -757,9 +762,55 @@ export default function App() {
   };
 
   const handleQtyChange = (id, delta) => {
+    const actual = consumosSeleccionados[id] || 0;
+
+    // Si está restando (-1), siempre permitimos bajar hasta 0 y limpiamos error
+    if (delta < 0) {
+      setErrorStockLinea(prev => {
+        const copia = { ...prev };
+        delete copia[id];
+        return copia;
+      });
+      setConsumosSeleccionados(prev => ({
+        ...prev,
+        [id]: Math.max(0, actual + delta)
+      }));
+      return;
+    }
+
+    // Si está sumando (+1), verificamos el stock de esa habitación en minibar_stock
+    const stockHab = selectedRoom?.minibar_stock || {};
+    const disponible = Number(stockHab[id] ?? 0);
+    const siguiente = actual + delta;
+    const prodInfo = inventario.find(i => i.id === id);
+    const nombreProd = prodInfo?.name || id;
+
+    if (!selectedRoom) {
+      setErrorStockLinea(prev => ({
+        ...prev,
+        [id]: 'Seleccione primero una habitación.'
+      }));
+      return;
+    }
+
+    if (disponible <= 0 || siguiente > disponible) {
+      setErrorStockLinea(prev => ({
+        ...prev,
+        [id]: `No hay en stock "${nombreProd}" en la Hab. ${selectedRoom.number} (Disponible: ${disponible}).`
+      }));
+      return;
+    }
+
+    // Si hay stock suficiente, limpiamos error y sumamos
+    setErrorStockLinea(prev => {
+      const copia = { ...prev };
+      delete copia[id];
+      return copia;
+    });
+
     setConsumosSeleccionados(prev => ({
       ...prev,
-      [id]: Math.max(0, (prev[id] || 0) + delta)
+      [id]: siguiente
     }));
   };
 
@@ -835,7 +886,26 @@ export default function App() {
       alert('⚠️ Por favor seleccione la persona encargada.');
       return;
     }
+    if (Object.keys(errorStockLinea).length > 0) {
+      alert('⚠️ Revise los productos marcados con error de stock en línea antes de procesar el check-out.');
+      return;
+    }
 
+    const stockActualHab = selectedRoom.minibar_stock || {};
+    for (const [idItem, qtyConsumida] of Object.entries(consumosSeleccionados)) {
+      const cant = Number(qtyConsumida || 0);
+      if (cant > 0) {
+        const disponible = Number(stockActualHab[idItem] ?? 0);
+        if (disponible < cant) {
+          const prodInfo = inventario.find(i => i.id === idItem);
+          setErrorStockLinea(prev => ({
+            ...prev,
+            [idItem]: `No hay en stock "${prodInfo?.name || idItem}" en la Hab. ${selectedRoom.number} (Disponible: ${disponible}).`
+          }));
+          return;
+        }
+      }
+    }
     setSubiendoArchivo(true);
 
     try {
@@ -936,12 +1006,14 @@ export default function App() {
       setSelectedRoom(null);
       setAsistenteSeleccionada('');
       await fetchHabitacionesSilencioso();
+      setErrorStockLinea({});
       fetchReportes();
     } catch (e) {
       alert('❌ Error al procesar el check-out: ' + e.message);
     } finally {
       setSubiendoArchivo(false);
     }
+    
   };
 
   const handleConfirmarFacturacion = async (roomItem) => {
@@ -1582,20 +1654,63 @@ export default function App() {
                         name.includes('pepsi') || name.includes('polar') || name.includes('redbull') || 
                         name.includes('solera') || name.includes('kolita')
                       );
-                    }).map(item => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
-                        <div>
-                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
-                          <div style={{ fontSize: '11px', color: '#64748b' }}>${Number(item.price_usd || 0).toFixed(2)} USD</div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
-                          <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
-                          <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
-                        </div>
-                      </div>
-                    ))}
+                     }).map(item => {
+  return (() => {
+    const stockHab = Number(selectedRoom?.minibar_stock?.[item.id] ?? 0);
+    const hayError = Boolean(errorStockLinea[item.id]);
+    return (
+      <div
+        key={item.id}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#fff',
+          padding: '10px',
+          borderRadius: '8px',
+          border: hayError ? '1px solid #ef4444' : '1px solid #cbd5e1',
+          marginBottom: '8px',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
+            <div style={{ fontSize: '11px', color: '#64748b' }}>
+              ${Number(item.price_usd || 0).toFixed(2)} USD ·{' '}
+              <span style={{ color: stockHab > 0 ? '#059669' : '#dc2626', fontWeight: 'bold' }}>
+                Stock Hab. {selectedRoom?.number}: {stockHab}
+              </span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
+            <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
+            <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
+          </div>
+        </div>
 
+        {hayError && (
+          <div
+            role="alert"
+            style={{
+              marginTop: '8px',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              background: '#fef2f2',
+              color: '#b91c1c',
+              fontSize: '12px',
+              fontWeight: 'bold'
+            }}
+          >
+            ⚠️ {errorStockLinea[item.id]}
+          </div>
+        )}
+      </div>
+    );
+   })()}
+   )};
+                  
                     {/* 2. SECCIÓN: MINIBAR - DULCES Y SNACKS */}
                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
                       Minibar - Dulces y Snacks
@@ -1610,37 +1725,123 @@ export default function App() {
                         name.includes('pepsi') || name.includes('polar') || name.includes('redbull') || 
                         name.includes('solera') || name.includes('kolita');
                       return cat === 'minibar' && !esBebida;
-                    }).map(item => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
-                        <div>
-                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
-                          <div style={{ fontSize: '11px', color: '#64748b' }}>${Number(item.price_usd || 0).toFixed(2)} USD</div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
-                          <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
-                          <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
-                        </div>
-                      </div>
-                    ))}
+                    }).map(item => {
+  return (() => {
+    const stockHab = Number(selectedRoom?.minibar_stock?.[item.id] ?? 0);
+    const hayError = Boolean(errorStockLinea[item.id]);
+    return (
+      <div
+        key={item.id}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#fff',
+          padding: '10px',
+          borderRadius: '8px',
+          border: hayError ? '1px solid #ef4444' : '1px solid #cbd5e1',
+          marginBottom: '8px',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
+            <div style={{ fontSize: '11px', color: '#64748b' }}>
+              ${Number(item.price_usd || 0).toFixed(2)} USD ·{' '}
+              <span style={{ color: stockHab > 0 ? '#059669' : '#dc2626', fontWeight: 'bold' }}>
+                Stock Hab. {selectedRoom?.number}: {stockHab}
+              </span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
+            <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
+            <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
+          </div>
+        </div>
 
-                    {/* 3. SECCIÓN: UTENSILIOS */}
+        {hayError && (
+          <div
+            role="alert"
+            style={{
+              marginTop: '8px',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              background: '#fef2f2',
+              color: '#b91c1c',
+              fontSize: '12px',
+              fontWeight: 'bold'
+            }}
+          >
+            ⚠️ {errorStockLinea[item.id]}
+          </div>
+        )}
+      </div>
+    );
+   })()}
+   )};
+
+                   {/* 3. SECCIÓN: UTENSILIOS */}
                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
                       Utensilios
                     </div>
-                    {inventario.filter(item => (item.category || '').toLowerCase() === 'utensilios').map(item => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
-                        <div>
-                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
-                          <div style={{ fontSize: '11px', color: '#64748b' }}>${Number(item.price_usd || 0).toFixed(2)} USD</div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
-                          <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
-                          <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
-                        </div>
-                      </div>
-                    ))}
+                    {inventario.filter(item => (item.category || '').toLowerCase() === 'utensilios').map(item => {
+                      return (() => {
+                        const stockHab = Number(selectedRoom?.minibar_stock?.[item.id] ?? 0);
+                        const hayError = Boolean(errorStockLinea[item.id]);
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              background: '#fff',
+                              padding: '10px',
+                              borderRadius: '8px',
+                              border: hayError ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                              marginBottom: '8px',
+                              width: '100%',
+                              boxSizing: 'border-box'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
+                                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                                  ${Number(item.price_usd || 0).toFixed(2)} USD ·{' '}
+                                  <span style={{ color: stockHab > 0 ? '#059669' : '#dc2626', fontWeight: 'bold' }}>
+                                    Stock Hab. {selectedRoom?.number}: {stockHab}
+                                  </span>
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
+                                <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
+                                <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
+                              </div>
+                            </div>
+
+                            {hayError && (
+                              <div
+                                role="alert"
+                                style={{
+                                  marginTop: '8px',
+                                  padding: '6px 10px',
+                                  borderRadius: '6px',
+                                  background: '#fef2f2',
+                                  color: '#b91c1c',
+                                  fontSize: '12px',
+                                  fontWeight: 'bold'
+                                }}
+                              >
+                                ⚠️ {errorStockLinea[item.id]}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })();
+                    })}
 
                     {/* 4. SECCIÓN: LENCERÍA */}
                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1e3a8a', backgroundColor: '#e0f2fe', padding: '6px 10px', borderRadius: '6px', margin: '14px 0 6px 0', textTransform: 'uppercase' }}>
@@ -1649,19 +1850,62 @@ export default function App() {
                     {inventario.filter(item => {
                       const cat = (item.category || '').toLowerCase();
                       return cat === 'lenceria' || cat === 'lencería';
-                    }).map(item => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
-                        <div>
-                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
-                          <div style={{ fontSize: '11px', color: '#64748b' }}>${Number(item.price_usd || 0).toFixed(2)} USD</div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
-                          <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
-                          <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
-                        </div>
-                      </div>
-                    ))}
+                    }).map(item => {
+  return (() => {
+    const stockHab = Number(selectedRoom?.minibar_stock?.[item.id] ?? 0);
+    const hayError = Boolean(errorStockLinea[item.id]);
+    return (
+      <div
+        key={item.id}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#fff',
+          padding: '10px',
+          borderRadius: '8px',
+          border: hayError ? '1px solid #ef4444' : '1px solid #cbd5e1',
+          marginBottom: '8px',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
+            <div style={{ fontSize: '11px', color: '#64748b' }}>
+              ${Number(item.price_usd || 0).toFixed(2)} USD ·{' '}
+              <span style={{ color: stockHab > 0 ? '#059669' : '#dc2626', fontWeight: 'bold' }}>
+                Stock Hab. {selectedRoom?.number}: {stockHab}
+              </span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
+            <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
+            <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
+          </div>
+        </div>
+
+        {hayError && (
+          <div
+            role="alert"
+            style={{
+              marginTop: '8px',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              background: '#fef2f2',
+              color: '#b91c1c',
+              fontSize: '12px',
+              fontWeight: 'bold'
+            }}
+          >
+            ⚠️ {errorStockLinea[item.id]}
+          </div>
+        )}
+      </div>
+    );
+   })()}
+   )};
                   </div>
 
                   {/* CAMPO DE NOTIFICACIÓN DE FALTANTE / PIEZA EDITABLE */}
