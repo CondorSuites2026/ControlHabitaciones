@@ -810,6 +810,7 @@ export default function App() {
       ...prev,
       [id]: siguiente
     }));
+    };
   const getStatusClass = (status) => {
     const s = (status || '').toLowerCase();
     if (s.includes('por facturar') || s.includes('sucia / por facturar')) return 'badge-danger';
@@ -1803,62 +1804,19 @@ export default function App() {
                     {inventario.filter(item => {
                       const cat = (item.category || '').toLowerCase();
                       return cat === 'lenceria' || cat === 'lencería';
-                    }).map(item => {
-  return (() => {
-    const stockHab = Number(selectedRoom?.minibar_stock?.[item.id] ?? 0);
-    const hayError = Boolean(errorStockLinea[item.id]);
-    return (
-      <div
-        key={item.id}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          background: '#fff',
-          padding: '10px',
-          borderRadius: '8px',
-          border: hayError ? '1px solid #ef4444' : '1px solid #cbd5e1',
-          marginBottom: '8px',
-          width: '100%',
-          boxSizing: 'border-box'
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
-            <div style={{ fontSize: '11px', color: '#64748b' }}>
-              ${Number(item.price_usd || 0).toFixed(2)} USD ·{' '}
-              <span style={{ color: stockHab > 0 ? '#059669' : '#dc2626', fontWeight: 'bold' }}>
-                Stock Hab. {selectedRoom?.number}: {stockHab}
-              </span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
-            <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
-            <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
-          </div>
-        </div>
-
-        {hayError && (
-          <div
-            role="alert"
-            style={{
-              marginTop: '8px',
-              padding: '6px 10px',
-              borderRadius: '6px',
-              background: '#fef2f2',
-              color: '#b91c1c',
-              fontSize: '12px',
-              fontWeight: 'bold'
-            }}
-          >
-            ⚠️ {errorStockLinea[item.id]}
-          </div>
-        )}
-      </div>
-    );
-   })()}
-   )};
+                    }).map(item => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '8px', width: '100%', boxSizing: 'border-box' }}>
+                        <div>
+                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{item.name}</span>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>${Number(item.price_usd || 0).toFixed(2)} USD</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button type="button" onClick={() => handleQtyChange(item.id, -1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', fontWeight: 'bold' }}>-</button>
+                          <span style={{ width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{consumosSeleccionados[item.id] || 0}</span>
+                          <button type="button" onClick={() => handleQtyChange(item.id, 1)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: 'none', background: '#1e3a8a', color: '#fff', fontWeight: 'bold' }}>+</button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
                   {/* CAMPO DE NOTIFICACIÓN DE FALTANTE / PIEZA EDITABLE */}
